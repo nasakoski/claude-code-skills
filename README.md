@@ -32,8 +32,9 @@ claude-code-skills/
 |   |-- ln-140-test-docs-creator/         # testing-strategy.md
 |   |-- ln-150-presentation-creator/      # Interactive HTML presentation
 |
-|-- ln-2XX-*/                          # PLANNING (6 skills)
+|-- ln-2XX-*/                          # PLANNING (7 skills)
 |   |-- ln-200-scope-decomposer/       # TOP: scope -> Epics -> Stories (one command)
+|   |-- ln-201-opportunity-discoverer/ # Traffic-First KILL funnel for growth direction
 |   |-- ln-210-epic-coordinator/       # CREATE/REPLAN 3-7 Epics
 |   |-- ln-220-story-coordinator/      # CREATE/REPLAN Stories + standards research
 |   |   |-- ln-221-story-creator/      # Creates from IDEAL plan
@@ -68,7 +69,7 @@ claude-code-skills/
 |   |-- ln-620-codebase-auditor/       # 9 parallel auditors:
 |   |   |-- ln-621-security-auditor/      # Secrets, SQL injection, XSS
 |   |   |-- ln-622-build-auditor/         # Compiler/type errors
-|   |   |-- ln-623-architecture-auditor/  # DRY/KISS/YAGNI violations
+|   |   |-- ln-623-code-principles-auditor/# DRY/KISS/YAGNI, TODOs, DI
 |   |   |-- ln-624-code-quality-auditor/  # Complexity, magic numbers
 |   |   |-- ln-625-dependencies-auditor/  # Outdated packages
 |   |   |-- ln-626-dead-code-auditor/     # Unused code
@@ -78,6 +79,7 @@ claude-code-skills/
 |   |-- ln-630-test-auditor/           # 5 test auditors (business logic, E2E, coverage)
 |   |-- ln-640-pattern-evolution-auditor/ # Architectural pattern analysis + 4-score model
 |   |   |-- ln-641-pattern-analyzer/      # Pattern scoring worker
+|   |   |-- ln-642-layer-boundary-auditor/# Layer violations, I/O isolation, coverage
 |
 |-- ln-7XX-*/                          # BOOTSTRAP (28 skills) [WORKS WITHOUT LINEAR]
 |   |-- ln-700-project-bootstrap/      # L1: full project setup

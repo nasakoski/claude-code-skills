@@ -131,5 +131,47 @@ health_score = (
 ) / pattern_count
 ```
 
+## Layer Compliance Scoring
+
+Layer violations detected by ln-642 affect **Compliance** and **Quality** scores.
+
+### Deductions from Compliance Score
+
+| Violation | Deduction | Rationale |
+|-----------|-----------|-----------|
+| I/O code in domain layer | -15 points | Violates architecture principles |
+| I/O code in services layer | -10 points | Should use abstractions |
+| Direct framework import in domain | -10 points | Domain should be framework-agnostic |
+
+### Deductions from Quality Score
+
+| Issue | Deduction | Rationale |
+|-------|-----------|-----------|
+| HTTP call without abstraction | -10 points | Missing client layer |
+| Error handling in >2 files | -5 per extra file | Duplication, should centralize |
+| Pattern coverage <80% | -10 points | Inconsistent architecture |
+
+### Layer Violation Thresholds
+
+| Violations Count | Impact |
+|------------------|--------|
+| 0 | Full score maintained |
+| 1-3 | Warning, create improvement tasks |
+| 4-10 | Below threshold, create refactor Story |
+| >10 | Critical, prioritize architectural cleanup |
+
+## Score Conversion
+
+For cross-audit reporting between ln-620 (X/10) and ln-640 (0-100%):
+
+| 4-Score Average | Equivalent X/10 | Status |
+|-----------------|-----------------|--------|
+| 90-100% | 9-10 | ✅ Healthy |
+| 70-89% | 7-8 | ⚠️ Warning |
+| 50-69% | 5-6 | ❌ Below threshold |
+| <50% | <5 | 🚨 Critical |
+
+**Formula:** `x_10 = round(percent / 10)`
+
 ---
-**Version:** 1.0.0
+**Version:** 1.2.0

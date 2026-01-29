@@ -96,5 +96,43 @@ Use these queries with `ref_search_documentation`:
 | Resilience (Node.js) | cockatiel, opossum |
 | CQRS (.NET) | mediatr |
 
+## Layer Violation Detection
+
+Used by ln-642-layer-boundary-auditor to detect architectural violations.
+
+### Auto-Discovery from docs/architecture.md
+
+Read Section 4.2 (Top-Level Decomposition) and Section 5.3 (Infrastructure Layer Components) to determine project's layer structure and allowed dependencies.
+
+### Common Architecture Presets (fallback if no architecture.md)
+
+| Architecture | Layers | Dependency Direction |
+|--------------|--------|---------------------|
+| Layered (n-tier) | Presentation → Business → Data | top-down only |
+| Hexagonal | Ports ↔ Adapters ← Domain | adapters depend on ports |
+| Clean | Controllers → UseCases → Entities | outside-in |
+| Vertical Slices | Feature modules | no cross-slice deps |
+| MVC | View → Controller → Model | no Model→View |
+
+### I/O Pattern Boundary Rules
+
+Regardless of architecture, these patterns should be isolated in infrastructure/adapters:
+
+| Pattern | Forbidden In | Detection Grep | Allowed In |
+|---------|--------------|----------------|------------|
+| HTTP Client | domain/, services/, api/ | `httpx\\.\|aiohttp\\.\|requests\\.(get\|post)` | infrastructure/http/, clients/ |
+| DB Session | domain/, services/, api/ | `session\\.(execute\|query\|add\|commit)` | infrastructure/persistence/, repositories/ |
+| Raw SQL | domain/, services/ | `SELECT\\s.*FROM\|INSERT\\s+INTO` | infrastructure/persistence/ |
+| File I/O | domain/ | `open\\(\|Path\\(.*\\)\\.(read\|write)` | infrastructure/storage/ |
+| Env Access | domain/ | `os\\.(environ\|getenv)` | core/config/, settings/ |
+| Framework | domain/ | `from\\s+(fastapi\|flask\|django)` | api/, infrastructure/ |
+
+### Coverage Checks
+
+| Check | Grep Pattern | Threshold |
+|-------|--------------|-----------|
+| HTTP Abstraction | `client\\.(get\|post\|put\|delete)` vs direct calls | 90% |
+| Error Centralization | `except\\s+(httpx\|aiohttp\|requests)\\.` in ≤2 files | Yes |
+
 ---
-**Version:** 1.0.0
+**Version:** 1.1.0

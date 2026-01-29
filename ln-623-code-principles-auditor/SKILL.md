@@ -1,20 +1,20 @@
 ---
-name: ln-623-architecture-auditor
-description: Architecture audit worker (L3). Checks DRY (7 types), KISS/YAGNI, layer breaks, error handling, DI patterns. Returns findings with severity, location, effort, recommendations.
+name: ln-623-code-principles-auditor
+description: Code principles audit worker (L3). Checks DRY (7 types), KISS/YAGNI, TODOs, error handling, DI patterns. Returns findings with severity, location, effort, recommendations.
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
-# Architecture & Design Auditor (L3 Worker)
+# Code Principles Auditor (L3 Worker)
 
-Specialized worker auditing architecture principles and design patterns.
+Specialized worker auditing code principles (DRY, KISS, YAGNI) and design patterns.
 
 ## Purpose & Scope
 
 - **Worker in ln-620 coordinator pipeline** - invoked by ln-620-codebase-auditor
-- Audit **architecture and design** (Categories 3+4: High Priority)
-- Check DRY/KISS/YAGNI violations, layer breaks, TODO/FIXME, workarounds, error handling
+- Audit **code principles** (DRY/KISS/YAGNI, error handling, DI)
+- Check DRY/KISS/YAGNI violations, TODO/FIXME, workarounds, error handling
 - Return structured findings with severity, location, effort, recommendations
-- Calculate compliance score (X/10) for Architecture & Design category
+- Calculate compliance score (X/10) for Code Principles category
 
 ## Inputs (from Coordinator)
 
@@ -244,31 +244,7 @@ Extract to shared module, create utility function, centralize constants/messages
 
 **Effort:** M (verify no future use, then delete)
 
-### 4. Layer Boundary Breaks
-**What:** Architectural layers violated (UI calling DB directly, Controller bypassing Service, etc.)
-
-**Detection:**
-- Grep for direct DB calls in UI/presentation layer
-- Grep for Repository imports in Controllers:
-  - Pattern: `import.*Repository.*from` in files matching `*Controller.*`, `*controller.*`, `*Controller.ts`, `*Controller.js`, `*controller.py`
-- Check for concrete class dependencies instead of interfaces/abstractions
-- Verify separation: Controller → Service → Repository → DB (Clean Architecture dependency rule)
-
-**Severity:**
-- **CRITICAL:** UI directly accessing database (bypass all layers)
-- **CRITICAL:** Controller directly using Repository (skip Service layer)
-- **HIGH:** Business logic in presentation layer
-- **HIGH:** Dependency on concrete classes instead of interfaces (violates Dependency Inversion Principle)
-- **MEDIUM:** Tight coupling between layers
-
-**Recommendation:**
-- Add service layer between Controller and Repository
-- Use Dependency Inversion Principle: depend on interfaces/abstractions, not concrete implementations
-- Refactor to proper layering (Controller → Service → Repository → DB)
-
-**Effort:** L (architectural refactor)
-
-### 5. TODO/FIXME/HACK Comments
+### 4. TODO/FIXME/HACK Comments
 **What:** Unfinished work, temporary solutions
 
 **Detection:**
@@ -284,7 +260,7 @@ Extract to shared module, create utility function, centralize constants/messages
 
 **Effort:** Varies (S for simple TODO, L for architectural HACK)
 
-### 6. Missing Error Handling
+### 5. Missing Error Handling
 **What:** Critical paths without try-catch, error propagation
 
 **Detection:**
@@ -301,7 +277,7 @@ Extract to shared module, create utility function, centralize constants/messages
 
 **Effort:** M (add error handling logic)
 
-### 7. Centralized Error Handling
+### 6. Centralized Error Handling
 **What:** Errors handled inconsistently across different contexts (web requests, cron jobs, background tasks)
 
 **Detection:**
@@ -328,7 +304,7 @@ Extract to shared module, create utility function, centralize constants/messages
 
 **Effort:** M-L (create error handler, refactor existing middleware)
 
-### 8. Dependency Injection / Centralized Init
+### 7. Dependency Injection / Centralized Init
 **What:** Direct imports/instantiation instead of dependency injection, scattered initialization
 
 **Detection:**
@@ -354,7 +330,7 @@ Extract to shared module, create utility function, centralize constants/messages
 
 **Effort:** L (refactor to DI pattern, add container, update all instantiations)
 
-### 9. Missing Best Practices Guide
+### 8. Missing Best Practices Guide
 **What:** No architecture/design best practices documentation for developers
 
 **Detection:**
@@ -450,8 +426,8 @@ Return JSON to coordinator:
 
 - contextStore parsed (including domain_mode and current_domain)
 - scan_path determined (domain path or codebase root)
-- All 9 checks completed (scoped to scan_path):
-  - DRY (7 subcategories), KISS, YAGNI, Layer Breaks, TODOs, Error Handling, Centralized Errors, DI/Init, Best Practices Guide
+- All 8 checks completed (scoped to scan_path):
+  - DRY (7 subcategories), KISS, YAGNI, TODOs, Error Handling, Centralized Errors, DI/Init, Best Practices Guide
 - Findings collected with severity, location, effort, recommendation, domain
 - Score calculated
 - JSON returned to coordinator with domain metadata
@@ -461,5 +437,5 @@ Return JSON to coordinator:
 - Architecture rules: [references/architecture_rules.md](references/architecture_rules.md)
 
 ---
-**Version:** 4.0.0
-**Last Updated:** 2025-12-23
+**Version:** 4.1.0
+**Last Updated:** 2026-01-29
