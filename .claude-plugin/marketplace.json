@@ -71,6 +71,8 @@
         "./ln-633-test-value-auditor",
         "./ln-634-test-coverage-auditor",
         "./ln-635-test-isolation-auditor",
+        "./ln-640-pattern-evolution-auditor",
+        "./ln-641-pattern-analyzer",
         "./ln-700-project-bootstrap",
         "./ln-710-dependency-upgrader",
         "./ln-711-npm-upgrader",

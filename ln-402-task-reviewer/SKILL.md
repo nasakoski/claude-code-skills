@@ -1,6 +1,6 @@
 ---
 name: ln-402-task-reviewer
-description: Reviews completed tasks (To Review) and moves them to Done or To Rework. Zero tolerance: all issues fixed now.
+description: L3 Worker. Reviews task implementation for quality, code standards, test coverage. Creates [BUG] tasks for side-effect issues found outside task scope. Sets task Done or To Rework. Usually invoked by ln-400 with isolated context, can also review a specific task on user request.
 ---
 
 # Task Reviewer
@@ -38,17 +38,35 @@ description: Reviews completed tasks (To Review) and moves them to Done or To Re
    - Naming: consistent conventions; descriptive names; no single-letter variables (except loops).
    - Docs updated where required.
    - Tests updated/run: for impl/refactor ensure affected tests adjusted; for test tasks verify risk-based limits and priority (≤15) per planner template.
-4) **Decision:**  
-   - If only nits: apply minor fixes and set Done.  
+4) **Side-Effect Bug Detection (MANDATORY):**
+   While reviewing affected code, actively scan for bugs/issues NOT related to current task:
+   - Pre-existing bugs in touched files
+   - Broken patterns in adjacent code
+   - Security issues in related components
+   - Deprecated APIs, outdated dependencies
+   - Missing error handling in caller/callee functions
+
+   **For each side-effect bug found:**
+   - Create new task in same Story (Linear: create_issue with parentId=Story.id; File: create task file)
+   - Title: `[BUG] {Short description}`
+   - Description: Location, issue, suggested fix
+   - Label: `bug`, `discovered-in-review`
+   - Priority: based on severity (security=1 Urgent, logic=2 High, style=4 Low)
+   - **Do NOT defer** — create task immediately, reviewer catches what executor missed
+
+5) **Decision (for current task only):**
+   - If only nits: apply minor fixes and set Done.
    - If issues remain: set To Rework with comment explaining why (best-practice ref) and how to fix.
-5) **Update:** Set task status in Linear; update kanban: if Done → **remove task from kanban** (Done section tracks Stories only, not individual Tasks); if To Rework → move task to To Rework section; add review comment with findings/actions.
+   - Side-effect bugs do NOT block current task's Done status (they are separate tasks).
+6) **Update:** Set task status in Linear; update kanban: if Done → **remove task from kanban** (Done section tracks Stories only, not individual Tasks); if To Rework → move task to To Rework section; add review comment with findings/actions. If side-effect bugs created, mention them in comment.
 
 ## Critical Rules
-- One task at a time; do not touch others.
+- One task reviewed at a time; side-effect bugs become separate tasks.
 - Zero tolerance: no deferring issues; either fix now or send back with guidance.
+- **Side-effect bugs: fix ALL issues found, not just task scope.** Reviewer's fresh eyes catch what executor missed. Create tasks for every bug found, regardless of whether it's "in scope". This is a feature, not scope creep.
 - Keep language of the task (EN/RU) in comments/edits.
 - If test-task limits/priority violated -> To Rework with guidance.
-- Never leave task Done if any unresolved issue exists.
+- Never leave task Done if any unresolved issue exists **in that task's scope**.
 - **Kanban Done section:** Contains Stories only, NOT Tasks. When Task → Done, remove it from kanban entirely.
 - **Independent review isolation:** This skill runs as subagent with fresh context. Do NOT rely on any data from orchestrator except task ID. Load everything from Linear to maintain objectivity. This emulates external code review by developer who wasn't involved in implementation.
 - **Mandatory invocation (ZERO COMPROMISE):** This skill MUST be invoked after EVERY task execution. No task can be marked Done without passing through ln-402 review. Orchestrator (ln-400) enforces this—if you're running standalone, enforce it yourself.
@@ -56,8 +74,9 @@ description: Reviews completed tasks (To Review) and moves them to Done or To Re
 ## Definition of Done
 - Task and parent Story fully read; type identified.
 - Review checklist completed; docs/tests/config verified.
+- **Side-effect bugs scanned:** Any bugs found outside task scope → created as new tasks with `[BUG]` prefix.
 - Decision applied: Done (minor fixes applied) or To Rework (issues + fix guidance).
-- Linear status updated; kanban updated (if Done → task removed from kanban; if To Rework → task moved to To Rework section); review comment posted.
+- Linear status updated; kanban updated (if Done → task removed from kanban; if To Rework → task moved to To Rework section); review comment posted (including list of any side-effect bug tasks created).
 
 ## Reference Files
 - Kanban format: `docs/tasks/kanban_board.md`
