@@ -1,9 +1,9 @@
 # CI Integration Guide
 
-<!-- SCOPE: CI/CD pipeline audit integration ONLY. Contains stage recommendations, GitHub Actions/GitLab CI examples. -->
-<!-- DO NOT add here: Audit workflow → ln-762-dependency-audit SKILL.md, severity → severity_mapping.md -->
+<!-- SCOPE: CI/CD pipeline vulnerability audit integration ONLY. Contains stage recommendations, GitHub Actions/GitLab CI guidance. -->
+<!-- DO NOT add here: Audit workflow → ln-625-dependencies-auditor SKILL.md, severity → shared/references/cvss_severity_mapping.md -->
 
-Guidelines for integrating dependency audits into CI/CD pipelines.
+Guidelines for integrating vulnerability audits into CI/CD pipelines.
 
 ---
 
@@ -117,4 +117,4 @@ Use `.safety-policy.yml` or `pip-audit` ignore file:
 ---
 
 **Version:** 1.0.0
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-02-05

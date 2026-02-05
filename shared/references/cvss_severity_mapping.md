@@ -1,7 +1,7 @@
-# Severity Mapping Reference
+# CVSS Severity Mapping Reference
 
 <!-- SCOPE: CVSS severity level mapping ONLY. Contains score ranges, action requirements, blocking rules. -->
-<!-- DO NOT add here: Audit workflow → ln-762-dependency-audit SKILL.md, CI integration → ci_integration_guide.md -->
+<!-- USED BY: ln-625-dependencies-auditor (vulnerability_scan check), ln-621-security-auditor (insecure_dependencies) -->
 
 CVSS score to severity level mapping for dependency vulnerabilities.
 
@@ -81,4 +81,4 @@ NuGet uses CVSS directly - apply standard mapping.
 ---
 
 **Version:** 1.0.0
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-02-05

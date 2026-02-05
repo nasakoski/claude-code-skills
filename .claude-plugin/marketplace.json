@@ -102,7 +102,6 @@
         "./ln-751-command-templates",
         "./ln-760-security-setup",
         "./ln-761-secret-scanner",
-        "./ln-762-dependency-audit",
         "./ln-770-crosscutting-setup",
         "./ln-771-logging-configurator",
         "./ln-772-error-handler-setup",

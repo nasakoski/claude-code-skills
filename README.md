@@ -1,7 +1,7 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-3.0.0-blue)
-![Skills](https://img.shields.io/badge/skills-86-green)
+![Skills](https://img.shields.io/badge/skills-85-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -71,7 +71,7 @@ claude-code-skills/
 |   |   |-- ln-622-build-auditor/         # Compiler/type errors
 |   |   |-- ln-623-code-principles-auditor/# DRY/KISS/YAGNI, TODOs, DI
 |   |   |-- ln-624-code-quality-auditor/  # Complexity, magic numbers
-|   |   |-- ln-625-dependencies-auditor/  # Outdated packages
+|   |   |-- ln-625-dependencies-auditor/  # Outdated packages + CVE vulnerabilities
 |   |   |-- ln-626-dead-code-auditor/     # Unused code
 |   |   |-- ln-627-observability-auditor/ # Logging, metrics
 |   |   |-- ln-628-concurrency-auditor/   # Race conditions
@@ -81,7 +81,7 @@ claude-code-skills/
 |   |   |-- ln-641-pattern-analyzer/      # Pattern scoring worker
 |   |   |-- ln-642-layer-boundary-auditor/# Layer violations, I/O isolation, coverage
 |
-|-- ln-7XX-*/                          # BOOTSTRAP (28 skills) [WORKS WITHOUT LINEAR]
+|-- ln-7XX-*/                          # BOOTSTRAP (27 skills) [WORKS WITHOUT LINEAR]
 |   |-- ln-700-project-bootstrap/      # L1: full project setup
 |   |-- ln-710-dependency-upgrader/    # Upgrade npm/nuget/pip
 |   |-- ln-720-structure-migrator/     # Clean Architecture migration

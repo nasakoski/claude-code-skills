@@ -50,7 +50,7 @@ All skills have state diagrams in `diagram.html` files for visualizing workflows
 
 ### Available Skills
 
-**88 skills** in 7 categories (0XX Shared/Research, 1XX Documentation, 2XX Planning, 3XX Task Management, 4XX Execution, 5XX Quality, 6XX Audit, 7XX Bootstrap). See [README.md](README.md#-features) for complete skill list with descriptions and versions.
+**85 skills** in 7 categories (0XX Shared/Research, 1XX Documentation, 2XX Planning, 3XX Task Management, 4XX Execution, 5XX Quality, 6XX Audit, 7XX Bootstrap). See [README.md](README.md#-features) for complete skill list with descriptions and versions.
 
 **Key workflow:** ln-700-project-bootstrap → ln-100-documents-pipeline → ln-201-opportunity-discoverer (optional) → ln-200-scope-decomposer → ln-400-story-executor → ln-500-story-quality-gate
 
@@ -68,7 +68,7 @@ Four levels: Scope → Epics (ln-210) → Stories (ln-220) → RICE Prioritizati
 
 ## Skill Workflows
 
-All 88 skills documented in [README.md](README.md#-features) feature tables with workflows in each skill's SKILL.md file. Follow Orchestrator-Worker Pattern per [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md).
+All 85 skills documented in [README.md](README.md#-features) feature tables with workflows in each skill's SKILL.md file. Follow Orchestrator-Worker Pattern per [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md).
 
 ## Important Details
 
@@ -187,4 +187,4 @@ links. Kept only repository-specific content: Configuration Auto-Discovery, Code
 Comments rules, Documentation Language policy, Versioning workflow.
 ```
 
-**Last Updated:** 2026-01-10
+**Last Updated:** 2026-02-05
