@@ -1,0 +1,59 @@
+{
+  "version": "1.2.0",
+  "agents": {
+    "gemini": {
+      "name": "Gemini CLI",
+      "command": "gemini",
+      "args": ["-p", ""],
+      "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
+      "timeout_seconds": 300,
+      "skill_groups": ["200"],
+      "health_check": "gemini --version"
+    },
+    "codex": {
+      "name": "Codex CLI",
+      "command": "codex",
+      "args": ["exec"],
+      "env_override": {},
+      "timeout_seconds": 600,
+      "skill_groups": ["300"],
+      "health_check": "codex --version"
+    },
+    "opencode": {
+      "name": "OpenCode CLI",
+      "command": "opencode",
+      "args": ["run"],
+      "env_override": {},
+      "timeout_seconds": 300,
+      "skill_groups": [],
+      "health_check": "opencode --version"
+    },
+    "codex-review": {
+      "name": "Codex CLI (Review Mode)",
+      "command": "codex",
+      "args": ["exec", "--sandbox", "read-only", "-a", "never", "--json"],
+      "env_override": {},
+      "timeout_seconds": 600,
+      "skill_groups": ["310", "402"],
+      "health_check": "codex --version"
+    },
+    "gemini-review": {
+      "name": "Gemini 3 Pro (Review Mode)",
+      "command": "gemini",
+      "args": ["--yolo", "-m", "gemini-3-pro-preview", "--output-format", "json", "-p", ""],
+      "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
+      "timeout_seconds": 300,
+      "skill_groups": ["310", "402"],
+      "health_check": "gemini --version"
+    },
+    "opencode-review": {
+      "name": "OpenCode CLI (Review Mode)",
+      "command": "opencode",
+      "args": ["run", "--format", "json"],
+      "env_override": {},
+      "timeout_seconds": 300,
+      "skill_groups": ["310"],
+      "health_check": "opencode --version"
+    }
+  }
+}
