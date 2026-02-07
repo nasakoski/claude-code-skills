@@ -1,9 +1,9 @@
-# Replit Artifacts Reference
+# Platform Artifacts Reference
 
-<!-- SCOPE: Replit-specific files and directories ONLY. Contains file list, descriptions, DELETE/MODIFY actions. -->
-<!-- DO NOT add here: Cleanup workflow → ln-724-replit-cleaner SKILL.md -->
+<!-- SCOPE: Platform-specific artifact catalogs for all supported platforms. Contains file lists, detection patterns, cleanup actions. -->
+<!-- DO NOT add here: Cleanup workflow → ln-724-artifact-cleaner SKILL.md -->
 
-Complete list of Replit-specific artifacts found in exported projects.
+Artifact catalogs for projects exported from online platforms. Used by ln-724-artifact-cleaner for detection and cleanup.
 
 ---
 
@@ -245,5 +245,82 @@ Phase 1 Scan:
 
 ---
 
-**Version:** 1.0.0
-**Last Updated:** 2026-01-10
+## Platform Detection Matrix
+
+| Platform | Primary Indicator | Secondary Indicators | NPM Packages |
+|----------|-------------------|---------------------|--------------|
+| **Replit** | `.replit` file | `replit.nix`, `.local/state/replit/` | `@replit/*` |
+| **StackBlitz** | `.stackblitzrc` | `turbo.json` (StackBlitz-specific) | -- |
+| **CodeSandbox** | `sandbox.config.json` | `.codesandbox/` directory | -- |
+| **Glitch** | `glitch.json` | `.glitch-assets`, `.data/` | -- |
+
+---
+
+## StackBlitz Artifacts
+
+| Category | Artifact | Action |
+|----------|----------|--------|
+| **Config** | `.stackblitzrc` | DELETE |
+| **Directories** | `.turbo/` (if not used in production) | DELETE |
+| **Build Config** | StackBlitz-specific port overrides in vite.config.ts | MODIFY |
+
+**Detection:**
+```yaml
+Files: .stackblitzrc
+Dirs: .turbo/ (conditional - check if turbo used in prod)
+Code: Grep for "stackblitz" in vite.config.ts, webpack.config.js
+```
+
+---
+
+## CodeSandbox Artifacts
+
+| Category | Artifact | Action |
+|----------|----------|--------|
+| **Config** | `sandbox.config.json` | DELETE |
+| **Directories** | `.codesandbox/` | DELETE |
+| **Package.json** | `"sandbox"` field | REMOVE field |
+
+**Detection:**
+```yaml
+Files: sandbox.config.json
+Dirs: .codesandbox/
+Code: Grep for "CODESANDBOX_HOST" in **/*.ts, **/*.js
+```
+
+---
+
+## Glitch Artifacts
+
+| Category | Artifact | Action |
+|----------|----------|--------|
+| **Config** | `glitch.json`, `.glitch-assets` | DELETE |
+| **Directories** | `.glitch/` | DELETE |
+| **Directories** | `.data/` | ASK USER (may contain important data) |
+| **Env Vars** | `PROJECT_DOMAIN`, `PROJECT_NAME`, `ASSETS_URL` | Remove checks from code |
+
+**Detection:**
+```yaml
+Files: glitch.json, .glitch-assets
+Dirs: .glitch/, .data/
+Code: Grep for "PROJECT_DOMAIN", "ASSETS_URL" in server code
+```
+
+---
+
+## Generic Prototype Artifacts
+
+Common artifacts in early-stage projects regardless of platform:
+
+| Artifact | Description | Action |
+|----------|-------------|--------|
+| `node_modules/` in git | Accidentally committed deps | Add to .gitignore, remove from tracking |
+| Multiple lock files | Both package-lock.json and yarn.lock | Keep one, delete others |
+| Hardcoded `localhost:*` | Dev-only URLs in source | Flag for replacement with env vars |
+| `.env` in git | Exposed secrets | Remove from tracking, add to .gitignore |
+| `TODO.md`, `NOTES.md` | Dev notes in root | Move to docs/ or delete |
+
+---
+
+**Version:** 2.0.0
+**Last Updated:** 2026-02-07

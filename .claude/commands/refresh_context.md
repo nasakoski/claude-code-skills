@@ -115,7 +115,7 @@ allowed-tools: Read, Edit
 - [ ] Read `ln-710-dependency-upgrader/SKILL.md` - L2 coordinator (npm, nuget, pip)
 - [ ] Read `ln-711-713-*-upgrader/SKILL.md` - L3 upgrader workers
 - [ ] Read `ln-720-structure-migrator/SKILL.md` - L2 coordinator (structure migration)
-- [ ] Read `ln-721-724-*/SKILL.md` - L3 structure workers (frontend, backend, mockdata, replit-cleaner)
+- [ ] Read `ln-721-724-*/SKILL.md` - L3 structure workers (frontend, backend, seed-data, artifact-cleaner)
 
 **When working with versioning/release:**
 - [ ] Read `CHANGELOG.md` - release history

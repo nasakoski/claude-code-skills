@@ -81,10 +81,10 @@ claude-code-skills/
 |   |   |-- ln-641-pattern-analyzer/      # Pattern scoring worker
 |   |   |-- ln-642-layer-boundary-auditor/# Layer violations, I/O isolation, coverage
 |
-|-- ln-7XX-*/                          # BOOTSTRAP (27 skills) [WORKS WITHOUT LINEAR]
-|   |-- ln-700-project-bootstrap/      # L1: full project setup
+|-- ln-7XX-*/                          # BOOTSTRAP (32 skills) [WORKS WITHOUT LINEAR]
+|   |-- ln-700-project-bootstrap/      # L1: CREATE or TRANSFORM project
 |   |-- ln-710-dependency-upgrader/    # Upgrade npm/nuget/pip
-|   |-- ln-720-structure-migrator/     # Clean Architecture migration
+|   |-- ln-720-structure-migrator/     # SCAFFOLD or RESTRUCTURE to Clean Architecture
 |   |-- ln-730-devops-setup/           # Docker, CI/CD, env
 |   |   |-- ln-731-docker-generator/      # Dockerfiles, docker-compose
 |   |   |-- ln-732-cicd-generator/        # GitHub Actions
@@ -125,7 +125,7 @@ git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/ski
 **Without Linear** (works immediately):
 ```bash
 ln-620-codebase-auditor    # Audit your code for issues
-ln-700-project-bootstrap   # Setup project from scratch
+ln-700-project-bootstrap   # CREATE or TRANSFORM project
 ln-100-documents-pipeline  # Generate documentation
 ```
 
@@ -154,7 +154,7 @@ Automated validation hooks that run during development:
 ## Workflow
 
 ```
-ln-700-project-bootstrap   # 0. Setup (deps, Docker, linters)
+ln-700-project-bootstrap   # 0. CREATE or TRANSFORM to production
          ↓
 ln-100-documents-pipeline  # 1. Documentation
          ↓

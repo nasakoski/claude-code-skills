@@ -1,13 +1,33 @@
 # Type Mapping Reference
 
-<!-- SCOPE: Drizzle to C# type mapping ONLY. Contains type conversions, nullable rules, default values. -->
-<!-- DO NOT add here: Migration workflow → ln-723-mockdata-migrator SKILL.md -->
+<!-- SCOPE: ORM to multi-target type mapping. Contains type conversions, nullable rules, default values for C#, TypeScript, Python. -->
+<!-- DO NOT add here: Migration workflow → ln-723-seed-data-generator SKILL.md -->
 
-Mapping rules from ORM schema types to C# types.
+Mapping rules from ORM schema types to target language types (C#, TypeScript, Python).
 
 ---
 
-## Drizzle to C# Type Mapping
+## Universal Type Mapping (All Targets)
+
+| ORM-Agnostic Type | C# Type | TypeScript Type | Python Type | Notes |
+|--------------------|---------|-----------------|-------------|-------|
+| UUID/GUID | `Guid` | `string` | `str` (uuid4) | Primary/foreign key |
+| String (short) | `string` | `string` | `str` | varchar, CharField |
+| String (long) | `string` | `string` | `str` | text, TextField |
+| Integer | `int` | `number` | `int` | |
+| Big Integer | `long` | `number` | `int` | |
+| Float | `float` / `double` | `number` | `float` | |
+| Decimal | `decimal` | `number` | `Decimal` | Money/precise values |
+| Boolean | `bool` | `boolean` | `bool` | |
+| Timestamp | `DateTime` | `Date` | `datetime` | |
+| Date only | `DateOnly` | `string` (ISO) | `date` | |
+| Time only | `TimeOnly` | `string` (ISO) | `time` | |
+| JSON | `JsonDocument` | `Record<string, unknown>` | `dict` | |
+| Binary | `byte[]` | `Buffer` | `bytes` | |
+
+---
+
+## Drizzle to C# Type Mapping (Primary)
 
 | Drizzle Type | C# Type | Nullable | Default Value | Notes |
 |--------------|---------|----------|---------------|-------|
@@ -104,5 +124,19 @@ Mapping rules from ORM schema types to C# types.
 
 ---
 
-**Version:** 1.0.0
-**Last Updated:** 2026-01-10
+## Faker Library Integration
+
+Generated seed data files should use faker libraries for realistic values with deterministic seeding.
+
+| Target | Library | Seed Example | Package |
+|--------|---------|--------------|---------|
+| **C#** | Bogus | `new Faker().UseSeed(42)` | `Bogus` NuGet |
+| **TypeScript** | Faker.js | `faker.seed(42)` | `@faker-js/faker` npm |
+| **Python** | Faker | `Faker.seed_instance(42)` | `faker` pip |
+
+**Deterministic seeding** ensures reproducible data across test runs.
+
+---
+
+**Version:** 2.0.0
+**Last Updated:** 2026-02-07
