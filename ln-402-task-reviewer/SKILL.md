@@ -114,7 +114,7 @@ Step 6: Decision
 
 Step 7: Update & Commit
   - Set task status, update kanban, post review comment
-  - If Done: commit changes with task ID
+  - If Done: commit ALL uncommitted changes in branch (git add -A)
 ```
 
 ## Workflow (concise)
@@ -157,7 +157,7 @@ Step 7: Update & Commit
    - If only nits: apply minor fixes and set Done.
    - If issues remain: set To Rework with comment explaining why (best-practice ref) and how to fix.
    - Side-effect bugs do NOT block current task's Done status (they are separate tasks).
-   - **If Done:** commit all uncommitted changes with message referencing task ID: `git add -A && git commit -m "Implement {task_id}: {task_title}"`
+   - **If Done:** commit ALL uncommitted changes in the branch (not just task-related files): `git add -A && git commit -m "Implement {task_id}: {task_title}"`. This includes any changes from previous tasks, auto-fixes, or generated files — everything currently unstaged/staged goes into this commit.
 7) **Update:** Set task status in Linear; update kanban: if Done → **remove task from kanban** (Done section tracks Stories only, not individual Tasks); if To Rework → move task to To Rework section; add review comment with findings/actions. If side-effect bugs created, mention them in comment.
 
 ## Critical Rules
@@ -168,7 +168,7 @@ Step 7: Update & Commit
 
 ## Definition of Done
 - Steps 1-7 completed: context loaded, review checks passed, AC validated, side-effect bugs created, decision applied.
-- If Done: changes committed with task ID; task removed from kanban. If To Rework: task moved with fix guidance.
+- If Done: ALL uncommitted changes committed (`git add -A`) with task ID; task removed from kanban. If To Rework: task moved with fix guidance.
 - Review comment posted (findings + [BUG] list if any).
 
 ## Reference Files

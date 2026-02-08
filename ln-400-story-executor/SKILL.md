@@ -1,11 +1,11 @@
 ---
 name: ln-400-story-executor
-description: Orchestrates Story tasks. Prioritizes To Review -> To Rework -> Todo, delegates to ln-401/ln-402/ln-403/ln-404. Reports completion when all tasks Done. Metadata-only loading up front.
+description: Orchestrates Story tasks. Prioritizes To Review -> To Rework -> Todo, delegates to ln-401/ln-402/ln-403/ln-404. Sets Story to To Review when all tasks Done (NOT Done — ln-500 handles that). Metadata-only loading up front.
 ---
 
 # Story Execution Orchestrator
 
-Executes a Story end-to-end by looping through its tasks in priority order and reporting completion when all tasks Done.
+Executes a Story end-to-end by looping through its tasks in priority order. Sets Story to **To Review** when all tasks Done (quality gate ln-500 decides Done).
 
 ## Purpose & Scope
 - Load Story + task metadata (no descriptions) and drive execution
@@ -59,8 +59,11 @@ For each task by priority (To Review > To Rework > Todo):
 
 ### Phase 5: Completion
 When all tasks Done:
-- Report final status with task counts
-- **Recommended next step:** `ln-500-story-quality-gate` for code quality, regression, and test planning
+1. **Set Story status to To Review** (Linear: `update_issue(id, state: "To Review")`; File: `Edit` the `**Status:**` line)
+2. Update kanban: move Story to To Review section
+3. Report final status with task counts
+- **⚠️ NEVER set Story to Done.** Only ln-500-story-quality-gate can mark Story as Done after full quality check.
+- **Recommended next step:** `ln-500-story-quality-gate` for code quality and regression checks
 
 ## Worker Invocation
 
@@ -99,7 +102,7 @@ Before each task, add BOTH steps:
 3. **One task at a time:** Pick → delegate → review → next. No bulk operations
 4. **Only ln-402 sets Done:** Stop and report if any worker leaves task Done or In Progress
 5. **Source of truth:** Trust Linear metadata (Linear Mode) or task files (File Mode)
-6. **Story status:** ln-400 handles Todo→In Progress. Quality gate (ln-500) is a separate step
+6. **Story status:** ln-400 handles Todo→In Progress→**To Review**. NEVER set Story to Done — only ln-500-story-quality-gate can do that after full quality check
 7. **Commit policy:** Only ln-402 commits code. Workers (ln-401/ln-403/ln-404) leave changes uncommitted for ln-402 to review and commit with task ID reference.
 8. **[BUG] tasks:** ln-402 may create new [BUG] tasks mid-review. After metadata reload, reprioritize — new tasks processed in next loop iteration.
 
@@ -139,7 +142,7 @@ When invoked in Plan Mode (agent cannot execute), generate execution plan instea
 - Story and task metadata loaded; counts shown
 - Context Review performed for Todo tasks (or skipped with justification)
 - Loop executed: all tasks delegated with immediate review after each
-- Story status transitions applied; kanban updated by workers
+- Story set to **To Review** (NOT Done); kanban updated
 - Final report with task counts and recommended next step (ln-500)
 
 ## Reference Files
