@@ -15,7 +15,6 @@ Runs the existing test suite to ensure no regressions after implementation chang
 ## When to Use
 - **Invoked by ln-500-story-quality-gate** Pass 1 (after ln-501)
 - Code quality check passed
-- Before test planning pipeline (ln-510)
 
 ## Workflow (concise)
 1) Auto-discover framework and test locations from repo config/files.
