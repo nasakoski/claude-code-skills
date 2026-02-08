@@ -26,6 +26,58 @@ description: L3 Worker. Reviews task implementation for quality, code standards,
 
 **File Mode status values:** Done, To Rework (only these two outcomes from review)
 
+## Mode Detection
+
+Detect operating mode at startup:
+
+**Plan Mode Active:**
+- Startup + Steps 1-2: Load task context (read-only, OK in plan mode)
+- Generate REVIEW PLAN (files, checks, agent status) → write to plan file
+- Call ExitPlanMode → STOP. Do NOT execute review.
+- Steps 3-8: After approval → execute full review
+
+**Normal Mode:**
+- Steps 1-8: Standard workflow without stopping
+
+## Plan Mode Support
+
+Follows `shared/references/plan_mode_pattern.md` Workflow A (Preview-Only).
+
+**CRITICAL: In Plan Mode, plan file = REVIEW PLAN (what will be checked). NEVER write review findings or verdicts to plan file.**
+
+**Review Plan format:**
+
+```
+REVIEW PLAN for Task {ID}: {Title}
+
+| Field | Value |
+|-------|-------|
+| Task | {ID}: {Title} |
+| Status | {To Review} |
+| Type | {impl/test/refactor} |
+| Story | {Parent ID}: {Parent Title} |
+
+Files to review:
+- {file1} (deliverable)
+- {file2} (affected component)
+
+| # | Check | Will Verify |
+|---|-------|-------------|
+| 1 | Approach | Technical Approach alignment |
+| 2 | Config | No hardcoded creds/URLs |
+| 3 | Errors | try/catch on external calls |
+| 4 | Logging | ERROR/INFO/DEBUG levels |
+| 5 | Comments | WHY not WHAT, docstrings |
+| 6 | Naming | Project conventions |
+| 7 | Docs | API/env/README updates |
+| 8 | Tests | Updated/risk-based limits |
+| 9 | AC | 4 criteria validation |
+| 10 | Side-effects | Pre-existing bugs in touched files |
+| 11 | Agent Review | {INCLUDED (N agents) / SKIPPED} |
+
+Expected output: Verdict (Done/To Rework) + Issues + Fix actions
+```
+
 ## Startup: Agent Availability Check
 
 Per `shared/references/agent_delegation_pattern.md` §Startup.

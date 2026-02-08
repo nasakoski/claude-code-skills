@@ -79,7 +79,7 @@ Before starting, add phases showing Plan Mode awareness:
 
 | Workflow | Skills |
 |----------|--------|
-| **A (Preview)** | ln-200, ln-210, ln-220, ln-300, ln-400 |
+| **A (Preview)** | ln-200, ln-210, ln-220, ln-300, ln-400, ln-401, ln-402 |
 | **B (Interactive)** | ln-310-story-validator |
 
 ## Preview Format Standards
@@ -132,6 +132,30 @@ EPIC BATCH PREVIEW (6 Epics)
 Total: 6 Epics (1 Infrastructure + 5 Business)
 
 Type "confirm" to create.
+```
+
+### Review Preview (ln-402)
+```
+REVIEW PLAN for Task T003: Create API endpoints
+
+| Field | Value |
+|-------|-------|
+| Task | T003: Create API endpoints |
+| Type | impl |
+| Story | US001: User Management |
+
+Files to review:
+- src/routes/users.ts (deliverable)
+- src/services/UserService.ts (affected)
+
+| # | Check | Will Verify |
+|---|-------|-------------|
+| 1 | Approach | Express routes per Story spec |
+| 2 | Config | No hardcoded URLs |
+| ... | ... | ... |
+| 11 | Agent Review | INCLUDED (2 agents) |
+
+Expected output: Done/To Rework + Issues list
 ```
 
 ### Replan Preview (ln-222, ln-302)

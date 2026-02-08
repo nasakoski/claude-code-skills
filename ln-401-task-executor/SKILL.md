@@ -28,6 +28,19 @@ Executes a single implementation (or refactor) task from Todo to To Review using
 **Status:** In Progress | **Priority:** High | **Estimate:** 4h
 ```
 
+## Mode Detection
+
+Detect operating mode at startup:
+
+**Plan Mode Active:**
+- Steps 1-2: Load task context (read-only, OK in plan mode)
+- Generate EXECUTION PLAN (files to create/modify, approach) → write to plan file
+- Call ExitPlanMode → STOP. Do NOT implement.
+- Steps 3-6: After approval → execute implementation
+
+**Normal Mode:**
+- Steps 1-6: Standard workflow without stopping
+
 ## Progress Tracking with TodoWrite
 
 When operating in any mode, skill MUST create detailed todo checklist tracking ALL steps.
