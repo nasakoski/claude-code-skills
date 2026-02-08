@@ -75,25 +75,31 @@ Phase 8: REPORT
 
 ## Startup: Agent Availability Check
 
-Before planning agent review phases, run health check at skill startup:
+**EXECUTE this command via Bash tool at skill startup — BEFORE creating todos:**
 
 ```bash
 python shared/agents/agent_runner.py --health-check
 ```
 
+**HARD RULES:**
+1. **ALWAYS execute** the command above. NEVER skip, NEVER assume result.
+2. **Only command output determines availability.** Do NOT reason about file existence, environment, or installation — run the command and read its output.
+3. **If command fails** (file not found, import error, any exception) → treat as "all agents unavailable" → agent review phase SKIPPED, Self-Review fallback.
+
 Filter output by `skill_groups` matching current skill (e.g., "310" for ln-310, "402" for ln-402).
 
-| Result | Impact on Plan |
-|--------|----------------|
+| Command Output | Impact on Plan |
+|----------------|----------------|
 | ≥1 review agent OK | Agent review phase INCLUDED in plan + todos |
-| All review agents UNAVAILABLE | Agent review phase SKIPPED — no todos, Self-Review fallback |
+| All agents UNAVAILABLE | Agent review phase SKIPPED — Self-Review fallback |
+| Command error/not found | Same as UNAVAILABLE — phase SKIPPED |
 
 Display at startup:
 ```
 Agent Health Check:
 ✓ codex-review: OK
-✓ gemini-review: OK
-→ Agent Review: INCLUDED (2 agents available)
+✗ gemini-review: UNAVAILABLE
+→ Agent Review: INCLUDED (1 agent available)
 ```
 
 This result feeds into todo template — agent review items only created when agents available.

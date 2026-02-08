@@ -81,7 +81,7 @@ Expected output: Verdict (Done/To Rework) + Issues + Fix actions
 ## Startup: Agent Availability Check
 
 **MANDATORY READ:** Load `shared/references/agent_delegation_pattern.md` §Startup for health check command.
-Result determines whether Step 6 (Agent Review) is included in workflow.
+**EXECUTE the health check command via Bash.** NEVER assume agent availability — only command output determines whether Step 6 is included.
 
 ## Progress Tracking with TodoWrite
 

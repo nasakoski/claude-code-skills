@@ -54,7 +54,7 @@ Detect operating mode at startup:
 ## Startup: Agent Availability Check
 
 **MANDATORY READ:** Load `shared/references/agent_delegation_pattern.md` §Startup for health check command.
-Result determines whether Phase 5 is included in plan and todos.
+**EXECUTE the health check command via Bash.** NEVER assume agent availability — only command output determines whether Phase 5 is included.
 
 ## Plan Mode: Progress Tracking with TodoWrite
 

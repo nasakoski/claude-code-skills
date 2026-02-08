@@ -66,6 +66,8 @@ Each check represents a discrete audit rule:
 | `principle` | Yes | Which rule/principle is violated |
 | `recommendation` | Yes | How to fix it |
 | `effort` | Yes | S (< 1h), M (1-4h), L (> 4h) |
+| `pattern_id` | No | DRY type ID (e.g., `dry_1.2`). Used by ln-620 for cross-domain matching. Only for DRY findings from ln-623 |
+| `pattern_signature` | No | Normalized pattern key (e.g., `validation_email`). Same signature across domains = cross-domain duplication. Only for DRY findings from ln-623 |
 
 ## Domain-Aware Worker Output (Optional)
 
