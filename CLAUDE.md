@@ -82,6 +82,8 @@ All 85 skills documented in [README.md](README.md#-features) feature tables with
 
 **Sequential Numbering:** Phases/Sections/Steps: 1, 2, 3, 4 (NOT 1, 1.5, 2). Exceptions: Phase 4a (CREATE), 4b (REPLAN) for conditional branching.
 
+**File References in Skills:** All file references in SKILL.md workflow sections MUST use `**MANDATORY READ:** Load {file}` pattern. Passive references (`See`, `Per`, `Follows`) are NOT followed by agents. If a skill references the same file multiple times, group into ONE `**MANDATORY READ:**` at the start of the relevant section, then reference specific parts inline (e.g., `per checklist #9`).
+
 ## Working with Skill Files
 
 ### SKILL.md Metadata
