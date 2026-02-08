@@ -64,15 +64,16 @@ Files to review:
 | # | Check | Will Verify |
 |---|-------|-------------|
 | 1 | Approach | Technical Approach alignment |
-| 2 | Config | No hardcoded creds/URLs |
-| 3 | Errors | try/catch on external calls |
-| 4 | Logging | ERROR/INFO/DEBUG levels |
-| 5 | Comments | WHY not WHAT, docstrings |
-| 6 | Naming | Project conventions |
-| 7 | Docs | API/env/README updates |
-| 8 | Tests | Updated/risk-based limits |
-| 9 | AC | 4 criteria validation |
-| 10 | Side-effects | Pre-existing bugs in touched files |
+| 2 | Clean Code | No dead code, no backward compat shims |
+| 3 | Config | No hardcoded creds/URLs |
+| 4 | Errors | try/catch on external calls |
+| 5 | Logging | ERROR/INFO/DEBUG levels |
+| 6 | Comments | WHY not WHAT, docstrings |
+| 7 | Naming | Project conventions |
+| 8 | Docs | API/env/README updates |
+| 9 | Tests | Updated/risk-based limits |
+| 10 | AC | 4 criteria validation |
+| 11 | Side-effects | Pre-existing bugs in touched files |
 
 Expected output: Verdict (Done/To Rework) + Issues + Fix actions
 ```
@@ -97,6 +98,7 @@ Step 2: Read Context
 
 Step 3: Review Checks
   - Verify approach alignment with Story Technical Approach
+  - Check clean code: no dead code, no backward compat shims
   - Check config hygiene, error handling, logging
   - Check comments, naming, docs updates
   - Verify tests updated/run (risk-based limits for test tasks)
@@ -120,6 +122,7 @@ Step 7: Update & Commit
 2) **Read context:** Full task + parent Story; load affected components/docs; review diffs if available.
 3) **Review checks:**
    - Approach: diff aligned with Technical Approach in Story. If different → rationale documented in code comments.
+   - **Clean code:** Per `shared/references/clean_code_checklist.md`: replaced implementations fully removed, no backward-compat shims/aliases, unused code deleted. If refactoring changed API — callers updated, old signatures removed.
    - No hardcoded creds/URLs/magic numbers; config in env/config.
    - Error handling: all external calls (API, DB, file I/O) wrapped in try/catch or equivalent. No swallowed exceptions. Layering respected; reuse existing components.
    - Logging: errors at ERROR; auth/payment events at INFO; debug data at DEBUG. No sensitive data in logs.
@@ -172,6 +175,7 @@ Step 7: Update & Commit
 - **[MANDATORY] Problem-solving approach:** `shared/references/problem_solving.md`
 - **AC validation rules:** `shared/references/ac_validation_rules.md`
 - AC Validation Checklist: `references/ac_validation_checklist.md` (4 criteria: Completeness, Specificity, Dependencies, DB Creation)
+- **Clean code checklist:** `shared/references/clean_code_checklist.md`
 - Kanban format: `docs/tasks/kanban_board.md`
 
 ---

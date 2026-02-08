@@ -50,7 +50,7 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 |--------|----------|------------------|---------|
 | SEC- | Security (auth, validation, secrets) | high | — |
 | PERF- | Performance (algorithms, configs, bottlenecks) | medium/high | ✓ Required |
-| MNT- | Maintainability (DRY, SOLID, complexity) | medium | — |
+| MNT- | Maintainability (DRY, SOLID, complexity, dead code) | medium | — |
 | ARCH- | Architecture (layers, boundaries, patterns) | medium | — |
 | BP- | Best Practices (implementation differs from recommended) | medium | ✓ Required |
 | OPT- | Optimality (better approach exists for this goal) | medium | ✓ Required |
@@ -63,6 +63,13 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 | PERF-CFG- | Package/library configuration | medium |
 | PERF-PTN- | Architectural pattern performance | high |
 | PERF-DB- | Database queries, indexes | high |
+
+**MNT- subcategories:**
+
+| Prefix | Category | Severity |
+|--------|----------|----------|
+| MNT-DC- | Dead code: replaced implementations, unused exports/re-exports, backward-compat wrappers, deprecated aliases | medium (high if public API) |
+| MNT-DRY- | DRY violations: duplicate logic across files | medium |
 
 ## When to Use
 - **Invoked by ln-500-story-quality-gate** Pass 1 (first gate)
@@ -112,7 +119,7 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 
 4) **Analyze code for static issues (assign prefixes):**
    - SEC-: hardcoded creds, unvalidated input, SQL injection, race conditions
-   - MNT-: DRY violations, dead code, complex conditionals, poor naming
+   - MNT-: DRY violations (MNT-DRY: duplicate logic), dead code (MNT-DC: per `shared/references/clean_code_checklist.md` — 4 categories: unreachable, unused, commented-out, backward-compat), complex conditionals, poor naming
    - ARCH-: layer violations, circular dependencies, guide non-compliance
 
 5) **Calculate Code Quality Score:**
@@ -201,8 +208,16 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
       solution: "Use eager loading: include: { posts: true }"
       source: "context7://prisma#eager-loading"
 
-    # MAINTAINABILITY
-    - id: "MNT-001"
+    # MAINTAINABILITY - Dead Code
+    - id: "MNT-DC-001"
+      severity: medium
+      file: "src/auth/legacy-adapter.ts"
+      finding: "Backward-compatibility wrapper kept after migration"
+      dead_code: "legacyLogin() wraps newLogin() — callers already migrated"
+      action: "Delete legacy-adapter.ts, remove re-export from index.ts"
+
+    # MAINTAINABILITY - DRY
+    - id: "MNT-DRY-001"
       severity: medium
       file: "src/service.ts:42"
       finding: "DRY violation: duplicate validation logic"
@@ -216,6 +231,7 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 - Templates for context: `shared/templates/task_template_implementation.md`
 - Agent review prompt: `shared/agents/prompt_templates/code_review.md`
 - Agent review schema: `shared/agents/schemas/code_review_schema.json`
+- **Clean code checklist:** `shared/references/clean_code_checklist.md`
 - Agent delegation: `shared/references/agent_delegation_pattern.md`
 
 ---
