@@ -69,6 +69,11 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 - All implementation tasks in Story status = Done
 - Before regression testing (ln-502) and test planning (ln-510)
 
+## Startup: Agent Availability Check
+
+**MANDATORY READ:** Load `shared/references/agent_delegation_pattern.md` §Startup for health check command.
+**EXECUTE the health check command via Bash.** NEVER assume agent availability — only command output determines whether Step 7 is included.
+
 ## Workflow (concise)
 1) Load Story (full) and Done implementation tasks (full descriptions) via Linear; skip tasks with label "tests".
 2) Collect affected files from tasks (Affected Components/Existing Code Impact) and recent commits/diffs if noted.
@@ -116,6 +121,13 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
    - Subtract issue penalties (see Issue penalties table)
 
 6) Output verdict with score and structured issues. Add Linear comment with findings.
+7) **Agent Review (CONDITIONAL — only if agents available from Startup):**
+   **MANDATORY READ:** Load `shared/references/agent_delegation_pattern.md` §Parallel Aggregation for agent invocation.
+   - **Template:** `code_review.md` with `{task_content}` (all Done tasks) + `{story_content}` from Step 1.
+   - Aggregate suggestions per §Parallel Aggregation rules.
+   - Merge agent findings into issues list (same prefixes: SEC-, PERF-, MNT-, ARCH-, BP-, OPT-).
+   - Agent findings can escalate verdict: PASS → CONCERNS if high-severity issue found.
+   - **Display:** `"Agent Review: codex ({duration}s, {N}), gemini ({duration}s, {N}). Validated: {accepted}/{total}"`
 
 ## Critical Rules
 - Read guides mentioned in Story/Tasks before judging compliance.
@@ -133,6 +145,7 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
   - PERF-: Performance analyzed (algorithms, configs, patterns, DB)
 - Issues identified with prefixes and severity, sources from MCP Ref/Context7.
 - Code Quality Score calculated.
+- Agent review completed (or skipped if agents unavailable).
 - **Output format:**
   ```yaml
   verdict: PASS | CONCERNS | ISSUES_FOUND
@@ -201,6 +214,9 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 - Code metrics: `references/code_metrics.md` (thresholds and penalties)
 - Guides: `docs/guides/`
 - Templates for context: `shared/templates/task_template_implementation.md`
+- Agent review prompt: `shared/agents/prompt_templates/code_review.md`
+- Agent review schema: `shared/agents/schemas/code_review_schema.json`
+- Agent delegation: `shared/references/agent_delegation_pattern.md`
 
 ---
 **Version:** 5.0.0 (Added 3-level MCP Ref validation: Optimality, Best Practices, Performance with PERF-ALG/CFG/PTN/DB subcategories)

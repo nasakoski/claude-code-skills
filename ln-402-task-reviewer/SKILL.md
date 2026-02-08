@@ -1,6 +1,6 @@
 ---
 name: ln-402-task-reviewer
-description: L3 Worker. Reviews task implementation for quality, code standards, test coverage. Creates [BUG] tasks for side-effect issues found outside task scope. Sets task Done or To Rework. Usually invoked by ln-400 with isolated context, can also review a specific task on user request.
+description: "L3 Worker. Reviews task implementation for quality, code standards, test coverage. Creates [BUG] tasks for side-effect issues found outside task scope. Sets task Done or To Rework. Runs inline (Skill tool) from ln-400 main flow."
 ---
 
 # Task Reviewer
@@ -10,7 +10,7 @@ description: L3 Worker. Reviews task implementation for quality, code standards,
 > **This skill is NOT optional.** Every task executed by ln-401/ln-403/ln-404 MUST be reviewed by ln-402 immediately. No exceptions, no batching, no skipping.
 
 ## Purpose & Scope
-- **Independent context loading:** Receive only task ID from orchestrator; load full task and parent Story independently (Linear: get_issue; File: Read task file). This isolation ensures unbiased review without executor's assumptions (fresh eyes pattern).
+- Receive task ID from orchestrator (ln-400); load full task and parent Story independently (Linear: get_issue; File: Read task file).
 - Check architecture, correctness, configuration hygiene, docs, and tests.
 - For test tasks, verify risk-based limits and priority (≤15) per planner template.
 - Update only this task: accept (Done) or send back (To Rework) with explicit reasons and fix suggestions tied to best practices.
@@ -31,13 +31,13 @@ description: L3 Worker. Reviews task implementation for quality, code standards,
 Detect operating mode at startup:
 
 **Plan Mode Active:**
-- Startup + Steps 1-2: Load task context (read-only, OK in plan mode)
-- Generate REVIEW PLAN (files, checks, agent status) → write to plan file
+- Steps 1-2: Load task context (read-only, OK in plan mode)
+- Generate REVIEW PLAN (files, checks) → write to plan file
 - Call ExitPlanMode → STOP. Do NOT execute review.
-- Steps 3-8: After approval → execute full review
+- Steps 3-7: After approval → execute full review
 
 **Normal Mode:**
-- Steps 1-8: Standard workflow without stopping
+- Steps 1-7: Standard workflow without stopping
 
 ## Plan Mode Support
 
@@ -73,34 +73,24 @@ Files to review:
 | 8 | Tests | Updated/risk-based limits |
 | 9 | AC | 4 criteria validation |
 | 10 | Side-effects | Pre-existing bugs in touched files |
-| 11 | Agent Review | {INCLUDED (N agents) / SKIPPED} |
 
 Expected output: Verdict (Done/To Rework) + Issues + Fix actions
 ```
-
-## Startup: Agent Availability Check
-
-**MANDATORY READ:** Load `shared/references/agent_delegation_pattern.md` §Startup for health check command.
-**EXECUTE the health check command via Bash.** NEVER assume agent availability — only command output determines whether Step 6 is included.
 
 ## Progress Tracking with TodoWrite
 
 When operating in any mode, skill MUST create detailed todo checklist tracking ALL steps.
 
 **Rules:**
-1. Create todos IMMEDIATELY after Startup checks (before Step 1)
+1. Create todos IMMEDIATELY before Step 1
 2. Each workflow step = separate todo item; multi-check steps get sub-items
 3. Mark `in_progress` before starting step, `completed` after finishing
-4. Step 6 items: only include if ≥1 review agent available (from Startup check)
 
-**Todo Template (13-15 items depending on agent availability):**
+**Todo Template (~11 items):**
 
 ```
-Startup:
-  - Run agent health check (codex-review, gemini-review)
-
 Step 1: Receive Task
-  - Load task by ID (isolated context, no executor data)
+  - Load task by ID
 
 Step 2: Read Context
   - Load full task + parent Story + affected components
@@ -117,20 +107,16 @@ Step 4: AC Validation
 Step 5: Side-Effect Bug Detection
   - Scan for bugs outside task scope, create [BUG] tasks
 
-Step 6: Agent Review ← CONDITIONAL (only if agents available)
-  - Run review agents (codex-review + gemini-review parallel)
-  - Aggregate suggestions, evaluate verdict escalation
-
-Step 7: Decision
+Step 6: Decision
   - Apply minor fixes or set To Rework with guidance
 
-Step 8: Update & Commit
+Step 7: Update & Commit
   - Set task status, update kanban, post review comment
   - If Done: commit changes with task ID
 ```
 
 ## Workflow (concise)
-1) **Receive task (isolated context):** Get task ID from orchestrator (ln-400)—NO other context passed. Load all information independently from Linear. Detect type (label "tests" -> test task, else implementation/refactor).
+1) **Receive task:** Get task ID from orchestrator (ln-400). Load full task and parent Story independently. Detect type (label "tests" -> test task, else implementation/refactor).
 2) **Read context:** Full task + parent Story; load affected components/docs; review diffs if available.
 3) **Review checks:**
    - Approach: diff aligned with Technical Approach in Story. If different → rationale documented in code comments.
@@ -164,16 +150,12 @@ Step 8: Update & Commit
    - Priority: based on severity (security → 1 Urgent, logic → 2 High, style → 4 Low)
    - **Do NOT defer** — create task immediately, reviewer catches what executor missed
 
-6) **Agent Review:** **MANDATORY READ:** Load `shared/references/agent_delegation_pattern.md` §Parallel Aggregation for agent invocation.
-   - **Template:** `code_review.md` with `{task_content}` + `{story_content}` from Step 2.
-   - **Verdict escalation:** Agent findings with area=security|correctness can escalate Done → To Rework.
-   - **Display:** `"Agent Review: codex ({duration}s, {N}), gemini ({duration}s, {N}). Validated: {accepted}/{total}"`
-7) **Decision (for current task only):**
-   - If only nits and no critical agent findings: apply minor fixes and set Done.
-   - If issues remain (own review OR accepted agent suggestions with security/correctness area): set To Rework with comment explaining why (best-practice ref) and how to fix.
+6) **Decision (for current task only):**
+   - If only nits: apply minor fixes and set Done.
+   - If issues remain: set To Rework with comment explaining why (best-practice ref) and how to fix.
    - Side-effect bugs do NOT block current task's Done status (they are separate tasks).
    - **If Done:** commit all uncommitted changes with message referencing task ID: `git add -A && git commit -m "Implement {task_id}: {task_title}"`
-8) **Update:** Set task status in Linear; update kanban: if Done → **remove task from kanban** (Done section tracks Stories only, not individual Tasks); if To Rework → move task to To Rework section; add review comment with findings/actions. If side-effect bugs created, mention them in comment. Include agent review summary in comment.
+7) **Update:** Set task status in Linear; update kanban: if Done → **remove task from kanban** (Done section tracks Stories only, not individual Tasks); if To Rework → move task to To Rework section; add review comment with findings/actions. If side-effect bugs created, mention them in comment.
 
 ## Critical Rules
 - One task at a time; side-effect bugs → separate [BUG] tasks (not scope creep).
@@ -182,17 +164,14 @@ Step 8: Update & Commit
 - Keep task language (EN/RU) in edits/comments.
 
 ## Definition of Done
-- Steps 1-8 completed: context loaded, review checks passed, AC validated, side-effect bugs created, agent review done, decision applied.
+- Steps 1-7 completed: context loaded, review checks passed, AC validated, side-effect bugs created, decision applied.
 - If Done: changes committed with task ID; task removed from kanban. If To Rework: task moved with fix guidance.
-- Review comment posted (findings + agent summary + [BUG] list if any).
+- Review comment posted (findings + [BUG] list if any).
 
 ## Reference Files
 - **[MANDATORY] Problem-solving approach:** `shared/references/problem_solving.md`
 - **AC validation rules:** `shared/references/ac_validation_rules.md`
 - AC Validation Checklist: `references/ac_validation_checklist.md` (4 criteria: Completeness, Specificity, Dependencies, DB Creation)
-- Agent review prompt: `shared/agents/prompt_templates/code_review.md`
-- Agent review schema: `shared/agents/schemas/code_review_schema.json`
-- Agent delegation: `shared/references/agent_delegation_pattern.md`
 - Kanban format: `docs/tasks/kanban_board.md`
 
 ---

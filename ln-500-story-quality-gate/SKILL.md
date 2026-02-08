@@ -96,25 +96,18 @@ Mark each as in_progress when starting, completed when done. On failure, mark re
 
 | Step | Worker | Context | Rationale |
 |------|--------|---------|-----------|
-| Code Quality | ln-501-code-quality-checker | **Separate** (Task tool) | Independent analysis, focused on DRY/KISS/YAGNI |
+| Code Quality | ln-501-code-quality-checker | **Shared** (Skill tool) | Runs inline like ln-502/ln-510 |
 | Regression | ln-502-regression-checker | **Shared** (direct Skill tool) | Needs Story context and previous check results |
 | Test Planning | ln-510-test-planner | **Shared** (direct Skill tool) | Needs full Gate context for test planning |
 
-**ln-501 invocation (Separate Context):**
+**All workers (ln-501, ln-502, ln-510):** Invoke via direct Skill tool — workers see Gate context.
+
+**ln-501 invocation:**
 ```
-Task(description: "Code quality check via ln-501",
-     prompt: "Execute ln-501-code-quality-checker. Read skill from ln-501-code-quality-checker/SKILL.md. Story: {storyId}",
-     subagent_type: "general-purpose")
+Skill(skill: "ln-501-code-quality-checker", args: "{storyId}")
 ```
 
-**ln-501 result contract (Task tool return):**
-Task tool returns worker's final message. Parse for YAML block:
-- `verdict: PASS | CONCERNS | ISSUES_FOUND`
-- `quality_score: 0-100`
-- `issues: [{id, severity, finding, action}]`
-- If verdict = ISSUES_FOUND → create refactor task (Backlog), stop Pass 1.
-
-**ln-502 and ln-510:** Invoke via direct Skill tool — workers see Gate context.
+**ln-501 result:** Returns verdict inline (PASS / CONCERNS / ISSUES_FOUND) with quality_score and issues list. If verdict = ISSUES_FOUND → create refactor task (Backlog), stop Pass 1.
 
 **Note:** ln-510 orchestrates the full test pipeline (ln-511 research → ln-512 manual → ln-513 auto tests).
 

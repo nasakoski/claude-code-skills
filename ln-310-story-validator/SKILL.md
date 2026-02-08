@@ -198,7 +198,7 @@ Phase 6: Approve & Notify
   - Standards Compliance Evidence table
 - **Display tabular output** (Unicode box-drawing) to terminal
 - Final: Total Penalty Points = 0
-- **Optional:** If `--execute` flag provided, delegate to ln-400-story-executor to start execution immediately after approval
+- **Recommended next step:** `ln-400-story-executor` to start Story execution
 
 ## Auto-Fix Actions Reference
 

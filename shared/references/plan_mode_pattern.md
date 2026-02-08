@@ -153,7 +153,7 @@ Files to review:
 | 1 | Approach | Express routes per Story spec |
 | 2 | Config | No hardcoded URLs |
 | ... | ... | ... |
-| 11 | Agent Review | INCLUDED (2 agents) |
+| 10 | Side-effects | Pre-existing bugs in touched files |
 
 Expected output: Done/To Rework + Issues list
 ```

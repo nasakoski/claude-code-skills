@@ -16,7 +16,7 @@ Standard pattern for skills delegating work to external CLI AI agents (Codex, Ge
 | 300 (Task Mgmt) | Codex | gpt-5.3-codex | Opus | Task decomposition, plan review |
 | 400 (Execution) | Opus (native) | claude-opus-4-6 | -- | Direct code writing |
 | 310 (Validation) | codex-review + gemini-review | parallel | Self-review (if both fail) | Story/Tasks review (Phase 5) |
-| 402 (Code Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Code implementation review (Step 6) |
+| 501 (Code Quality) | codex-review + gemini-review | parallel | Self-review (if both fail) | Code quality review (Step 7) |
 
 ## Invocation Pattern
 
@@ -87,7 +87,7 @@ python shared/agents/agent_runner.py --health-check
 3. **Only command output determines availability.** Do NOT reason about file existence, environment, or installation — run the command and read its output.
 4. **If command fails** (file not found, import error, any exception) → treat as "all agents unavailable" → agent review phase SKIPPED, Self-Review fallback.
 
-Filter output by `skill_groups` matching current skill (e.g., "310" for ln-310, "402" for ln-402).
+Filter output by `skill_groups` matching current skill (e.g., "310" for ln-310, "501" for ln-501).
 
 | Command Output | Impact on Plan |
 |----------------|----------------|
@@ -134,7 +134,7 @@ Prompt ──────┤                                                 ├
 | Skill | Agents (parallel) | Fallback | Prompt Template |
 |-------|-------------------|----------|-----------------|
 | ln-310 Phase 5 | codex-review + gemini-review | Self-Review | story_review.md |
-| ln-402 Step 6 | codex-review + gemini-review | Self-Review | code_review.md |
+| ln-501 Step 7 | codex-review + gemini-review | Self-Review | code_review.md |
 
 ## Prompt Preparation
 
@@ -150,9 +150,9 @@ Standard steps before launching agents (applies to all Parallel Aggregation call
 | Skill | Escalation? | Mechanism |
 |-------|-------------|-----------|
 | ln-310 (Story Review) | No | ACCEPTED suggestions modify Story/Tasks text only; Gate verdict unchanged |
-| ln-402 (Code Review) | Yes | Findings with `area=security` or `area=correctness` can escalate Done → To Rework |
+| ln-501 (Code Quality) | Yes | Findings with `area=security` or `area=correctness` can escalate PASS → CONCERNS |
 
-**Key difference:** ln-310 reviews plans (text), so suggestions are editorial. ln-402 reviews code, so security/correctness findings are blocking.
+**Key difference:** ln-310 reviews plans (text), so suggestions are editorial. ln-501 reviews code, so security/correctness findings can escalate verdict.
 
 ## Anti-Patterns
 

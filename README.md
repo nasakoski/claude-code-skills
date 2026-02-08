@@ -5,6 +5,8 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
+> **NEW** Multi-model AI review: skills delegate to Codex and Gemini agents for parallel code/story review with automatic fallback to Claude Opus.
+
 > Tired of manual Epic decomposition? Stories without standards research? Tasks that miss quality gates?
 >
 > **This plugin automates your entire Agile workflow** — from scope to Done.
