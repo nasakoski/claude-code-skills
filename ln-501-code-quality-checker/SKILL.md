@@ -125,8 +125,8 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 
 6) Output verdict with score and structured issues. Add Linear comment with findings.
 7) **Agent Review (Delegated to ln-502):**
-   Invoke `Skill(skill="ln-502-agent-reviewer", args="story_ref={story_linear_url_or_file} tasks_ref={tasks_linear_url_or_glob}")`.
-   - ln-502 handles health check, prompt building, agent execution, aggregation internally.
+   Invoke `Skill(skill="ln-502-agent-reviewer", args="{storyId}")`.
+   - ln-502 loads Story/Done Tasks from Linear, materializes content to `.agent-review/` files, runs agents, cleans up.
    - Merge returned suggestions into issues list (same prefixes: SEC-, PERF-, MNT-, ARCH-, BP-, OPT-).
    - If verdict = `SUGGESTIONS` with `area=security` or `area=correctness` → escalate PASS → CONCERNS.
    - If verdict = `SKIPPED` → Self-Review fallback (native Claude reviews code).

@@ -19,24 +19,30 @@ Runs parallel external agent reviews on validated Story and Tasks, returns edito
 - Story and Tasks are in their final form before approval
 
 ## Inputs (from parent skill)
-- `story_ref`: Linear URL (`https://linear.app/team/PROJ-123`) or file path (`docs/tasks/epics/.../story.md`)
-- `tasks_ref`: Linear URL, file path, or glob pattern for child Tasks
-- `cwd`: Project working directory (agents run in this directory and can read files)
+- `storyId`: Linear Story identifier (e.g., "PROJ-123")
 
 ## Workflow
 1) **Health check:** `python shared/agents/agent_runner.py --health-check`
    - Filter output by `skill_groups` containing "311"
    - If 0 agents available -> return `{verdict: "SKIPPED", reason: "no agents available"}`
    - Display: `"Agent Health: codex-review OK, gemini-review OK"` (or similar)
-2) **Build prompt:** Read template `shared/agents/prompt_templates/story_review.md`
-   - Replace `{story_ref}` and `{tasks_ref}` with actual references from inputs
+2) **Load Story:** `get_issue(storyId)` via MCP Linear -> get description, title, identifier, URL
+3) **Load Tasks:** `list_issues(filter: {parent: {id: storyId}})` via MCP Linear -> all child Tasks with descriptions
+4) **Materialize content:** Create `.agent-review/` directory in project CWD
+   - Save Story markdown to `.agent-review/story-{identifier}.md`
+   - Save Tasks markdown (concatenated with headers) to `.agent-review/tasks-{identifier}.md`
+   - Ensure `.agent-review/` is in project `.gitignore` (add if missing)
+5) **Build prompt:** Read template `shared/agents/prompt_templates/story_review.md`
+   - Replace `{story_url}` with Linear URL (e.g., `https://linear.app/team/PROJ-123`)
+   - Replace `{story_file}` with `story-{identifier}.md`
+   - Replace `{tasks_file}` with `tasks-{identifier}.md`
    - Save expanded prompt to temp file (use `%TEMP%` on Windows, `/tmp` on Unix)
-3) **Run agents in parallel** (two Bash calls simultaneously):
+6) **Run agents in parallel** (two Bash calls simultaneously):
    - `python shared/agents/agent_runner.py --agent codex-review --prompt-file {temp} --cwd {cwd}`
    - `python shared/agents/agent_runner.py --agent gemini-review --prompt-file {temp} --cwd {cwd}`
-4) **Aggregate:** Collect suggestions from all successful responses. Deduplicate by `(area, issue)` — keep higher confidence.
-5) **Filter:** `confidence >= 90` AND `impact_percent > 2`
-6) **Return** JSON with suggestions + agent stats to parent skill.
+7) **Aggregate:** Collect suggestions from all successful responses. Deduplicate by `(area, issue)` — keep higher confidence.
+   **Filter:** `confidence >= 90` AND `impact_percent > 2`
+8) **Cleanup:** Delete `.agent-review/` directory. **Return** JSON with suggestions + agent stats to parent skill.
 
 ## Output Format
 
@@ -73,6 +79,8 @@ agent_stats:
 - Same prompt to all agents (identical input for fair comparison)
 - JSON output schema required from agents (via `--json` / `--output-format json`)
 - Log all attempts for user visibility (agent name, duration, suggestion count)
+- Always cleanup `.agent-review/` directory after agents complete (even on failure)
+- Ensure `.agent-review/` is in project `.gitignore` before creating files
 
 ## Reference Files
 - **Agent delegation pattern:** `shared/references/agent_delegation_pattern.md`

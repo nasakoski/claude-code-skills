@@ -30,7 +30,7 @@ Agent review is encapsulated in dedicated worker skills, not inline in parent sk
 **Benefits:**
 - Health check + prompt execution in single invocation (minimal timing gap — solves API limit detection problem)
 - SRP: parent skills focus on their domain logic, agent communication is isolated
-- Reference-based prompts: agents read files in CWD instead of receiving embedded content
+- Content materialization: Story/Tasks loaded from Linear, saved to `.agent-review/` in CWD for sandbox-safe agent access
 
 ## Invocation Pattern
 
@@ -64,7 +64,7 @@ python shared/agents/agent_runner.py --agent codex --prompt-file /tmp/plan.md --
 3. **Use prompt-file** -- avoids Windows shell escaping for long text
 4. **Request JSON** -- easier to parse programmatically
 5. **Keep scope narrow** -- one task per call, not multi-step workflows
-6. **Use references** -- pass file paths or Linear URLs, not embedded content
+6. **Materialize content** -- save Story/Tasks to `.agent-review/` files, reference by path in prompt
 
 ## Fallback Rules
 
@@ -141,16 +141,22 @@ Prompt ------+                                                  +---> Dedup + Fi
 | ln-311-agent-reviewer | codex-review + gemini-review | SKIPPED -> ln-310 Self-Review | story_review.md |
 | ln-502-agent-reviewer | codex-review + gemini-review | SKIPPED -> ln-501 Self-Review | code_review.md |
 
-## Prompt Preparation (Reference-Based)
+## Content Materialization Pattern
 
 Standard steps before launching agents (performed inside ln-311/ln-502):
 
-1. Load template: `Read("shared/agents/prompt_templates/{template}.md")`
-2. Replace placeholders: `{story_ref}` and `{tasks_ref}` with Linear URLs or file paths
-3. Save expanded prompt to temp file (use `%TEMP%` on Windows)
-4. Pass `--prompt-file {temp_file} --cwd {project_dir}` to agent_runner.py
+1. **Load from Linear:** `get_issue(storyId)` + `list_issues(parent: storyId)` via MCP
+2. **Materialize:** Create `.agent-review/` in project CWD, save `story-{id}.md` + `tasks-{id}.md`
+3. **Ensure `.gitignore`:** Add `.agent-review/` entry if missing
+4. **Build prompt:** Load template, replace `{story_url}` (Linear URL), `{story_file}` and `{tasks_file}` (filenames)
+5. **Save prompt:** To temp file (`%TEMP%` on Windows, `/tmp` on Unix)
+6. **Run agents:** `--prompt-file {temp_file} --cwd {project_dir}` — agents read `.agent-review/` files from CWD
+7. **Cleanup:** Delete `.agent-review/` directory after agents complete
 
-**Agents read the actual content themselves** from the referenced files/URLs in their CWD.
+**Why `.agent-review/` inside project CWD:**
+- Codex `--sandbox read-only` restricts file access to `--cwd` — temp files outside CWD are inaccessible
+- Gemini runs in CWD by default — relative paths work reliably
+- Dual reference in prompt: Linear URL (informational) + file path (for reading)
 
 ## Verdict Escalation Rules
 
@@ -164,7 +170,8 @@ Standard steps before launching agents (performed inside ln-311/ln-502):
 | DON'T | DO |
 |-------|-----|
 | Auto-retry in runner | Let skill decide fallback |
-| Embed full story/task content in prompt | Use reference-based prompts (file paths / URLs) |
+| Embed full story/task content in prompt | Materialize to `.agent-review/` files in CWD |
+| Save temp files outside project CWD | Save in `.agent-review/` inside project (sandbox-safe) |
 | Trust agent output blindly | Claude validates/analyzes response |
 | Use agents for file writes | Use agents for analysis/planning only |
 | Chain multiple agent calls | One call per task, stateless |

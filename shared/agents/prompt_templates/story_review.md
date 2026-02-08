@@ -2,21 +2,23 @@
 
 You are reviewing a validated Story and its implementation Tasks against the actual codebase and industry best practices.
 
-## Story Reference
-Read the Story from: {story_ref}
+## Story
+- Linear: {story_url}
+- Content file: `.agent-review/{story_file}`
 
-## Tasks Reference
-Read the Tasks from: {tasks_ref}
+## Tasks
+- Content file: `.agent-review/{tasks_file}`
 
 ## Instructions
-1. Read the referenced Story and Tasks
-2. Examine the actual codebase in your working directory
-3. Search the web for current best practices relevant to the technical domains
-4. Compare Story/Tasks against:
+1. Read the Story and Tasks content from the `.agent-review/` files in your working directory
+2. The Linear URL is provided for reference context (you may not have access to it)
+3. Examine the actual codebase in your working directory
+4. Search the web for current best practices relevant to the technical domains
+5. Compare Story/Tasks against:
    - Current code structure and patterns
    - Industry best practices (2025-2026)
    - Technical feasibility of proposed implementation
-5. DO NOT modify any files. This is a read-only review.
+6. DO NOT modify any files. This is a read-only review.
 
 ## Focus Areas
 - Are Tasks achievable given the current codebase?

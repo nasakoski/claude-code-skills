@@ -2,18 +2,20 @@
 
 You are reviewing a code implementation against its task requirements, existing codebase patterns, and industry best practices. This is an independent review with fresh context.
 
-## Task Reference
-Read the task details from: {tasks_ref}
+## Story
+- Linear: {story_url}
+- Content file: `.agent-review/{story_file}`
 
-## Story Reference
-Read the parent Story from: {story_ref}
+## Tasks
+- Content file: `.agent-review/{tasks_file}`
 
 ## Instructions
-1. Read the referenced Task(s) and parent Story to understand WHAT was supposed to be implemented
-2. Run `git diff` to see all uncommitted changes — focus your review on THESE changes
-3. Examine the surrounding codebase for existing patterns and conventions
-4. Search the web for current best practices relevant to the technical domains
-5. DO NOT modify any files. This is a read-only review.
+1. Read the Story and Tasks content from the `.agent-review/` files in your working directory
+2. The Linear URL is provided for reference context (you may not have access to it)
+3. Run `git diff` to see all uncommitted changes — focus your review on THESE changes
+4. Examine the surrounding codebase for existing patterns and conventions
+5. Search the web for current best practices relevant to the technical domains
+6. DO NOT modify any files. This is a read-only review.
 
 ## Review Checklist
 

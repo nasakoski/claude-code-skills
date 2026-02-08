@@ -173,8 +173,8 @@ Phase 6: Approve & Notify
 
 ### Phase 5: Agent Review (Delegated)
 
-Invoke `Skill(skill="ln-311-agent-reviewer", args="story_ref={story_linear_url_or_file} tasks_ref={tasks_linear_url_or_glob}")`.
-- ln-311 handles health check, prompt building, agent execution, aggregation internally.
+Invoke `Skill(skill="ln-311-agent-reviewer", args="{storyId}")`.
+- ln-311 loads Story/Tasks from Linear, materializes content to `.agent-review/` files, runs agents, cleans up.
 - If verdict = `SUGGESTIONS` → apply ACCEPTED suggestions to Story/Tasks text.
 - If verdict = `SKIPPED` (no agents or all failed) → proceed to Phase 6 unchanged.
 - **Display:** agent stats from ln-311 output: `"Agent Review: {agent_stats summary}"`
