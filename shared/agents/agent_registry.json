@@ -31,7 +31,7 @@
     "codex-review": {
       "name": "Codex CLI (Review Mode)",
       "command": "codex",
-      "args": ["exec", "--sandbox", "read-only", "-a", "never", "--json"],
+      "args": ["-a", "never", "exec", "--sandbox", "read-only", "--json"],
       "env_override": {},
       "timeout_seconds": 600,
       "skill_groups": ["310", "402"],

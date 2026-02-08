@@ -51,6 +51,64 @@ Detect operating mode at startup:
 - Phase 1-6: Standard workflow without stopping
 - Automatically fix and approve
 
+## Startup: Agent Availability Check
+
+Per `shared/references/agent_delegation_pattern.md` §Startup.
+Result determines whether Phase 5 is included in plan and todos.
+
+## Plan Mode: Progress Tracking with TodoWrite
+
+When operating in any mode, skill MUST create detailed todo checklist tracking ALL phases and steps.
+
+**Rules:**
+1. Create todos IMMEDIATELY after Startup checks (before Phase 1)
+2. Each phase step = separate todo item
+3. Mark `in_progress` before starting step, `completed` after finishing
+4. Phase 5 items: only include if ≥1 review agent available (from Startup check)
+
+**Todo Template (21-24 items depending on agent availability):**
+
+```
+Startup:
+  - Run agent health check (codex-review, gemini-review)
+
+Phase 1: Discovery & Loading
+  - Auto-discover configuration (Team ID, docs)
+  - Load Story metadata (ID, title, status, labels)
+  - Load Tasks metadata (3-8 implementation tasks)
+
+Phase 2: Research & Audit
+  - Extract technical domains from Story/Tasks
+  - Delegate documentation creation to ln-002
+  - Research via MCP Ref (RFC, OWASP, library versions)
+  - Verify technical claims (Anti-Hallucination)
+  - Calculate Penalty Points (19 criteria)
+
+Phase 3: Audit Results & Fix Plan
+  - Display Penalty Points table and fix plan
+  - Wait for user approval (Plan Mode only)
+
+Phase 4: Auto-Fix (7 groups)
+  - Fix Structural violations (#1-#4)
+  - Fix Standards violations (#5)
+  - Fix Solution violations (#6)
+  - Fix Workflow violations (#7-#13)
+  - Fix Quality violations (#14-#15)
+  - Fix Dependencies violations (#18-#19)
+  - Fix Traceability violations (#16-#17)
+
+Phase 5: Agent Review ← CONDITIONAL (only if agents available)
+  - Run review agents (codex-review + gemini-review parallel)
+  - Aggregate and filter suggestions (confidence ≥90, impact >10)
+  - Apply accepted suggestions to Story/Tasks
+
+Phase 6: Approve & Notify
+  - Set Story/Tasks to Todo status in Linear
+  - Update kanban_board.md with APPROVED marker
+  - Add Linear comment with validation summary
+  - Display tabular output to terminal
+```
+
 ## Workflow Overview
 
 ### Phase 1: Discovery & Loading
@@ -123,7 +181,7 @@ Detect operating mode at startup:
 - Zero out penalty points as fixes applied
 - Test Strategy section must exist but remain empty (testing handled separately)
 
-### Phase 5: Agent Review
+### Phase 5: Agent Review (Conditional)
 
 Per `shared/references/agent_delegation_pattern.md` §Parallel Aggregation.
 - **Template:** `story_review.md` with `{story_content}` + `{tasks_content}` from Phase 4.

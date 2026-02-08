@@ -73,6 +73,31 @@ Phase 7: AGGREGATE
 Phase 8: REPORT
 ```
 
+## Startup: Agent Availability Check
+
+Before planning agent review phases, run health check at skill startup:
+
+```bash
+python shared/agents/agent_runner.py --health-check
+```
+
+Filter output by `skill_groups` matching current skill (e.g., "310" for ln-310, "402" for ln-402).
+
+| Result | Impact on Plan |
+|--------|----------------|
+| ≥1 review agent OK | Agent review phase INCLUDED in plan + todos |
+| All review agents UNAVAILABLE | Agent review phase SKIPPED — no todos, Self-Review fallback |
+
+Display at startup:
+```
+Agent Health Check:
+✓ codex-review: OK
+✓ gemini-review: OK
+→ Agent Review: INCLUDED (2 agents available)
+```
+
+This result feeds into todo template — agent review items only created when agents available.
+
 ## Parallel Aggregation Pattern
 
 Run multiple agents in parallel, aggregate results from all successful responses:

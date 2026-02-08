@@ -26,6 +26,11 @@ description: L3 Worker. Reviews task implementation for quality, code standards,
 
 **File Mode status values:** Done, To Rework (only these two outcomes from review)
 
+## Startup: Agent Availability Check
+
+Per `shared/references/agent_delegation_pattern.md` §Startup.
+Result determines whether Step 6 (Agent Review) is included in workflow.
+
 ## Workflow (concise)
 1) **Receive task (isolated context):** Get task ID from orchestrator (ln-400)—NO other context passed. Load all information independently from Linear. Detect type (label "tests" -> test task, else implementation/refactor).
 2) **Read context:** Full task + parent Story; load affected components/docs; review diffs if available.
