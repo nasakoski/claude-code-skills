@@ -1,6 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Copy this to ~/.claude/settings.json under 'hooks' key. Update PLUGIN_ROOT path.",
+  "description": "Validation hooks for code quality, security, and story structure",
 
   "hooks": {
     "PreToolUse": [
@@ -9,7 +8,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 PLUGIN_ROOT/hooks/secret-scanner.py",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/secret-scanner.py",
             "timeout": 30
           }
         ]
@@ -21,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 PLUGIN_ROOT/hooks/story-validator.py",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/story-validator.py",
             "timeout": 10
           }
         ]
@@ -34,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 PLUGIN_ROOT/hooks/code-quality.py",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/code-quality.py",
             "timeout": 15
           }
         ]

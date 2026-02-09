@@ -12,59 +12,54 @@ Automated validation hooks for Claude Code. These hooks run automatically during
 
 ## Installation
 
-### Option 1: Copy to settings.json (Recommended)
+### Option 1: Plugin (Recommended)
 
-1. Open your Claude Code settings:
-   ```bash
-   # Linux/macOS
-   nano ~/.claude/settings.json
+Install as a plugin — hooks load automatically with no path editing:
 
-   # Windows
-   notepad %USERPROFILE%\.claude\settings.json
-   ```
+```bash
+/plugin add levnikolaevich/claude-code-skills
+```
 
-2. Add the hooks configuration from `hooks.json`, updating the path:
-   ```json
-   {
-     "hooks": {
-       "PreToolUse": [
-         {
-           "matcher": "Bash",
-           "hooks": [{
-             "type": "command",
-             "command": "python3 /path/to/claude-code-skills/hooks/secret-scanner.py",
-             "timeout": 30
-           }]
-         }
-       ],
-       "UserPromptSubmit": [
-         {
-           "hooks": [{
-             "type": "command",
-             "command": "python3 /path/to/claude-code-skills/hooks/story-validator.py",
-             "timeout": 10
-           }]
-         }
-       ],
-       "PostToolUse": [
-         {
-           "matcher": "Edit|Write",
-           "hooks": [{
-             "type": "command",
-             "command": "python3 /path/to/claude-code-skills/hooks/code-quality.py",
-             "timeout": 15
-           }]
-         }
-       ]
-     }
-   }
-   ```
+Hooks use `${CLAUDE_PLUGIN_ROOT}` environment variable, which Claude Code resolves to the plugin's absolute path at runtime.
 
-3. Replace `/path/to/claude-code-skills` with your actual path.
+### Option 2: Manual (standalone usage)
 
-### Option 2: Project-level settings
+Copy hooks configuration to `~/.claude/settings.json` (global) or `.claude/settings.json` (project-level), replacing `${CLAUDE_PLUGIN_ROOT}` with your actual path:
 
-Copy hooks configuration to `.claude/settings.json` in your project root for project-specific hooks.
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 /your/path/to/hooks/secret-scanner.py",
+          "timeout": 30
+        }]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "python3 /your/path/to/hooks/story-validator.py",
+          "timeout": 10
+        }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 /your/path/to/hooks/code-quality.py",
+          "timeout": 15
+        }]
+      }
+    ]
+  }
+}
 
 ## Hook Details
 

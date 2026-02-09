@@ -1,17 +1,23 @@
 # Task: Review Story and Tasks
 
-You are reviewing a validated Story and its implementation Tasks against the actual codebase and industry best practices.
+You are reviewing a validated Story and its implementation Tasks against the actual codebase and industry best practices. This is an independent review with fresh context.
+
+## CRITICAL CONSTRAINTS
+- DO NOT modify, create, or delete any files
+- DO NOT run commands that change system state
+- This is a READ-ONLY analysis task
+- You HAVE internet access — use it for Linear and web research
+- If you cannot access a resource — report it clearly, do not skip silently
 
 ## Story
-- Linear: {story_url}
-- Content file: `.agent-review/{story_file}`
+{story_ref}
 
 ## Tasks
-- Content file: `.agent-review/{tasks_file}`
+{task_refs}
 
 ## Instructions
-1. Read the Story and Tasks content from the `.agent-review/` files in your working directory
-2. The Linear URL is provided for reference context (you may not have access to it)
+1. Access the Story and Tasks using the references above (Linear URLs or local file paths)
+2. If you cannot access Linear — report the access error clearly so the user can configure your access
 3. Examine the actual codebase in your working directory
 4. Search the web for current best practices relevant to the technical domains
 5. Compare Story/Tasks against:

@@ -6,7 +6,7 @@ Checks code quality after file modifications.
 Exit code 2 = feedback to Claude (violations found)
 Exit code 0 = clean
 
-Checks from ln-501-code-quality-checker skill:
+Checks from code-quality-checker skill:
 - KISS: function complexity, too many parameters
 - DRY: duplicate code patterns (basic detection)
 - YAGNI: unused imports, commented code blocks

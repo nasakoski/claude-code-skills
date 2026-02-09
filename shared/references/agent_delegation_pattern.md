@@ -16,7 +16,7 @@ Standard pattern for skills delegating work to external CLI AI agents (Codex, Ge
 | 300 (Task Mgmt) | Codex | gpt-5.3-codex | Opus | Task decomposition, plan review |
 | 400 (Execution) | Opus (native) | claude-opus-4-6 | -- | Direct code writing |
 | 311 (Story Agent Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Story/Tasks review via ln-311 |
-| 502 (Code Agent Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Code review via ln-502 |
+| 512 (Code Agent Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Code review via ln-512 |
 
 ## Dedicated Agent Review Skills
 
@@ -25,12 +25,12 @@ Agent review is encapsulated in dedicated worker skills, not inline in parent sk
 | Worker Skill | Parent | Purpose | Prompt Template |
 |-------------|--------|---------|-----------------|
 | **ln-311-agent-reviewer** | ln-310 Phase 5 | Story/Tasks review | `story_review.md` |
-| **ln-502-agent-reviewer** | ln-501 Step 7 | Code implementation review | `code_review.md` |
+| **ln-512-agent-reviewer** | ln-511 Step 7 | Code implementation review | `code_review.md` |
 
 **Benefits:**
 - Health check + prompt execution in single invocation (minimal timing gap — solves API limit detection problem)
 - SRP: parent skills focus on their domain logic, agent communication is isolated
-- Content materialization: Story/Tasks loaded from Linear, saved to `.agent-review/` in CWD for sandbox-safe agent access
+- Reference passing: Story/Tasks provided as Linear URLs or local file paths — agents access content themselves
 
 ## Invocation Pattern
 
@@ -64,7 +64,19 @@ python shared/agents/agent_runner.py --agent codex --prompt-file /tmp/plan.md --
 3. **Use prompt-file** -- avoids Windows shell escaping for long text
 4. **Request JSON** -- easier to parse programmatically
 5. **Keep scope narrow** -- one task per call, not multi-step workflows
-6. **Materialize content** -- save Story/Tasks to `.agent-review/` files, reference by path in prompt
+6. **Pass references** -- provide Linear URLs or file paths, let agents access content themselves
+7. **Include CRITICAL CONSTRAINTS** -- enforce read-only behavior via prompt (agents must NOT modify files)
+
+## Agent Safety Model
+
+External agents run in non-interactive mode (`exec` / `-p`) — they process a single prompt and exit. Read-only behavior is enforced at two levels:
+
+| Level | Codex | Gemini |
+|-------|-------|--------|
+| **CLI flags** | `-a never` (never prompt for approval, no sandbox — full internet access) | `--yolo` (auto-approve + sandbox enabled, `permissive-open` profile — network allowed) |
+| **Prompt** | CRITICAL CONSTRAINTS section | CRITICAL CONSTRAINTS section |
+
+**Why prompt-level enforcement:** No CLI flag combination provides "read-only + internet access" for Codex. Gemini `--yolo` enables auto-approve (required for non-interactive `-p` mode) + sandbox with default profile allows network. Prompt CRITICAL CONSTRAINTS section enforces read-only behavior as primary control layer for both agents.
 
 ## Fallback Rules
 
@@ -82,7 +94,7 @@ Phase 1: DISCOVERY
 Phase 2: PLAN ← external agent for analysis/decomposition
 Phase 3: MODE DETECTION
 Phase 4: AUTO-FIX ← 19 criteria, Penalty Points = 0 (ln-310)
-Phase 5: AGENT REVIEW ← delegated to ln-311 (ln-310) or ln-502 (ln-501)
+Phase 5: AGENT REVIEW ← delegated to ln-311 (ln-310) or ln-512 (ln-511)
 Phase 6: DELEGATE
 Phase 7: AGGREGATE
 Phase 8: REPORT
@@ -90,7 +102,7 @@ Phase 8: REPORT
 
 ## Startup: Agent Availability Check
 
-**Health check is performed inside the dedicated agent review skills (ln-311, ln-502), NOT in parent skills.**
+**Health check is performed inside the dedicated agent review skills (ln-311, ln-512), NOT in parent skills.**
 
 ```bash
 python shared/agents/agent_runner.py --health-check
@@ -102,7 +114,7 @@ python shared/agents/agent_runner.py --health-check
 3. **Only command output determines availability.** Do NOT reason about file existence, environment, or installation — run the command and read its output.
 4. **If command fails** (file not found, import error, any exception) → treat as "all agents unavailable" → return SKIPPED verdict.
 
-Filter output by `skill_groups` matching current skill (e.g., "311" for ln-311, "502" for ln-502).
+Filter output by `skill_groups` matching current skill (e.g., "311" for ln-311, "512" for ln-512).
 
 | Command Output | Impact |
 |----------------|--------|
@@ -139,45 +151,69 @@ Prompt ------+                                                  +---> Dedup + Fi
 | Worker Skill | Agents (parallel) | Fallback | Prompt Template |
 |-------------|-------------------|----------|-----------------|
 | ln-311-agent-reviewer | codex-review + gemini-review | SKIPPED -> ln-310 Self-Review | story_review.md |
-| ln-502-agent-reviewer | codex-review + gemini-review | SKIPPED -> ln-501 Self-Review | code_review.md |
+| ln-512-agent-reviewer | codex-review + gemini-review | SKIPPED -> ln-511 Self-Review | code_review.md |
 
-## Content Materialization Pattern
+## Reference Passing Pattern
 
-Standard steps before launching agents (performed inside ln-311/ln-502):
+Standard steps before launching agents (performed inside ln-311/ln-512):
 
-1. **Load from Linear:** `get_issue(storyId)` + `list_issues(parent: storyId)` via MCP
-2. **Materialize:** Create `.agent-review/` in project CWD, save `story-{id}.md` + `tasks-{id}.md`
-3. **Ensure `.gitignore`:** Add `.agent-review/` entry if missing
-4. **Build prompt:** Load template, replace `{story_url}` (Linear URL), `{story_file}` and `{tasks_file}` (filenames)
-5. **Save prompt:** To temp file (`%TEMP%` on Windows, `/tmp` on Unix)
-6. **Run agents:** `--prompt-file {temp_file} --cwd {project_dir}` — agents read `.agent-review/` files from CWD
-7. **Cleanup:** Delete `.agent-review/` directory after agents complete
+1. **Get references:** Call Linear MCP `get_issue(storyId)` for Story URL + `list_issues(parent)` for Task URLs. If project stores tasks locally → use file paths.
+2. **Ensure .agent-review/:** Create `.agent-review/{agent}/` dirs. Create `.agent-review/.gitignore` (with `*` + `!.gitignore`). Add `.agent-review/` to project root `.gitignore` if missing.
+3. **Build prompt:** Load template, replace `{story_ref}` and `{task_refs}` with actual references (Linear URLs or file paths).
+4. **Save prompt:** To `.agent-review/{agent_name}/{identifier}_{review_type}_prompt.md`
+5. **Run agents:** `--prompt-file {prompt_path} --cwd {project_dir}` — agents access Story/Tasks via references
+6. **Save results:** To `.agent-review/{agent_name}/{identifier}_{review_type}_result.md`
+7. **No cleanup** — `.agent-review/` persists as audit trail
 
-**Why `.agent-review/` inside project CWD:**
-- Codex `--sandbox read-only` restricts file access to `--cwd` — temp files outside CWD are inaccessible
-- Gemini runs in CWD by default — relative paths work reliably
-- Dual reference in prompt: Linear URL (informational) + file path (for reading)
+**Why reference passing instead of content materialization:**
+- Agents have internet access — they can read Linear directly
+- No need to load full content into files (simpler workflow, fewer steps)
+- If agent cannot access Linear — it reports the error clearly, user configures access
+- Prompts stay focused (references instead of full content dumps)
+
+## Review Persistence Pattern
+
+```
+.agent-review/
+├── .gitignore              # * + !.gitignore
+├── codex/
+│   ├── PROJ-123_storyreview_prompt.md
+│   ├── PROJ-123_storyreview_result.md
+│   ├── PROJ-123_codereview_prompt.md
+│   └── PROJ-123_codereview_result.md
+└── gemini/
+    ├── PROJ-123_storyreview_prompt.md
+    ├── PROJ-123_storyreview_result.md
+    ├── PROJ-123_codereview_prompt.md
+    └── PROJ-123_codereview_result.md
+```
+
+**Benefits:**
+- Full audit trail of what was asked and what was returned
+- Debug agent issues by comparing prompt vs result
+- Track review history across multiple Stories
+- Per-agent isolation — easy to compare Codex vs Gemini quality
 
 ## Verdict Escalation Rules
 
 | Worker | Escalation? | Mechanism |
 |--------|-------------|-----------|
 | ln-311 (Story Review) | No | Suggestions are editorial; ln-310 Gate verdict unchanged |
-| ln-502 (Code Quality) | Yes | Findings with `area=security` or `area=correctness` can escalate PASS -> CONCERNS in ln-501 |
+| ln-512 (Code Quality) | Yes | Findings with `area=security` or `area=correctness` can escalate PASS -> CONCERNS in ln-511 |
 
 ## Anti-Patterns
 
 | DON'T | DO |
 |-------|-----|
 | Auto-retry in runner | Let skill decide fallback |
-| Embed full story/task content in prompt | Materialize to `.agent-review/` files in CWD |
-| Save temp files outside project CWD | Save in `.agent-review/` inside project (sandbox-safe) |
+| Embed full story/task content in prompt | Pass references (Linear URLs / file paths) |
+| Delete review artifacts after agents complete | Persist prompts and results in `.agent-review/{agent}/` |
 | Trust agent output blindly | Claude validates/analyzes response |
 | Use agents for file writes | Use agents for analysis/planning only |
 | Chain multiple agent calls | One call per task, stateless |
 | Hard-depend on agent availability | Always have Opus fallback |
-| Run health check in parent skill | Health check inside agent review worker (ln-311/ln-502) |
+| Run health check in parent skill | Health check inside agent review worker (ln-311/ln-512) |
 
 ---
-**Version:** 2.0.0 (BREAKING: Agent review extracted to dedicated skills ln-311/ln-502. Reference-based prompts. Health check moved inside worker skills.)
+**Version:** 2.0.0 (BREAKING: Agent review extracted to dedicated skills ln-311/ln-512. Reference-based prompts. Health check moved inside worker skills.)
 **Last Updated:** 2026-02-08

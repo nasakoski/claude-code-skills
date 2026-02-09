@@ -68,6 +68,9 @@ private/
 .claude/settings.local.json
 tmpclaude-*
 
+# Agent Review Artifacts
+.agent-review/
+
 # Git-related
 *.orig
 

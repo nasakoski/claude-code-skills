@@ -95,14 +95,15 @@ allowed-tools: Read, Edit
 - [ ] Read `ln-404-test-executor/SKILL.md` - test tasks
 
 **When working with 5XX Quality:**
-- [ ] Read `ln-500-story-quality-gate/SKILL.md` - L2 coordinator
-- [ ] Read `ln-501-code-quality-checker/SKILL.md` - code quality
-- [ ] Read `ln-502-agent-reviewer/SKILL.md` - external agent review
-- [ ] Read `ln-503-regression-checker/SKILL.md` - regression tests
-- [ ] Read `ln-510-test-planner/SKILL.md` - test planning orchestrator
-- [ ] Read `ln-511-test-researcher/SKILL.md` - test research (common problems, competitors)
-- [ ] Read `ln-512-manual-tester/SKILL.md` - manual AC testing
-- [ ] Read `ln-513-auto-test-planner/SKILL.md` - auto test planning
+- [ ] Read `ln-500-story-quality-gate/SKILL.md` - thin orchestrator (verdict + Quality Score)
+- [ ] Read `ln-510-quality-coordinator/SKILL.md` - quality checks coordinator
+- [ ] Read `ln-511-code-quality-checker/SKILL.md` - code quality
+- [ ] Read `ln-512-agent-reviewer/SKILL.md` - external agent review
+- [ ] Read `ln-513-regression-checker/SKILL.md` - regression tests
+- [ ] Read `ln-520-test-planner/SKILL.md` - test planning orchestrator
+- [ ] Read `ln-521-test-researcher/SKILL.md` - test research (common problems, competitors)
+- [ ] Read `ln-522-manual-tester/SKILL.md` - manual AC testing
+- [ ] Read `ln-523-auto-test-planner/SKILL.md` - auto test planning
 
 **When working with 6XX Audit:**
 - [ ] Read `ln-600-docs-auditor/SKILL.md` - documentation quality

@@ -1,7 +1,7 @@
 ---
 name: ln-620-codebase-auditor
-description: Coordinates 9 specialized audit workers (security, build, architecture, code quality, dependencies, dead code, observability, concurrency, lifecycle). Researches best practices, delegates parallel audits, aggregates results into single Linear task in Epic 0.
-allowed-tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, mcp__Ref, mcp__context7, mcp__linear-server, Skill
+description: "Coordinates 9 specialized audit workers (security, build, architecture, code quality, dependencies, dead code, observability, concurrency, lifecycle). Researches best practices, delegates parallel audits, aggregates results into docs/project/codebase_audit.md."
+allowed-tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, mcp__Ref, mcp__context7, Skill
 ---
 
 # Codebase Auditor (L2 Coordinator)
@@ -14,19 +14,18 @@ Coordinates 9 specialized audit workers to perform comprehensive codebase qualit
 - Research current best practices for detected tech stack via MCP tools ONCE
 - Pass shared context to all workers (token-efficient)
 - Aggregate worker results into single consolidated report
-- Create single refactoring task in Linear under Epic 0 with all findings
+- Write report to `docs/project/codebase_audit.md` (file-based, no task creation)
 - Manual invocation by user; not part of Story pipeline
 
 ## Workflow
 
 1) **Discovery:** Load tech_stack.md, principles.md, package manifests, auto-discover Team ID
-2) **Research:** Query MCP tools for current best practices per major dependency ONCE
-3) **Build Context:** Create contextStore with best practices + tech stack metadata
-4) **Domain Discovery:** Detect project domains from folder structure (NEW)
-5) **Delegate:** Two-stage delegation - global workers + domain-aware workers (UPDATED)
+2) **Worker Applicability:** Determine project type, skip inapplicable workers
+3) **Research:** Query MCP tools for current best practices per major dependency ONCE
+4) **Domain Discovery:** Detect project domains from folder structure
+5) **Delegate:** Two-stage delegation - global workers (5a) + domain-aware workers (5b)
 6) **Aggregate:** Collect worker results, group by domain, calculate scores
-7) **Generate Report:** Build consolidated report with Domain Health Summary, Findings by Domain
-8) **Create Task:** Create Linear task in Epic 0 titled "Codebase Refactoring: [YYYY-MM-DD]"
+7) **Write Report:** Save to `docs/project/codebase_audit.md`
 
 ## Phase 1: Discovery
 
@@ -43,7 +42,34 @@ Coordinates 9 specialized audit workers to perform comprehensive codebase qualit
 - Build tools
 - Test framework(s)
 
-## Phase 2: Research Best Practices (ONCE)
+## Phase 2: Worker Applicability Gate
+
+Determine project type from tech_stack metadata and skip inapplicable workers.
+
+**Project type detection:**
+
+| Project Type | Detection | Skip Workers |
+|-------------|-----------|--------------|
+| CLI tool | No web framework, has CLI framework (Typer/Click/Commander/cobra/etc.) | ln-627 (health checks), ln-629 (graceful shutdown) |
+| Library/SDK | No entry point, only exports | ln-627, ln-629 |
+| Script/Lambda | Single entry, <500 LOC | ln-627, ln-628 (concurrency), ln-629 |
+| Web Service | Has web framework (Express/FastAPI/ASP.NET/Spring/etc.) | None — all applicable |
+| Worker/Queue | Has queue framework (Bull/Celery/etc.) | None |
+
+**Algorithm:**
+```
+project_type = detect_from_tech_stack(tech_stack, package_manifests)
+skipped_workers = APPLICABILITY_TABLE[project_type].skip
+applicable_workers = ALL_WORKERS - skipped_workers
+
+FOR EACH skipped IN skipped_workers:
+  skipped.score = "N/A"
+  skipped.reason = "Not applicable for {project_type} projects"
+```
+
+Skipped workers are NOT delegated. They get score "N/A" in report and are excluded from overall score calculation.
+
+## Phase 3: Research Best Practices (ONCE)
 
 **For each major dependency identified in Phase 1:**
 
@@ -69,7 +95,7 @@ Coordinates 9 specialized audit workers to perform comprehensive codebase qualit
 }
 ```
 
-## Phase 3: Domain Discovery
+## Phase 4: Domain Discovery
 
 **Purpose:** Detect project domains from folder structure for domain-aware auditing.
 
@@ -115,7 +141,7 @@ Coordinates 9 specialized audit workers to perform comprehensive codebase qualit
 - Shared code audited but grouped separately in report
 - Does not affect domain-specific scores
 
-## Phase 4: Delegate to Workers
+## Phase 5: Delegate to Workers
 
 > **CRITICAL:** All delegations use Task tool with `subagent_type: "general-purpose"` for context isolation.
 
@@ -163,7 +189,7 @@ score = max(0, 10 - penalty)
 
 **Domain-aware workers** add optional fields: `domain`, `scan_path`
 
-### Phase 4a: Global Workers (PARALLEL)
+### Phase 5a: Global Workers (PARALLEL)
 
 **Global workers** scan entire codebase (not domain-aware):
 
@@ -177,15 +203,18 @@ score = max(0, 10 - penalty)
 | 8 | ln-628-concurrency-auditor | HIGH | Race conditions, async/await, resource contention |
 | 9 | ln-629-lifecycle-auditor | MEDIUM | Bootstrap, graceful shutdown, resource cleanup |
 
-**Invocation (7 workers in PARALLEL):**
+**Invocation (applicable workers in PARALLEL):**
 ```javascript
-FOR EACH worker IN [ln-621, ln-622, ln-625, ln-626, ln-627, ln-628, ln-629]:
+// Filter by Phase 2 applicability gate
+applicable_global = [ln-621, ln-622, ln-625, ln-626, ln-627, ln-628, ln-629].filter(w => !skipped_workers.includes(w))
+
+FOR EACH worker IN applicable_global:
   Task(description: "Audit via " + worker,
        prompt: "Execute " + worker + ". Read skill. Context: " + JSON.stringify(contextStore),
        subagent_type: "general-purpose")
 ```
 
-### Phase 4b: Domain-Aware Workers (PARALLEL per domain)
+### Phase 5b: Domain-Aware Workers (PARALLEL per domain)
 
 **Domain-aware workers** run once per domain:
 
@@ -213,11 +242,11 @@ ELSE:
 ```
 
 **Parallelism strategy:**
-- Phase 4a: All 7 global workers run in PARALLEL
-- Phase 4b: All (2 × N) domain-aware invocations run in PARALLEL
-- Example: 3 domains → 6 invocations (ln-363×3 + ln-364×3) in single message
+- Phase 5a: All applicable global workers run in PARALLEL
+- Phase 5b: All (2 × N) domain-aware invocations run in PARALLEL
+- Example: 3 domains → 6 invocations (ln-623×3 + ln-624×3) in single message
 
-## Phase 5: Aggregate Results
+## Phase 6: Aggregate Results
 
 **Collect results from workers:**
 
@@ -299,157 +328,49 @@ ELSE:
 
 ## Output Format
 
-```markdown
-## Codebase Audit Report - [DATE]
+**MANDATORY READ:** Load `shared/templates/codebase_audit_template.md` for full report structure.
 
-### Executive Summary
-[2-3 sentences on overall codebase health, major risks, and key strengths]
+Report is written to `docs/project/codebase_audit.md` using the template. Key sections:
+- Executive Summary, Compliance Score (9 categories), Severity Summary
+- Domain Health Summary + Cross-Domain Issues (if domain-aware)
+- Strengths, Findings by Category (global + domain-grouped), Recommended Actions
+- Sources Consulted
 
-### Compliance Score
+## Phase 7: Write Report
 
-| Category | Score | Notes |
-|----------|-------|-------|
-| Security | X/10 | ... |
-| Build Health | X/10 | ... |
-| Architecture & Design | X/10 | ... |
-| Code Quality | X/10 | ... |
-| Dependencies & Reuse | X/10 | ... |
-| Dead Code | X/10 | ... |
-| Observability | X/10 | ... |
-| Concurrency | X/10 | ... |
-| Lifecycle | X/10 | ... |
-| **Overall** | **X/10** | |
+**MANDATORY READ:** Load `shared/templates/codebase_audit_template.md` for report format.
 
-### Severity Summary
-
-| Severity | Count |
-|----------|-------|
-| Critical | X |
-| High | X |
-| Medium | X |
-| Low | X |
-
-### Domain Health Summary (NEW - if domain_mode="domain-aware")
-
-| Domain | Files | Arch Score | Quality Score | Issues |
-|--------|-------|------------|---------------|--------|
-| users | 45 | 7/10 | 8/10 | 5 |
-| orders | 32 | 5/10 | 6/10 | 8 |
-| payments | 28 | 8/10 | 7/10 | 3 |
-| shared | 15 | 6/10 | 9/10 | 2 |
-| **Total** | **120** | **6.5/10** | **7.5/10** | **18** |
-
-### Cross-Domain Issues (if domain_mode="domain-aware" and pattern_signature matches found)
-
-| Signature | Domains | Locations | Issue | Recommendation | Effort |
-|-----------|---------|-----------|-------|----------------|--------|
-| validation_email | users, orders | users/validators/email.ts:12, orders/validators/email.ts:8 | Same email validation in 2 domains | Extract to shared/validators/email.ts | M |
-| middleware_auth_validate | users, orders, payments | 3 route files | Identical middleware chain in 3 domains | Create shared middleware group in shared/middleware/ | M |
-
-### Strengths
-- [What's done well in this codebase]
-- [Good patterns and practices identified]
-
-### Findings by Category
-
-#### 1. Security (Global)
-
-| Severity | Location | Issue | Principle Violated | Recommendation | Effort |
-|----------|----------|-------|-------------------|----------------|--------|
-| CRITICAL | src/api/auth.ts:45 | Hardcoded API key | Secrets Management | Move to .env | S |
-
-#### 2. Build Health (Global)
-
-| Severity | Location | Issue | Principle Violated | Recommendation | Effort |
-|----------|----------|-------|-------------------|----------------|--------|
-| CRITICAL | Multiple files | TypeScript strict errors | Type Safety | Fix types | S |
-
-#### 3. Architecture & Design (Domain-Grouped)
-
-##### Domain: users (src/users/)
-
-| Severity | Location | Issue | Principle Violated | Recommendation | Effort |
-|----------|----------|-------|-------------------|----------------|--------|
-| CRITICAL | UserController.ts:12 | Controller→Repository bypass | Layer Separation | Add Service layer | L |
-
-##### Domain: orders (src/orders/)
-
-| Severity | Location | Issue | Principle Violated | Recommendation | Effort |
-|----------|----------|-------|-------------------|----------------|--------|
-| HIGH | OrderService.ts:45 | DRY violation (duplicate validation) | DRY Principle | Extract to validators/ | M |
-
-##### Domain: shared (src/shared/)
-
-| Severity | Location | Issue | Principle Violated | Recommendation | Effort |
-|----------|----------|-------|-------------------|----------------|--------|
-| MEDIUM | utils.ts:78 | TODO older than 6 months | Code Hygiene | Complete or remove | S |
-
-#### 4. Code Quality (Domain-Grouped)
-
-##### Domain: users (src/users/)
-
-| Severity | Location | Issue | Principle Violated | Recommendation | Effort |
-|----------|----------|-------|-------------------|----------------|--------|
-| HIGH | UserService.ts:120 | Complexity 25 | Maintainability | Split function | M |
-
-... (continue for remaining global categories: 5-9)
-
-### Recommended Actions (Priority-Sorted)
-
-| Priority | Category | Domain | Location | Issue | Recommendation | Effort |
-|----------|----------|--------|----------|-------|----------------|--------|
-| CRITICAL | Security | - | src/api/auth.ts:45 | Hardcoded API key | Move to .env | S |
-| CRITICAL | Architecture | users | UserController.ts:12 | Controller→Repository bypass | Add Service layer | L |
-| CRITICAL | Build | - | Multiple files | TypeScript strict errors | Fix types | S |
-| HIGH | Architecture | orders | OrderService.ts:45 | DRY violation | Extract to validators/ | M |
-| HIGH | Code Quality | users | UserService.ts:120 | Complexity 25 | Split function | M |
-
-### Priority Actions
-1. Fix all Critical issues before next release
-2. Address High issues within current sprint
-3. Plan Medium issues for technical debt sprint
-4. Track Low issues in backlog
-
-### Sources Consulted
-- [Framework] best practices: [URL from MCP Ref]
-- [Library] documentation: [URL from Context7]
-```
-
-## Phase 6: Create Linear Task
-
-Create task in Epic 0:
-- Title: `Codebase Refactoring: [YYYY-MM-DD]`
-- Description: Full report from Phase 5 (markdown format)
-- Team: Auto-discovered from kanban_board.md
-- Epic: 0 (technical debt / refactoring epic)
-- Labels: `refactoring`, `technical-debt`, `audit`
-- Priority: Based on highest severity findings (Critical → Urgent, High → High, etc.)
+Write consolidated report to `docs/project/codebase_audit.md`:
+- Use template structure from codebase_audit_template.md
+- Fill all sections with aggregated worker data
+- Overwrite previous report (each audit is a full snapshot)
 
 ## Critical Rules
 
-- **Two-stage delegation:** Global workers (7) + Domain-aware workers (2 × N domains)
+- **Worker applicability:** Skip inapplicable workers based on project type (Phase 2); skipped workers get "N/A" score
+- **Two-stage delegation:** Global workers + Domain-aware workers (2 × N domains)
 - **Domain discovery:** Auto-detect domains from folder structure; fallback to global mode
-- **Parallel execution:** All workers (global + domain-aware) run in PARALLEL
+- **Parallel execution:** All applicable workers (global + domain-aware) run in PARALLEL
 - **Single context gathering:** Research best practices ONCE, pass contextStore to all workers
 - **Metadata-only loading:** Coordinator loads metadata only; workers load full file contents
 - **Domain-grouped output:** Architecture & Code Quality findings grouped by domain
-- **Language preservation:** Task description in project's language (EN/RU from kanban_board.md)
-- **Single task:** Create ONE task with all findings; do not create multiple tasks
+- **File output only:** Write results to codebase_audit.md, no task/story creation
 - **Do not audit:** Coordinator orchestrates only; audit logic lives in workers
 
 ## Definition of Done
 
+- Project type detected; worker applicability determined; inapplicable workers documented with reason
 - Best practices researched via MCP tools for major dependencies
 - Domain discovery completed (domain_mode determined)
 - contextStore built with tech stack + best practices + domain info
-- Global workers (7) invoked in PARALLEL
+- Applicable global workers invoked in PARALLEL
 - Domain-aware workers (2 × N domains) invoked in PARALLEL
 - All workers completed successfully (or reported errors)
 - Results aggregated with domain grouping
 - Domain Health Summary built (if domain_mode="domain-aware")
-- Compliance score (X/10) calculated per category + overall
+- Compliance score (X/10) calculated per category + overall (skipped workers excluded from average)
 - Executive Summary and Strengths sections included
-- Linear task created in Epic 0 with full report
+- Report written to `docs/project/codebase_audit.md`
 - Sources consulted listed with URLs
 
 ## Workers
@@ -471,6 +392,7 @@ See individual worker SKILL.md files for detailed audit rules:
 - **Task delegation pattern:** `shared/references/task_delegation_pattern.md`
 - **Audit scoring formula:** `shared/references/audit_scoring.md`
 - **Audit output schema:** `shared/references/audit_output_schema.md`
+- **Report template:** `shared/templates/codebase_audit_template.md`
 - Principles: `docs/principles.md`
 - Tech stack: `docs/project/tech_stack.md`
 - Kanban board: `docs/tasks/kanban_board.md`

@@ -57,15 +57,16 @@ claude-code-skills/
 |   |-- ln-403-task-rework/            # Fix tasks marked To Rework
 |   |-- ln-404-test-executor/          # Execute test tasks (E2E-first)
 |
-|-- ln-5XX-*/                          # QUALITY (8 skills)
-|   |-- ln-500-story-quality-gate/     # Pass 1 (code) + Pass 2 (tests)
-|   |-- ln-501-code-quality-checker/   # DRY/KISS/YAGNI violations
-|   |-- ln-502-agent-reviewer/         # External agent review (Codex + Gemini)
-|   |-- ln-503-regression-checker/     # Run existing test suite
-|   |-- ln-510-test-planner/           # Orchestrator: research -> manual -> auto
-|   |   |-- ln-511-test-researcher/    # Research real-world problems
-|   |   |-- ln-512-manual-tester/      # Manual functional testing
-|   |   |-- ln-513-auto-test-planner/  # Plan E2E/Integration/Unit tests
+|-- ln-5XX-*/                          # QUALITY (9 skills)
+|   |-- ln-500-story-quality-gate/     # Thin orchestrator: verdict + Quality Score
+|   |-- ln-510-quality-coordinator/    # Code quality checks coordinator
+|   |   |-- ln-511-code-quality-checker/  # DRY/KISS/YAGNI violations
+|   |   |-- ln-512-agent-reviewer/        # External agent review (Codex + Gemini)
+|   |   |-- ln-513-regression-checker/    # Run existing test suite
+|   |-- ln-520-test-planner/           # Test planning coordinator
+|   |   |-- ln-521-test-researcher/    # Research real-world problems
+|   |   |-- ln-522-manual-tester/      # Manual functional testing
+|   |   |-- ln-523-auto-test-planner/  # Plan E2E/Integration/Unit tests
 |
 |-- ln-6XX-*/                          # AUDIT (20 skills) [WORKS WITHOUT LINEAR]
 |   |-- ln-600-docs-auditor/           # Documentation quality audit

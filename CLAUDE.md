@@ -74,7 +74,7 @@ All 85 skills documented in [README.md](README.md#-features) feature tables with
 
 **Structural Validation:** ln-310-story-validator auto-fixes Stories/Tasks against template compliance. See [ln-310-story-validator/SKILL.md](ln-310-story-validator/SKILL.md) Phase 1.
 
-**Testing:** Risk-Based Testing (2-5 E2E, 3-8 Integration, 5-15 Unit, Priority ≥15). See [risk_based_testing_guide.md](ln-510-test-planner/references/risk_based_testing_guide.md).
+**Testing:** Risk-Based Testing (2-5 E2E, 3-8 Integration, 5-15 Unit, Priority ≥15). See [risk_based_testing_guide.md](shared/references/risk_based_testing_guide.md).
 
 **Code Comments:** 15-20% ratio. Explain WHY, not WHAT. NO Epic/Task IDs, NO historical notes, NO code examples. Only critical technical details (DB optimizations, API quirks, constraints).
 

@@ -2,7 +2,7 @@
 
 Universal patterns for detecting dead code, backward-compat shims, and legacy remnants.
 
-**Used by:** ln-402 (Step 3 Clean Code), ln-501 (MNT-DC-), ln-626 (Dead Code Audit).
+**Used by:** ln-402 (Step 3 Clean Code), ln-511 (MNT-DC-), ln-626 (Dead Code Audit).
 
 ## 4 Dead Code Categories
 

@@ -126,6 +126,7 @@ FOR doc IN [CLAUDE.md, docs/README.md, docs/project/*.md]:
 - **Format Priority:** Tables/ASCII > Lists (enumerations only) > Text (last resort)
 - **Stack adaptation:** Verify all documentation references match project stack. .NET project must not have Python examples. Check official doc links point to correct platform (Microsoft docs for C#, MDN for JS, etc.)
 - **Code is truth:** When docs contradict code, always update docs. Never "fix" code to match documentation.
+- **SSOT re-verification after fixes:** After making ANY documentation change, re-check that the fix maintains Single Source of Truth. If content exists in multiple files, keep it in the canonical source only and replace other occurrences with a link to that source (e.g., `See [section](path#anchor)`). Never duplicate content inline — always link. Canonical source hierarchy: CLAUDE.md → docs/README.md → docs/project/*.md → docs/reference/*.md.
 - **Delete, don't archive:** Legacy content should be removed, not moved to "archive"
 - **No history:** Documents describe current state only; git tracks history
 

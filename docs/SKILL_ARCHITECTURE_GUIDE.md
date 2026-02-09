@@ -218,7 +218,7 @@ Workers (Executors)
 
 **Examples in This Repository:**
 - **Level 1:** `ln-400-story-executor` → coordinates full Story lifecycle
-- **Level 2:** `ln-300-task-coordinator`, `ln-500-story-quality-gate` (domain orchestrators) → coordinate specific workflows, delegate to workers
+- **Level 2:** `ln-300-task-coordinator`, `ln-510-quality-coordinator` (domain orchestrators) → coordinate specific workflows, delegate to workers
 - **Level 3:** `ln-402-task-reviewer`, `ln-401-task-executor`, `ln-404-test-executor`, `ln-301-task-creator`, `ln-302-task-replanner` → execute work
 
 > [!NOTE]
@@ -267,7 +267,7 @@ This architecture follows industry-proven pattern where:
 | Level | Role | Responsibilities | Data Loading | Examples |
 |-------|------|------------------|--------------|----------|
 | **Level 1** | Top Orchestrator | Coordinate full lifecycle workflows | Metadata only | `ln-400-story-executor` |
-| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | `ln-310-story-validator`, `ln-500-story-quality-gate`, `ln-300-task-coordinator`, `ln-510-test-planner` |
+| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | `ln-310-story-validator`, `ln-510-quality-coordinator`, `ln-300-task-coordinator`, `ln-520-test-planner` |
 | **Level 3** | Worker | Execute atomic work | FULL descriptions when needed | `ln-401-task-executor`, `ln-404-test-executor`, `ln-402-task-reviewer`, `ln-301-task-creator`, etc. |
 
 **Critical Rules:**
@@ -313,8 +313,8 @@ This architecture follows industry-proven pattern where:
 
 | Delegating Skill | Delegated Skill | Domain Separation | Rationale |
 |------------------|-----------------|-------------------|-----------|
-| ln-400-story-executor | ln-500-story-quality-gate Pass 1 | Task execution → Story quality validation | After all tasks Done, delegate quality verification |
-| ln-400-story-executor | ln-500-story-quality-gate Pass 2 | Task execution → Final approval | After test task Done, delegate final Story approval |
+| ln-400-story-executor | ln-510-quality-coordinator Pass 1 | Task execution → Story quality validation | After all tasks Done, delegate quality verification |
+| ln-400-story-executor | ln-510-quality-coordinator Pass 2 | Task execution → Final approval | After test task Done, delegate final Story approval |
 | ln-310-story-validator | ln-400-story-executor | Story validation (3XX) → Story execution (4XX) | After Story approved (Todo), delegate execution |
 
 **Invalid L2→L2 Examples (Violations):**
@@ -363,8 +363,8 @@ Orchestrator automatically creates fix tasks when quality checks fail, then rest
 | **ln-620-codebase-auditor** | 9 | **Separate** | Workers audit DIFFERENT aspects (security/build/arch) — isolation = focus |
 | **ln-630-test-auditor** | 5 | **Separate** | Workers audit DIFFERENT test categories — isolation = focus |
 | **ln-640-pattern-evolution-auditor** | 3 | **Separate** | Workers analyze DIFFERENT patterns — isolation = focus |
-| **ln-500-story-quality-gate** | 4 | **Mixed** | ln-501 Separate (independent analysis), ln-502 Separate (agent review), ln-503/ln-510 Shared (need Gate context) |
-| **ln-510-test-planner** | 3 | **Separate** | Pipeline orchestration, workers read from Linear comments |
+| **ln-510-quality-coordinator** | 4 | **Mixed** | ln-511 Separate (independent analysis), ln-512 Separate (agent review), ln-513/ln-510 Shared (need Gate context) |
+| **ln-520-test-planner** | 3 | **Separate** | Pipeline orchestration, workers read from Linear comments |
 | **ln-710-dependency-upgrader** | 3 | **Separate** | Independent package managers (npm/nuget/pip) |
 | **ln-760-security-setup** | 2 | **Separate** | Independent scans (secrets/dependencies) |
 

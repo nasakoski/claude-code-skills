@@ -2,7 +2,7 @@
 
 Architectural patterns with 4-score evaluation.
 
-> **SCOPE:** Pattern inventory with scores, rationale links. Updated by ln-640 Pattern Evolution Auditor.
+> **SCOPE:** Pattern inventory with scores, ADR/Guide links. Updated by ln-640 Pattern Evolution Auditor.
 > **Last Audit:** YYYY-MM-DD
 
 ---
@@ -11,8 +11,8 @@ Architectural patterns with 4-score evaluation.
 
 | Score | Measures | Threshold |
 |-------|----------|-----------|
-| **Compliance** | Industry standards, ADR/Guide exists, naming, layer boundaries | 70% |
-| **Completeness** | All components, error handling, tests, docs | 70% |
+| **Compliance** | Industry standards, naming, tech stack conventions, layer boundaries | 70% |
+| **Completeness** | All components, error handling, observability, tests | 70% |
 | **Quality** | Readability, maintainability, SOLID, no smells, no duplication | 70% |
 | **Implementation** | Code exists, production use, monitored | 70% |
 
@@ -20,14 +20,29 @@ Architectural patterns with 4-score evaluation.
 
 ## Pattern Inventory
 
-| # | Pattern | Rationale | Compl | Complt | Qual | Impl | Avg | Story |
-|---|---------|-----------|-------|--------|------|------|-----|-------|
-| 1 | *Example* | [ADR-NNN](link) | —% | —% | —% | —% | **—%** | - |
+| # | Pattern | ADR | Guide | Compl | Complt | Qual | Impl | Avg | Notes | Story |
+|---|---------|-----|-------|-------|--------|------|------|-----|-------|-------|
+| 1 | *Example* | [ADR-NNN](link) | [G-NN](link) | —% | —% | —% | —% | **—%** | - | - |
 
-**Rationale column:**
-- `[ADR-NNN]` — Architecture Decision Record (strategic decisions)
-- `[G-NN]` — Guide (implementation patterns, GoF, best practices)
-- Can reference both: `[ADR-026](link) [G-39](link)`
+**Column reference:**
+- `ADR` — Architecture Decision Record (strategic decisions)
+- `Guide` — Implementation guide (GoF, best practices)
+- `Notes` — Inline context for scores (e.g., "90% Missing health check")
+
+---
+
+## Discovered Patterns (Adaptive)
+
+Patterns found via Phase 1b heuristic discovery, not in baseline library.
+
+| # | Pattern | Confidence | Evidence | Compl | Complt | Qual | Impl | Avg | Story |
+|---|---------|------------|----------|-------|--------|------|------|-----|-------|
+| 1 | *Example* | HIGH/MED/LOW | *src/handlers/, 5 files* | —% | —% | —% | —% | **—%** | - |
+
+**Confidence levels:**
+- `HIGH` — Naming + structural indicators match
+- `MEDIUM` — Naming convention only
+- `LOW` — Structural heuristic only
 
 ---
 
@@ -37,9 +52,9 @@ Audit results from ln-642-layer-boundary-auditor.
 
 | Metric | Value | Threshold | Status |
 |--------|-------|-----------|--------|
-| Layer Violations | X | 0 | ✅/⚠️/❌ |
-| HTTP Abstraction Coverage | XX% | 90% | ✅/⚠️/❌ |
-| Error Handling Centralized | Yes/No | Yes | ✅/❌ |
+| Layer Violations | X | 0 | -/- |
+| HTTP Abstraction Coverage | XX% | 90% | -/- |
+| Error Handling Centralized | Yes/No | Yes | -/- |
 
 ### Active Layer Violations
 
@@ -51,11 +66,26 @@ Audit results from ln-642-layer-boundary-auditor.
 
 ---
 
+## API Contract Status
+
+Audit results from ln-643-api-contract-auditor.
+
+| Check | Status | Details |
+|-------|--------|---------|
+| ORM Leakage to Schemas | -/- | - |
+| Response Models | -/- | - |
+| Service DTOs | -/- | - |
+| Error Format | -/- | - |
+| Entity Returns | -/- | - |
+| Framework Leakage | -/- | - |
+
+---
+
 ## Quick Wins (< 4h effort)
 
-| Pattern | Issue | Effort | Impact |
-|---------|-------|--------|--------|
-| *Example* | Missing @decorator | 1-2h | +5% completeness |
+| Pattern | Issue | Recommendation | Effort | Impact |
+|---------|-------|----------------|--------|--------|
+| *Example* | Missing @decorator | Add @retry decorator to service methods | 1-2h | +5% completeness |
 
 ---
 
@@ -63,28 +93,55 @@ Audit results from ln-642-layer-boundary-auditor.
 
 ### Score < 70% (Story Required)
 
-- **{{Pattern}} (XX%)** — {{detailed_problem}}
-  - Issue 1: {{specific}}
-  - Issue 2: {{specific}}
-  - **Story: [PROJ-XXX](link)** (Xh, Status)
+| Pattern | Avg | Issue | Recommendation | Effort | Story |
+|---------|-----|-------|----------------|--------|-------|
+| *Example* | 58% | No DLQ, no schema versioning | Add Bull DLQ config; implement event schema v2 | L | [PROJ-XXX](link) |
 
 ### Score 70-80% (Improvement Planned)
 
-1. **{{Pattern}} (XX%)** — {{problem}}
-   - **Story: [PROJ-XXX](link)**
+| Pattern | Avg | Issue | Recommendation | Effort | Story |
+|---------|-----|-------|----------------|--------|-------|
+| *Example* | 75% | Missing health check | Add /health endpoint with dependency checks | M | [PROJ-XXX](link) |
 
 ### Layer Violations (Architectural Debt)
 
-- **{{file}}:{{line}}** — {{violation_type}} in {{layer}}
-  - Code: `{{code_snippet}}`
-  - Move to: {{allowed_location}}
-  - **Story: [PROJ-XXX](link)**
+| File | Line | Violation | Recommendation | Story |
+|------|------|-----------|----------------|-------|
+| *app/domain/X.py* | *45* | *HTTP Client in domain* | *Move to infrastructure/http/, inject via DI* | [PROJ-XXX](link) |
+
+---
+
+## Pattern Recommendations
+
+Suggested patterns based on Phase 1c project analysis (NOT scored, advisory only).
+
+| Condition Found | Recommended Pattern | Rationale |
+|-----------------|---------------------|-----------|
+| *Example: External API calls without retry* | *Resilience* | *Prevent cascading failures* |
+
+---
+
+## Excluded Patterns
+
+Patterns detected by keyword but excluded after applicability verification (Phase 1d).
+
+| # | Pattern | Source | Keywords Found | Exclusion Reason | Last Seen |
+|---|---------|--------|---------------|-----------------|-----------|
+| 1 | *Example* | Baseline | *Queue (1 match)* | *Missing: Worker, DLQ, Retry* | *YYYY-MM-DD* |
+
+**Exclusion reasons:**
+- **Structural:** Fewer than 2 required structural components detected (baseline patterns)
+- **Confidence:** LOW confidence with fewer than 3 evidence files (adaptive patterns)
+- **Language idiom:** Standard language construct, stdlib feature, or framework built-in — not an architectural pattern (verified via MCP Ref)
+- **Removed:** Previously cataloged but no longer detected after refactoring
 
 ---
 
 ## Summary
 
 **Architecture Health Score:** XX% (Healthy|Warning|Critical)
+
+Formula: `avg(N pattern scores + layer_score + api_contract_score) * 10`
 
 **Trend:** +X% (reason)
 
@@ -100,6 +157,7 @@ Audit results from ln-642-layer-boundary-auditor.
 
 **Updated by:** ln-640-pattern-evolution-auditor
 **Layer audit by:** ln-642-layer-boundary-auditor
+**API contract audit by:** ln-643-api-contract-auditor
 
 **Update Triggers:**
 - New pattern implemented
@@ -110,4 +168,4 @@ Audit results from ln-642-layer-boundary-auditor.
 **Next Audit:** YYYY-MM-DD (30 days)
 
 ---
-**Template Version:** 2.0.0
+**Template Version:** 3.0.0
