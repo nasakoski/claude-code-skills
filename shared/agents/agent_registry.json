@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "2.0.0",
   "agents": {
     "gemini": {
       "name": "Gemini CLI",
@@ -31,18 +31,18 @@
     "codex-review": {
       "name": "Codex CLI (Review Mode)",
       "command": "codex",
-      "args": ["-a", "never", "exec", "--json"],
+      "args": ["exec", "--json", "--full-auto", "-C", "{cwd}", "-o", "{output_file}"],
       "env_override": {},
-      "timeout_seconds": 600,
+      "timeout_seconds": 0,
       "skill_groups": ["311", "512"],
       "health_check": "codex --version"
     },
     "gemini-review": {
-      "name": "Gemini 3 Pro (Review Mode)",
+      "name": "Gemini 3 Flash (Review Mode)",
       "command": "gemini",
-      "args": ["--yolo", "-m", "gemini-3-pro-preview", "--output-format", "json", "-p", ""],
+      "args": ["--yolo", "-m", "gemini-3-flash", "--output-format", "json", "-p", ""],
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
-      "timeout_seconds": 300,
+      "timeout_seconds": 0,
       "skill_groups": ["311", "512"],
       "health_check": "gemini --version"
     },

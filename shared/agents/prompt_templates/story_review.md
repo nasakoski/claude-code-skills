@@ -3,9 +3,9 @@
 You are reviewing a validated Story and its implementation Tasks against the actual codebase and industry best practices. This is an independent review with fresh context.
 
 ## CRITICAL CONSTRAINTS
-- DO NOT modify, create, or delete any files
-- DO NOT run commands that change system state
-- This is a READ-ONLY analysis task
+- DO NOT modify, create, or delete any PROJECT files
+- You MAY write your review result to the output file if specified by -o flag
+- This is a READ-ONLY analysis task (read-only applies to project source code)
 - You HAVE internet access — use it for Linear and web research
 - If you cannot access a resource — report it clearly, do not skip silently
 
@@ -32,6 +32,15 @@ You are reviewing a validated Story and its implementation Tasks against the act
 - Are there better approaches per current best practices?
 - Missing considerations (security, performance, edge cases)?
 
+## Risk Analysis
+Evaluate implementation risks that could cause production incidents:
+- **Breaking changes:** API contracts, DB schema, client compatibility
+- **Data loss:** Destructive operations without safeguards (soft-delete, backups)
+- **Failure modes:** What happens when dependencies fail (timeout, unavailable, corrupt response)
+- **Rollback difficulty:** Can deployment be reverted safely? Irreversible migrations?
+- **Dependency risks:** Single points of failure, version pinning, deprecated libraries
+- **Production edge cases:** Concurrency, race conditions, resource exhaustion, unexpected input
+
 ## Filtering Rules
 - Confidence threshold: 90% -- only suggest if you are 90%+ sure
 - Impact threshold: >10% improvement in execution quality
@@ -43,7 +52,7 @@ You are reviewing a validated Story and its implementation Tasks against the act
   "verdict": "STORY_ACCEPTABLE | SUGGESTIONS",
   "suggestions": [
     {
-      "area": "security | performance | architecture | feasibility | best_practices",
+      "area": "security | performance | architecture | feasibility | best_practices | risk_analysis",
       "issue": "What is wrong or could be improved",
       "suggestion": "Specific change to Story or Tasks",
       "reason": "Why this improves execution quality",

@@ -12,7 +12,7 @@
         "properties": {
           "area": {
             "type": "string",
-            "enum": ["security", "performance", "architecture", "feasibility", "best_practices"]
+            "enum": ["security", "performance", "architecture", "feasibility", "best_practices", "risk_analysis"]
           },
           "issue": { "type": "string" },
           "suggestion": { "type": "string" },
