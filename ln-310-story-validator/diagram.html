@@ -72,7 +72,7 @@ graph TD
     subgraph Phase5 [Phase 5: Agent Review - Parallel Aggregation]
         P5A[Prepare prompt<br/>story_review.md + Story/Tasks]
         P5A --> P5B[codex-review<br/>gpt-5.3-codex]
-        P5A --> P5C[gemini-review<br/>gemini-3-pro-preview]
+        P5A --> P5C[gemini-review<br/>gemini-3-flash-preview]
         P5B --> P5D[Aggregate suggestions<br/>Dedup by area+issue]
         P5C --> P5D
         P5D --> P5E{Both<br/>failed?}

@@ -19,15 +19,6 @@
       "skill_groups": ["300"],
       "health_check": "codex --version"
     },
-    "opencode": {
-      "name": "OpenCode CLI",
-      "command": "opencode",
-      "args": ["run"],
-      "env_override": {},
-      "timeout_seconds": 300,
-      "skill_groups": [],
-      "health_check": "opencode --version"
-    },
     "codex-review": {
       "name": "Codex CLI (Review Mode)",
       "command": "codex",
@@ -40,20 +31,11 @@
     "gemini-review": {
       "name": "Gemini 3 Flash (Review Mode)",
       "command": "gemini",
-      "args": ["--yolo", "-m", "gemini-3-flash", "--output-format", "json", "-p", ""],
+      "args": ["--yolo", "-m", "gemini-3-flash-preview", "--output-format", "json", "-p", ""],
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
       "timeout_seconds": 0,
       "skill_groups": ["311", "512"],
       "health_check": "gemini --version"
-    },
-    "opencode-review": {
-      "name": "OpenCode CLI (Review Mode)",
-      "command": "opencode",
-      "args": ["run", "--format", "json"],
-      "env_override": {},
-      "timeout_seconds": 300,
-      "skill_groups": ["311"],
-      "health_check": "opencode --version"
     }
   }
 }

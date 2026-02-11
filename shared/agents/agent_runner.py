@@ -2,7 +2,7 @@
 """
 Universal Agent Runner for Multi-Model Orchestration.
 
-Calls external CLI AI agents (Codex, Gemini, OpenCode) via subprocess
+Calls external CLI AI agents (Codex, Gemini) via subprocess
 and returns structured JSON to stdout for Claude Code consumption.
 
 Exit codes: 0 = success, 1 = agent error, 2 = agent not found/unavailable
@@ -286,7 +286,7 @@ def run_agent(agent_name, prompt, cwd, timeout, registry, output_file=None):
 def main():
     parser = argparse.ArgumentParser(
         description="Universal Agent Runner for Multi-Model Orchestration")
-    parser.add_argument("--agent", help="Agent name (gemini, codex, opencode)")
+    parser.add_argument("--agent", help="Agent name (gemini, codex)")
     parser.add_argument("--prompt", help="Prompt text (short)")
     parser.add_argument("--prompt-file", help="Path to prompt file (large context)")
     parser.add_argument("--output-file",

@@ -1,6 +1,6 @@
 # Agent Delegation Pattern
 
-Standard pattern for skills delegating work to external CLI AI agents (Codex, Gemini, OpenCode) via `shared/agents/agent_runner.py`.
+Standard pattern for skills delegating work to external CLI AI agents (Codex, Gemini) via `shared/agents/agent_runner.py`.
 
 ## When to Use
 
@@ -12,7 +12,7 @@ Standard pattern for skills delegating work to external CLI AI agents (Codex, Ge
 
 | Skill Group | Primary Agent | Model | Fallback | Use Case |
 |-------------|--------------|-------|----------|----------|
-| 200 (Decomposition) | Gemini | gemini-3-pro | Opus | Scope analysis, epic planning |
+| 200 (Decomposition) | Gemini | gemini-3-flash-preview | Opus | Scope analysis, epic planning |
 | 300 (Task Mgmt) | Codex | gpt-5.3-codex | Opus | Task decomposition, plan review |
 | 400 (Execution) | Opus (native) | claude-opus-4-6 | -- | Direct code writing |
 | 311 (Story Agent Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Story/Tasks review via ln-311 |
@@ -97,7 +97,7 @@ External agents run in non-interactive mode (`exec` / `-p`) with tool access for
 | Level | Codex | Gemini |
 |-------|-------|--------|
 | **CLI flags** | `--full-auto` (full tool access for analysis: read files, run commands, internet) | `--yolo` (auto-approve + sandbox, `permissive-open` profile — network allowed) |
-| **Output** | `--json` (JSONL stream) + `-o {file}` (final result to file) + `-C {cwd}` (working dir) | `--output-format json` (JSON envelope) + `-m gemini-3-flash` |
+| **Output** | `--json` (JSONL stream) + `-o {file}` (final result to file) + `-C {cwd}` (working dir) | `--output-format json` (JSON envelope) + `-m gemini-3-flash-preview` |
 | **Prompt** | CRITICAL CONSTRAINTS: read-only for PROJECT files, may write to -o output | CRITICAL CONSTRAINTS: read-only for PROJECT files |
 
 ## Agent Timeout Policy
