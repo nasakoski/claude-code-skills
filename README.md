@@ -17,7 +17,9 @@
 ## What's Inside
 
 ```
-claude-code-skills/
+claude-code-skills/                      # MARKETPLACE: 2 plugins, 99 skills
+|
+|  ┌─ Plugin: full-development-workflow-skills (67 skills) ─┐
 |
 |-- ln-001-standards-researcher/       # Research standards via MCP Context7/Ref
 |-- ln-002-best-practices-researcher/  # Create ADRs, guides, manuals
@@ -99,6 +101,9 @@ claude-code-skills/
 |   |   |-- ln-652-transaction-correctness-auditor/ # Scope, rollback, long-held txns
 |   |   |-- ln-653-runtime-performance-auditor/ # Blocking IO, allocations, sync sleep
 |
+|  └──────────────────────────────────────────────┘
+|  ┌─ Plugin: claude-code-bootstrap (32 skills) ────┐
+|
 |-- ln-7XX-*/                          # BOOTSTRAP (32 skills) [WORKS WITHOUT LINEAR]
 |   |-- ln-700-project-bootstrap/      # L1: CREATE or TRANSFORM project
 |   |-- ln-710-dependency-upgrader/    # Upgrade npm/nuget/pip
@@ -112,6 +117,8 @@ claude-code-skills/
 |   |-- ln-760-security-setup/         # Security scanning
 |   |-- ln-770-crosscutting-setup/     # Logging, CORS, health checks
 |   |-- ln-780-bootstrap-verifier/     # Build, test, Docker verification
+|
+|  └──────────────────────────────────────────────┘
 |
 |-- hooks/                             # AUTOMATED VALIDATION HOOKS
 |   |-- hooks.json                     # Hook configuration (copy to settings.json)
@@ -128,13 +135,21 @@ claude-code-skills/
 
 ## Installation
 
+This marketplace contains **2 plugins** — install together or separately:
+
 ```bash
-# Option 1: Plugin (Recommended)
+# Both plugins (full suite)
 /plugin add levnikolaevich/claude-code-skills
 
-# Option 2: Git Clone
-git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/skills
+# Or individually:
+/plugin add levnikolaevich/claude-code-skills --plugin full-development-workflow-skills
+/plugin add levnikolaevich/claude-code-skills --plugin claude-code-bootstrap
 ```
+
+| Plugin | Skills | Description |
+|--------|--------|-------------|
+| **full-development-workflow-skills** | 67 | Agile workflow: Documentation, Planning, Execution, Quality, Audit |
+| **claude-code-bootstrap** | 32 | Project bootstrap: CREATE or TRANSFORM to Clean Architecture |
 
 ---
 

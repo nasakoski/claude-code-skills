@@ -8,13 +8,13 @@
   },
 
   "metadata": {
-    "description": "Official marketplace for Agile Linear Workflow plugin - complete end-to-end automation for software development teams using Linear. Includes 7XX Project Bootstrap series for technology-agnostic project migration.",
+    "description": "2 plugins, 99 skills: Agile development workflow (Documentation, Planning, Execution, Quality, Audit) + Project Bootstrap (scaffolding, Docker, CI/CD, quality tooling).",
     "version": "3.0.0"
   },
   "plugins": [
     {
       "name": "full-development-workflow-skills",
-      "description": "Full development workflow skills: Bootstrap, Documentation, Planning, Execution, Quality, Audit. Requires Linear + Context7 + Ref MCP servers.",
+      "description": "67 Agile workflow skills: Documentation, Planning, Execution, Quality, Audit. Integrates with Linear, Context7, Ref MCP servers.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -53,10 +53,10 @@
         "./ln-511-code-quality-checker",
         "./ln-512-agent-reviewer",
         "./ln-513-regression-checker",
+        "./ln-520-test-planner",
         "./ln-521-test-researcher",
         "./ln-522-manual-tester",
         "./ln-523-auto-test-planner",
-        "./ln-520-test-planner",
         "./ln-600-docs-auditor",
         "./ln-601-semantic-content-auditor",
         "./ln-610-code-comments-auditor",
@@ -84,7 +84,15 @@
         "./ln-650-persistence-performance-auditor",
         "./ln-651-query-efficiency-auditor",
         "./ln-652-transaction-correctness-auditor",
-        "./ln-653-runtime-performance-auditor",
+        "./ln-653-runtime-performance-auditor"
+      ]
+    },
+    {
+      "name": "claude-code-bootstrap",
+      "description": "32 project bootstrap skills: CREATE new or TRANSFORM existing projects to production-ready Clean Architecture with Docker, CI/CD, linters, security scanning, verification. Works without Linear.",
+      "source": "./",
+      "strict": false,
+      "skills": [
         "./ln-700-project-bootstrap",
         "./ln-710-dependency-upgrader",
         "./ln-711-npm-upgrader",
