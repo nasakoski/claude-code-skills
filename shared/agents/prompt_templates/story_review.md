@@ -29,7 +29,7 @@ You are reviewing a validated Story and its implementation Tasks against the act
 ## Focus Areas
 - Are Tasks achievable given the current codebase?
 - Do Tasks reference correct files/modules/patterns from the code?
-- Are there better approaches per current best practices?
+- Are alternative approaches considered? (see Alternative Solutions section below)
 - Missing considerations (security, performance, edge cases)?
 
 ## Risk Analysis
@@ -40,6 +40,21 @@ Evaluate implementation risks that could cause production incidents:
 - **Rollback difficulty:** Can deployment be reverted safely? Irreversible migrations?
 - **Dependency risks:** Single points of failure, version pinning, deprecated libraries
 - **Production edge cases:** Concurrency, race conditions, resource exhaustion, unexpected input
+
+## Alternative Solutions
+Before finalizing, actively research whether the proposed approach is optimal:
+- **Search the web** for modern solutions (2025-2026) to the same problem domain
+- **Check if a simpler approach** exists: fewer moving parts, less code, fewer dependencies
+- **Check if a more standard approach** exists: industry patterns, well-known libraries, framework-native solutions
+- **Compare trade-offs**: if current approach has disadvantages vs alternatives, describe them concisely
+
+**Discard criteria** — do NOT suggest alternative if ANY condition met:
+- **Strictly dominated**: worse than chosen in ALL dimensions (no tradeoff exists)
+- **No unique advantage**: cannot identify single dimension where alternative outperforms chosen
+- **Fails hard requirement**: missing mandatory feature or team capability
+- **No ROI justification**: switching cost exceeds benefit
+
+Use area `architecture` for design alternatives, `best_practices` for implementation alternatives. Only suggest if 90%+ confident alternative is genuinely better.
 
 ## Filtering Rules
 - Confidence threshold: 90% -- only suggest if you are 90%+ sure

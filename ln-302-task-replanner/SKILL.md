@@ -27,7 +27,7 @@ Worker that re-syncs existing tasks to the latest requirements for any task type
 
 ## Inputs
 - Common: `taskType`, teamId, Story data (id/title/description with AC, Technical Notes, Context), existingTaskIds.
-- Implementation: idealPlan (1-6 tasks), guideLinks.
+- Implementation: idealPlan (1-8 tasks), guideLinks.
 - Refactoring: codeQualityIssues, refactoringPlan, affectedComponents.
 - Test: manualTestResults, testPlan (E2E 2-5, Integration 0-8, Unit 0-15, Priority ≤15), infra/doc/cleanup items.
 

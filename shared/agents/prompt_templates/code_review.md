@@ -56,6 +56,14 @@ You are reviewing a code implementation against its task requirements, existing 
 - No dead code, unused imports, or orphaned functions
 - DRY, SOLID principles followed
 
+**Alternative Solutions:**
+- **Is there a simpler implementation** of the same logic? (fewer lines, fewer abstractions, clearer flow)
+- **Is there a more idiomatic approach** for this language/framework? (built-in features, standard patterns)
+- **Is there a more performant approach** that maintains readability? (better algorithm, built-in optimization)
+- **Is there a more modern library/API** that solves this directly? (2025-2026 ecosystem)
+- Do NOT suggest alternatives that are merely different — only genuinely better (strictly dominates or has clear tradeoff advantage)
+- Use area `architecture` for structural alternatives, `best_practices` for implementation alternatives
+
 ## Filtering Rules
 - Confidence threshold: 90% -- only suggest if you are 90%+ sure
 - Impact threshold: >10% improvement in code quality

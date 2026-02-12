@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "3.0.0",
   "agents": {
     "gemini": {
       "name": "Gemini CLI",
@@ -23,6 +23,12 @@
       "name": "Codex CLI (Review Mode)",
       "command": "codex",
       "args": ["exec", "--json", "--full-auto", "-C", "{cwd}", "-o", "{output_file}"],
+      "resume_args": ["exec", "resume", "{session_id}", "--json", "--full-auto", "-C", "{cwd}", "-o", "{output_file}"],
+      "resume_prompt_delivery": "positional",
+      "session_id_capture": {
+        "strategy": "from_jsonl_field",
+        "field_path": "session_id"
+      },
       "env_override": {},
       "timeout_seconds": 0,
       "skill_groups": ["311", "512"],
@@ -32,6 +38,13 @@
       "name": "Gemini 3 Flash (Review Mode)",
       "command": "gemini",
       "args": ["--yolo", "-m", "gemini-3-flash-preview", "--output-format", "json", "-p", ""],
+      "resume_args": ["--resume", "{session_id}", "--yolo", "-m", "gemini-3-flash-preview", "--output-format", "json", "-p", ""],
+      "resume_prompt_delivery": "flag",
+      "session_id_capture": {
+        "strategy": "from_list_command",
+        "command": "gemini --list-sessions",
+        "parse": "first_uuid"
+      },
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
       "timeout_seconds": 0,
       "skill_groups": ["311", "512"],

@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2026-02-12
+
+Session Resume for Agent Debate: ln-311 and ln-512 now resume Codex/Gemini sessions during challenge/follow-up rounds via `--resume-session` flag, preserving full agent context (file analysis, reasoning). New: agent_runner.py session capture + fallback to stateless, agent_registry.json v3.0 with resume_args/session_id_capture config. `.agent-review/` existence check before creation, removed auto-add to .gitignore. New skill: ln-003-push-all (commit+push all changes). Total skills: 99 → 100.
+
+---
+
 ## 2026-02-11
 
 Agent Review v2.0: ln-311 and ln-512 with Critical Verification + Debate Protocol (background tasks, process-as-arrive, challenge rounds via challenge_review.md). Risk Analysis: ln-310 criterion #20 with 6 risk categories and Impact x Probability scoring (20 criteria, 8 groups, max 75 penalty points). New shared infra: agent_registry.json v2.0 (no timeouts), agent_runner.py --output-file/placeholder support. New audit skills: ln-601, ln-631-635, ln-643-644, ln-650-653. Total skills: 85 → 99.

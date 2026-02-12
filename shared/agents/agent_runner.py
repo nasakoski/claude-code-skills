@@ -5,12 +5,15 @@ Universal Agent Runner for Multi-Model Orchestration.
 Calls external CLI AI agents (Codex, Gemini) via subprocess
 and returns structured JSON to stdout for Claude Code consumption.
 
+Supports session resume for multi-turn debate (challenge/follow-up rounds).
+
 Exit codes: 0 = success, 1 = agent error, 2 = agent not found/unavailable
 
 Usage:
     python agent_runner.py --agent gemini --prompt "Analyze scope..."
     python agent_runner.py --agent codex --prompt-file /tmp/prompt.md --cwd /project
     python agent_runner.py --agent codex-review --prompt-file prompt.md --output-file result.md --cwd /project
+    python agent_runner.py --agent codex-review --resume-session abc-123 --prompt-file challenge.md --output-file result.md --cwd /project
     python agent_runner.py --health-check
     python agent_runner.py --list-agents
 """
@@ -18,6 +21,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -26,6 +30,11 @@ import time
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTRY_PATH = os.path.join(SCRIPT_DIR, "agent_registry.json")
 IS_WINDOWS = sys.platform == "win32"
+
+UUID_PATTERN = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+    re.IGNORECASE,
+)
 
 
 def load_registry():
@@ -41,7 +50,7 @@ def build_env(agent_cfg):
 
 
 def resolve_arg_placeholders(args, context):
-    """Replace {cwd}, {output_file} placeholders in args.
+    """Replace {cwd}, {output_file}, {session_id} placeholders in args.
 
     If a placeholder value is empty/None, removes the flag AND its value.
     E.g., args=["-C", "{cwd}", "-o", "{output_file}"] with output_file=None
@@ -56,22 +65,18 @@ def resolve_arg_placeholders(args, context):
 
         has_placeholder = "{" in arg and "}" in arg
         if has_placeholder:
-            # Resolve placeholder
             value = arg
             for key, val in context.items():
                 value = value.replace("{%s}" % key, str(val) if val else "")
-            # If resolved to empty string, skip this arg and the preceding flag
             if not value:
                 if resolved and resolved[-1].startswith("-"):
                     resolved.pop()
                 continue
             resolved.append(value)
         else:
-            # Check if next arg is a placeholder that will be empty
             if i + 1 < len(args):
                 next_arg = args[i + 1]
                 if "{" in next_arg and "}" in next_arg:
-                    # Check if the placeholder will resolve to empty
                     next_val = next_arg
                     for key, val in context.items():
                         next_val = next_val.replace(
@@ -86,12 +91,73 @@ def resolve_arg_placeholders(args, context):
 
 def build_command(agent_cfg, resolved_args):
     cmd_path = shutil.which(agent_cfg["command"]) or agent_cfg["command"]
-    # On Windows, .cmd/.bat wrappers need cmd /c prefix
     if IS_WINDOWS and cmd_path.lower().endswith((".cmd", ".bat")):
         cmd = ["cmd", "/c", cmd_path] + resolved_args
     else:
         cmd = [cmd_path] + resolved_args
     return cmd
+
+
+def capture_session_id(agent_cfg, raw_stdout):
+    """Extract session ID from agent output based on capture strategy.
+
+    Returns session_id string or None if not captured.
+    """
+    capture_cfg = agent_cfg.get("session_id_capture")
+    if not capture_cfg:
+        return None
+
+    strategy = capture_cfg.get("strategy")
+
+    if strategy == "from_jsonl_field":
+        field = capture_cfg.get("field_path", "session_id")
+        for line in raw_stdout.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+                # Walk nested path (e.g. "item.session_id")
+                value = event
+                for part in field.split("."):
+                    if isinstance(value, dict):
+                        value = value.get(part)
+                    else:
+                        value = None
+                        break
+                if value and isinstance(value, str):
+                    return value
+            except (json.JSONDecodeError, KeyError, TypeError):
+                continue
+        # Fallback: scan raw output for UUID pattern
+        match = UUID_PATTERN.search(raw_stdout)
+        return match.group(0) if match else None
+
+    if strategy == "from_list_command":
+        list_cmd = capture_cfg.get("command", "")
+        if not list_cmd:
+            return None
+        try:
+            parts = list_cmd.split()
+            cmd_path = shutil.which(parts[0])
+            if not cmd_path:
+                return None
+            if IS_WINDOWS and cmd_path.lower().endswith((".cmd", ".bat")):
+                parts = ["cmd", "/c", cmd_path] + parts[1:]
+            else:
+                parts[0] = cmd_path
+            result = subprocess.run(
+                parts,
+                capture_output=True, text=True, timeout=15,
+                encoding="utf-8", errors="replace"
+            )
+            # Parse first UUID from output
+            match = UUID_PATTERN.search(result.stdout)
+            return match.group(0) if match else None
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return None
+
+    return None
 
 
 def check_agent_health(agent_name, registry):
@@ -149,7 +215,8 @@ def parse_gemini_json(raw_output):
     return None
 
 
-def write_result_file(output_file, agent_name, response, duration, exit_code):
+def write_result_file(output_file, agent_name, response, duration, exit_code,
+                      session_id=None):
     """Write standardized result file with metadata wrapper."""
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     header = (
@@ -157,8 +224,11 @@ def write_result_file(output_file, agent_name, response, duration, exit_code):
         "<!-- agent: %s -->\n"
         "<!-- timestamp: %s -->\n"
         "<!-- duration_seconds: %.2f -->\n"
-        "<!-- exit_code: %d -->\n\n"
+        "<!-- exit_code: %d -->\n"
     ) % (agent_name, timestamp, duration, exit_code)
+    if session_id:
+        header += "<!-- session_id: %s -->\n" % session_id
+    header += "\n"
     footer = "\n\n<!-- END_AGENT_REVIEW_RESULT -->\n"
 
     os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
@@ -166,13 +236,102 @@ def write_result_file(output_file, agent_name, response, duration, exit_code):
         f.write(header + (response or "") + footer)
 
 
-def run_agent(agent_name, prompt, cwd, timeout, registry, output_file=None):
+def _execute_agent(agent_cfg, cmd, prompt, stdin_prompt, effective_timeout,
+                   subprocess_cwd, env, output_file, agent_name):
+    """Run agent subprocess and return parsed result dict.
+
+    Args:
+        stdin_prompt: prompt text for stdin, or None if prompt is positional.
+    """
+    start = time.time()
+    try:
+        result = subprocess.run(
+            cmd,
+            input=stdin_prompt,
+            capture_output=True, text=True,
+            timeout=effective_timeout,
+            cwd=subprocess_cwd, env=env,
+            encoding="utf-8", errors="replace"
+        )
+        duration = round(time.time() - start, 2)
+
+        # Capture session ID from stdout before any further processing
+        session_id = capture_session_id(agent_cfg, result.stdout)
+
+        agent_wrote_file = (
+            output_file
+            and os.path.exists(output_file)
+            and os.path.getsize(output_file) > 0
+        )
+
+        if agent_wrote_file:
+            with open(output_file, "r", encoding="utf-8") as f:
+                response = f.read().strip()
+            write_result_file(output_file, agent_name, response,
+                              duration, result.returncode, session_id)
+        else:
+            # Determine which args template was used for format detection
+            args = agent_cfg.get("args", [])
+            if "--json" in args or "--json" in cmd:
+                response = parse_codex_jsonl(result.stdout)
+                if response is None:
+                    response = result.stdout.strip()
+            elif "--output-format" in args or "--output-format" in cmd:
+                response = parse_gemini_json(result.stdout)
+                if response is None:
+                    response = result.stdout.strip()
+            else:
+                response = result.stdout.strip()
+
+            if not response and result.stderr.strip():
+                response = result.stderr.strip()
+
+            if output_file:
+                write_result_file(output_file, agent_name, response,
+                                  duration, result.returncode, session_id)
+
+        if result.returncode != 0:
+            return {
+                "success": False, "agent": agent_name,
+                "response": response or None,
+                "duration_seconds": duration,
+                "error": "Exit code %d" % result.returncode,
+                "session_id": session_id,
+            }
+
+        return {
+            "success": True, "agent": agent_name,
+            "response": response, "duration_seconds": duration,
+            "error": None,
+            "session_id": session_id,
+        }
+
+    except subprocess.TimeoutExpired:
+        duration = round(time.time() - start, 2)
+        return {
+            "success": False, "agent": agent_name,
+            "response": None, "duration_seconds": duration,
+            "error": "Timeout after %d seconds" % effective_timeout,
+            "session_id": None,
+        }
+    except FileNotFoundError:
+        return {
+            "success": False, "agent": agent_name,
+            "response": None, "duration_seconds": 0,
+            "error": "Command '%s' not found" % agent_cfg["command"],
+            "session_id": None,
+        }
+
+
+def run_agent(agent_name, prompt, cwd, timeout, registry, output_file=None,
+              resume_session=None):
     agent_cfg = registry["agents"].get(agent_name)
     if not agent_cfg:
         return {
             "success": False, "agent": agent_name,
             "response": None, "duration_seconds": 0,
-            "error": "Agent '%s' not found in registry" % agent_name
+            "error": "Agent '%s' not found in registry" % agent_name,
+            "session_id": None, "session_resumed": False,
         }
 
     cmd_path = shutil.which(agent_cfg["command"])
@@ -180,17 +339,17 @@ def run_agent(agent_name, prompt, cwd, timeout, registry, output_file=None):
         return {
             "success": False, "agent": agent_name,
             "response": None, "duration_seconds": 0,
-            "error": "Command '%s' not found in PATH" % agent_cfg["command"]
+            "error": "Command '%s' not found in PATH" % agent_cfg["command"],
+            "session_id": None, "session_resumed": False,
         }
 
-    # Resolve placeholders in args ({cwd}, {output_file})
     context = {
         "cwd": cwd or os.getcwd(),
         "output_file": output_file or "",
+        "session_id": resume_session or "",
     }
-    resolved_args = resolve_arg_placeholders(agent_cfg.get("args", []), context)
 
-    # Determine timeout: 0 means no limit (agent runs until completion)
+    # Determine timeout
     cfg_timeout = agent_cfg.get("timeout_seconds", 300)
     if timeout:
         effective_timeout = timeout
@@ -199,88 +358,70 @@ def run_agent(agent_name, prompt, cwd, timeout, registry, output_file=None):
     else:
         effective_timeout = cfg_timeout
 
-    # If -C flag is in resolved args, agent handles its own cwd
-    subprocess_cwd = None if "-C" in resolved_args else cwd
-
-    cmd = build_command(agent_cfg, resolved_args)
     env = build_env(agent_cfg)
 
-    start = time.time()
-    try:
-        result = subprocess.run(
-            cmd,
-            input=prompt,
-            capture_output=True, text=True,
-            timeout=effective_timeout,
-            cwd=subprocess_cwd, env=env,
-            encoding="utf-8", errors="replace"
-        )
-        duration = round(time.time() - start, 2)
+    # Try resume mode if session ID provided and agent supports it
+    use_resume = (
+        resume_session
+        and agent_cfg.get("resume_args")
+    )
 
-        # Check if agent wrote output file directly (e.g., codex -o)
-        agent_wrote_file = (
-            output_file
-            and os.path.exists(output_file)
-            and os.path.getsize(output_file) > 0
-        )
+    if use_resume:
+        resume_args_template = agent_cfg["resume_args"]
+        resolved_args = resolve_arg_placeholders(resume_args_template, context)
 
-        if agent_wrote_file:
-            # Agent wrote result file; read it as the response
-            with open(output_file, "r", encoding="utf-8") as f:
-                response = f.read().strip()
-            # Wrap with metadata header/footer
-            write_result_file(output_file, agent_name, response,
-                              duration, result.returncode)
+        # Prompt delivery: positional (append to args) or flag/stdin
+        delivery = agent_cfg.get("resume_prompt_delivery", "flag")
+        if delivery == "positional":
+            resolved_args.append(prompt)
+            stdin_prompt = None
         else:
-            # Parse agent-specific output formats from stdout
-            args = agent_cfg.get("args", [])
-            if "--json" in args:
-                response = parse_codex_jsonl(result.stdout)
-                if response is None:
-                    response = result.stdout.strip()
-            elif "--output-format" in args:
-                response = parse_gemini_json(result.stdout)
-                if response is None:
-                    response = result.stdout.strip()
-            else:
-                response = result.stdout.strip()
+            stdin_prompt = prompt
 
-            # Stderr may contain progress/warnings; use if stdout empty
-            if not response and result.stderr.strip():
-                response = result.stderr.strip()
+        subprocess_cwd = None if "-C" in resolved_args else cwd
+        cmd = build_command(agent_cfg, resolved_args)
 
-            # Write result file if output_file requested but agent didn't write
-            if output_file:
-                write_result_file(output_file, agent_name, response,
-                                  duration, result.returncode)
+        result = _execute_agent(
+            agent_cfg, cmd, prompt, stdin_prompt, effective_timeout,
+            subprocess_cwd, env, output_file, agent_name
+        )
 
-        if result.returncode != 0:
-            return {
-                "success": False, "agent": agent_name,
-                "response": response or None,
-                "duration_seconds": duration,
-                "error": "Exit code %d" % result.returncode
-            }
+        # Check if resume actually worked
+        resume_failed = (
+            not result["success"]
+            and result.get("error", "")
+            and ("session" in result["error"].lower()
+                 or "not found" in result["error"].lower()
+                 or "expired" in result["error"].lower())
+        )
 
-        return {
-            "success": True, "agent": agent_name,
-            "response": response, "duration_seconds": duration,
-            "error": None
-        }
+        if resume_failed:
+            # Fallback: run stateless (normal args)
+            sys.stderr.write(
+                "WARNING: Session resume failed for %s (session=%s), "
+                "falling back to stateless. Error: %s\n"
+                % (agent_name, resume_session, result.get("error"))
+            )
+            # Clear output file if resume wrote partial data
+            if output_file and os.path.exists(output_file):
+                os.remove(output_file)
+        else:
+            result["session_resumed"] = True
+            return result
 
-    except subprocess.TimeoutExpired:
-        duration = round(time.time() - start, 2)
-        return {
-            "success": False, "agent": agent_name,
-            "response": None, "duration_seconds": duration,
-            "error": "Timeout after %d seconds" % effective_timeout
-        }
-    except FileNotFoundError:
-        return {
-            "success": False, "agent": agent_name,
-            "response": None, "duration_seconds": 0,
-            "error": "Command '%s' not found" % agent_cfg["command"]
-        }
+    # Normal (stateless) execution
+    resolved_args = resolve_arg_placeholders(
+        agent_cfg.get("args", []), context
+    )
+    subprocess_cwd = None if "-C" in resolved_args else cwd
+    cmd = build_command(agent_cfg, resolved_args)
+
+    result = _execute_agent(
+        agent_cfg, cmd, prompt, prompt, effective_timeout,
+        subprocess_cwd, env, output_file, agent_name
+    )
+    result["session_resumed"] = False
+    return result
 
 
 def main():
@@ -293,6 +434,8 @@ def main():
                         help="Path for result file (agent writes or runner writes)")
     parser.add_argument("--cwd", help="Working directory for agent", default=None)
     parser.add_argument("--timeout", type=int, help="Timeout override (seconds)")
+    parser.add_argument("--resume-session",
+                        help="Session ID to resume (for challenge/follow-up rounds)")
     parser.add_argument("--health-check", action="store_true",
                         help="Check all agents availability")
     parser.add_argument("--list-agents", action="store_true",
@@ -328,8 +471,11 @@ def main():
     if not prompt:
         parser.error("--prompt or --prompt-file is required")
 
-    result = run_agent(args.agent, prompt, args.cwd, args.timeout, registry,
-                       output_file=args.output_file)
+    result = run_agent(
+        args.agent, prompt, args.cwd, args.timeout, registry,
+        output_file=args.output_file,
+        resume_session=args.resume_session,
+    )
     print(json.dumps(result, ensure_ascii=False))
     sys.exit(
         0 if result["success"]

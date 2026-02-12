@@ -8,18 +8,19 @@
   },
 
   "metadata": {
-    "description": "2 plugins, 99 skills: Agile development workflow (Documentation, Planning, Execution, Quality, Audit) + Project Bootstrap (scaffolding, Docker, CI/CD, quality tooling).",
-    "version": "3.0.0"
+    "description": "2 plugins, 100 skills: Agile development workflow (Documentation, Planning, Execution, Quality, Audit) + Project Bootstrap (scaffolding, Docker, CI/CD, quality tooling).",
+    "version": "3.1.0"
   },
   "plugins": [
     {
       "name": "full-development-workflow-skills",
-      "description": "67 Agile workflow skills: Documentation, Planning, Execution, Quality, Audit. Integrates with Linear, Context7, Ref MCP servers.",
+      "description": "68 Agile workflow skills: Documentation, Planning, Execution, Quality, Audit. Integrates with Linear, Context7, Ref MCP servers.",
       "source": "./",
       "strict": false,
       "skills": [
         "./ln-001-standards-researcher",
         "./ln-002-best-practices-researcher",
+        "./ln-003-push-all",
         "./ln-100-documents-pipeline",
         "./ln-110-project-docs-coordinator",
         "./ln-111-root-docs-creator",

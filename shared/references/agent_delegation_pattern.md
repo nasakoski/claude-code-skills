@@ -43,6 +43,9 @@ python shared/agents/agent_runner.py --agent codex --prompt "Review this plan...
 # Large context via file with output (recommended)
 python shared/agents/agent_runner.py --agent codex-review --prompt-file prompt.md --output-file result.md --cwd /project
 
+# Resume session for debate (challenge/follow-up rounds only)
+python shared/agents/agent_runner.py --agent codex-review --resume-session abc-123 --prompt-file challenge.md --output-file result.md --cwd /project
+
 # Health check
 python shared/agents/agent_runner.py --health-check
 ```
@@ -57,9 +60,14 @@ python shared/agents/agent_runner.py --health-check
   "agent": "codex-review",
   "response": "...",
   "duration_seconds": 12.4,
-  "error": null
+  "error": null,
+  "session_id": "7f9f9a2e-1b3c-4c7a-9b0e-...",
+  "session_resumed": false
 }
 ```
+
+- `session_id`: captured from agent output after execution (null if capture failed)
+- `session_resumed`: true only when `--resume-session` was used and succeeded
 
 ### Result File Format (when --output-file used)
 
@@ -69,11 +77,14 @@ python shared/agents/agent_runner.py --health-check
 <!-- timestamp: 2026-02-11T14:30:00Z -->
 <!-- duration_seconds: 12.40 -->
 <!-- exit_code: 0 -->
+<!-- session_id: 7f9f9a2e-1b3c-4c7a-9b0e-... -->
 
 {raw agent JSON response}
 
 <!-- END_AGENT_REVIEW_RESULT -->
 ```
+
+- `session_id` line is included only when captured (omitted if null)
 
 **Behavior:**
 - If agent writes to output file natively (codex `-o`): runner reads, wraps with metadata, rewrites
@@ -199,13 +210,25 @@ Agent Suggestion --> Claude Evaluation --> AGREE? --> Accept as-is
                                               Agent MODIFY (disagree) ----------------> Reject (final)
 ```
 
+### Session Resume for Debate Rounds
+
+Challenge and follow-up rounds resume the agent's original review session to preserve full context (file analysis, reasoning, codebase understanding). Initial review always runs stateless.
+
+1. After initial review: parse `session_id` from runner JSON output, write to `.agent-review/{agent}/{identifier}_session.json`
+2. Before challenge/follow-up: read `session_id` from session file
+3. Pass `--resume-session {session_id}` to runner — agent continues in same session
+4. If resume fails: runner falls back to stateless execution automatically (logged as warning)
+
+Session file format: `{"agent": "codex-review", "session_id": "...", "review_type": "storyreview", "created_at": "..."}`
+
 ### Challenge Round 1
 
 1. Build prompt from `shared/agents/prompt_templates/challenge_review.md`
 2. Fill: original suggestion details + Claude's specific counterargument
 3. Save to `.agent-review/{agent}/{id}_{reviewtype}_challenge_{N}_prompt.md`
-4. Run same agent with challenge prompt + `--output-file`
-5. Parse response (DEFEND/WITHDRAW/MODIFY)
+4. Read `session_id` from `.agent-review/{agent}/{identifier}_session.json`
+5. Run same agent with `--resume-session {session_id}` + challenge prompt + `--output-file`
+6. Parse response (DEFEND/WITHDRAW/MODIFY)
 
 **Round 1 Resolution:**
 
@@ -222,8 +245,9 @@ Agent Suggestion --> Claude Evaluation --> AGREE? --> Accept as-is
 1. Build prompt from `shared/agents/prompt_templates/challenge_review.md` with updated placeholders:
    - `{counterargument}` = Claude's specific rejection reason from Round 1, including: what evidence was insufficient, what was checked, why revision was not accepted
 2. Save to `.agent-review/{agent}/{id}_{reviewtype}_followup_{N}_prompt.md`
-3. Run same agent with follow-up prompt + `--output-file`
-4. Parse response
+3. Read `session_id` from `.agent-review/{agent}/{identifier}_session.json`
+4. Run same agent with `--resume-session {session_id}` + follow-up prompt + `--output-file`
+5. Parse response
 
 **Follow-Up Resolution (final, no further rounds):**
 
@@ -251,7 +275,7 @@ Agent Suggestion --> Claude Evaluation --> AGREE? --> Accept as-is
 Standard steps before launching agents (performed inside ln-311/ln-512):
 
 1. **Get references:** Call Linear MCP `get_issue(storyId)` for Story URL + `list_issues(parent)` for Task URLs. If project stores tasks locally → use file paths.
-2. **Ensure .agent-review/:** Create `.agent-review/{agent}/` dirs. Create `.agent-review/.gitignore` (with `*` + `!.gitignore`). Add `.agent-review/` to project root `.gitignore` if missing.
+2. **Ensure .agent-review/:** If `.agent-review/` exists, reuse as-is. If not, create it with `.gitignore` (content: `*` + `!.gitignore`). Create `.agent-review/{agent}/` subdirs only if they don't exist. Do NOT add `.agent-review/` to project root `.gitignore`.
 3. **Build prompt:** Load template, replace `{story_ref}` and `{task_refs}` with actual references (Linear URLs or file paths).
 4. **Save prompt:** To `.agent-review/{agent_name}/{identifier}_{review_type}_prompt.md`
 5. **Run agents:** `--prompt-file {prompt_path} --output-file {result_path} --cwd {project_dir}` — agents access Story/Tasks via references, runner writes result file
@@ -269,6 +293,7 @@ Standard steps before launching agents (performed inside ln-311/ln-512):
 .agent-review/
 ├── .gitignore              # * + !.gitignore
 ├── codex/
+│   ├── PROJ-123_session.json                        # Session tracking for debate resume
 │   ├── PROJ-123_storyreview_prompt.md
 │   ├── PROJ-123_storyreview_result.md
 │   ├── PROJ-123_storyreview_challenge_1_prompt.md    # Round 1 debate
@@ -278,6 +303,7 @@ Standard steps before launching agents (performed inside ln-311/ln-512):
 │   ├── PROJ-123_codereview_prompt.md
 │   └── PROJ-123_codereview_result.md
 └── gemini/
+    ├── PROJ-123_session.json                        # Session tracking for debate resume
     ├── PROJ-123_storyreview_prompt.md
     ├── PROJ-123_storyreview_result.md
     ├── PROJ-123_codereview_prompt.md
@@ -307,7 +333,7 @@ Standard steps before launching agents (performed inside ln-311/ln-512):
 | Delete review artifacts after agents complete | Persist prompts, results, and challenges in `.agent-review/{agent}/` |
 | Trust agent output blindly | Claude critically verifies each suggestion + debates if disagreeing |
 | Use agents for project file writes | Agents write only to `-o` output file; analysis-only |
-| Chain multiple agent calls | One call per task, stateless (challenge is a separate call) |
+| Chain multiple agent calls | One call per task; challenge/follow-up use `--resume-session` for context continuity |
 | Hard-depend on agent availability | Always have Opus fallback |
 | Run health check in parent skill | Health check inside agent review worker (ln-311/ln-512) |
 | Kill agent tasks with TaskStop | Let agents complete; no artificial timeouts |

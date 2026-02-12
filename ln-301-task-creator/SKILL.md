@@ -27,7 +27,7 @@ Worker that generates task documents and creates Linear issues for implementatio
 
 ## Inputs
 - Common: `taskType`, teamId, Story data (id/title/description with AC, Technical Notes, Context).
-- Implementation CREATE: idealPlan (1-6 tasks), guideLinks.
+- Implementation CREATE: idealPlan (1-8 tasks), guideLinks.
 - Implementation ADD: appendMode=true, newTaskDescription, guideLinks.
 - Refactoring: codeQualityIssues, refactoringPlan, affectedComponents.
 - Test: manualTestResults, testPlan (E2E 2-5, Integration 0-8, Unit 0-15, Priority ≤15), infra/doc/cleanup items.

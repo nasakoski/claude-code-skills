@@ -50,7 +50,7 @@ All skills have state diagrams in `diagram.html` files for visualizing workflows
 
 ### Available Skills
 
-**99 skills** in 8 categories (0XX Shared/Research, 1XX Documentation, 2XX Planning, 3XX Task Management, 4XX Execution, 5XX Quality, 6XX Audit, 7XX Bootstrap). See [README.md](README.md#-features) for complete skill list with descriptions and versions.
+**100 skills** in 8 categories (0XX Shared/Research, 1XX Documentation, 2XX Planning, 3XX Task Management, 4XX Execution, 5XX Quality, 6XX Audit, 7XX Bootstrap). See [README.md](README.md#-features) for complete skill list with descriptions and versions.
 
 **Key workflow:** ln-700-project-bootstrap → ln-100-documents-pipeline → ln-201-opportunity-discoverer (optional) → ln-200-scope-decomposer → ln-400-story-executor → ln-500-story-quality-gate
 

@@ -1,7 +1,7 @@
 # Claude Code Skills
 
-![Version](https://img.shields.io/badge/version-3.0.0-blue)
-![Skills](https://img.shields.io/badge/skills-99-green)
+![Version](https://img.shields.io/badge/version-3.1.0-blue)
+![Skills](https://img.shields.io/badge/skills-100-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -17,12 +17,13 @@
 ## What's Inside
 
 ```
-claude-code-skills/                      # MARKETPLACE: 2 plugins, 99 skills
+claude-code-skills/                      # MARKETPLACE: 2 plugins, 100 skills
 |
-|  ┌─ Plugin: full-development-workflow-skills (67 skills) ─┐
+|  ┌─ Plugin: full-development-workflow-skills (68 skills) ─┐
 |
 |-- ln-001-standards-researcher/       # Research standards via MCP Context7/Ref
 |-- ln-002-best-practices-researcher/  # Create ADRs, guides, manuals
+|-- ln-003-push-all/                   # Commit and push all changes in one command
 |
 |-- ln-1XX-*/                          # DOCUMENTATION (13 skills)
 |   |-- ln-100-documents-pipeline/     # L1 Orchestrator: complete docs in one command

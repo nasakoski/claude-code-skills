@@ -10,12 +10,12 @@ For ln-220-story-coordinator and ln-221-story-creator.
 
 | # | Criterion | Penalty | Rule |
 |---|-----------|---------|------|
-| 1 | Story Structure | 1 | 8 sections per template: Statement, Description, AC, Technical Notes, Affected Components, Out of Scope, Dependencies, Test Strategy |
+| 1 | Story Structure | 1 | 8 sections per template (in order): Story, Context, Acceptance Criteria, Implementation Tasks, Test Strategy, Technical Notes, Definition of Done, Dependencies |
 | 3 | Story Statement | 1 | Format: "As a {persona}, I want {capability}, so that {value}" — all 3 parts required |
 | 4 | AC Quality | 3 | 3-5 Given/When/Then scenarios: happy path + error + edge case. Include HTTP codes, timing, exact messages |
 | 5 | Standards Compliance | 10 | Every technical decision references specific RFC/OWASP/REST standard by number in Technical Notes. Use ln-001 research results |
 | 6 | Library & Version | 5 | Latest stable versions in Technical Notes. Query Context7/MCP Ref to verify |
-| 9 | Story Size | 3 | 3-5 AC, 6-20 hours total, 10-28 tests planned. If outside range — split or merge |
+| 9 | Story Size | 3 | 1-8 tasks (3-5 optimal), 3-5 AC, 6-20 hours total, 10-28 tests planned. If outside range — split or merge |
 | 11 | YAGNI | 3 | Each AC = real user need. No speculative features. Every Task maps to >= 1 AC |
 | 12 | KISS | 3 | Simplest approach. No task requires >3 new abstractions. If >3 — split or simplify |
 | 14 | Documentation | 5 | Pattern docs (from ln-002 research) referenced in Technical Notes. No orphan patterns |
@@ -31,7 +31,7 @@ For ln-300-task-coordinator and ln-301-task-creator.
 
 | # | Criterion | Penalty | Rule |
 |---|-----------|---------|------|
-| 2 | Tasks Structure | 1/task | 7 sections per template: Title, Description, AC, Technical Approach, Affected Components, Existing Code Impact, Dependencies |
+| 2 | Tasks Structure | 1/task | 7 sections per template (in order): Context, Implementation Plan, Technical Approach, Acceptance Criteria, Affected Components, Existing Code Impact, Definition of Done |
 | 8 | Doc Integration | 3 | No standalone doc-only tasks. Doc updates fold into implementation task DoD |
 | 13 | Task Order | 3 | Foundation-First: DB -> Service -> API -> UI. Each layer builds on previous |
 | 15 | Code Quality | 3 | No hardcoded values in Technical Approach. Use config/env/constants |
@@ -41,12 +41,13 @@ For ln-300-task-coordinator and ln-301-task-creator.
 
 ## Validation-Only Criteria
 
-These 2 criteria are handled by ln-310 during validation, NOT by creators:
+These 3 criteria are handled by ln-310 during validation, NOT by creators:
 
 | # | Criterion | Why validation-only |
 |---|-----------|---------------------|
 | 7 | Test Strategy | Section is placeholder at creation; filled by test planning later |
 | 10 | Test Task Cleanup | Cleanup action during validation; no premature test tasks expected |
+| 20 | Risk Analysis | Validator scans Story/Tasks for unmitigated risks (R1-R6) via keyword detection in Technical Notes and Implementation Plan |
 
 ---
 **Version:** 1.0.0

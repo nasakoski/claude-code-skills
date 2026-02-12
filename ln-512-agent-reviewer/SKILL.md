@@ -37,7 +37,11 @@ Runs parallel external agent reviews on code implementation, critically verifies
 2) **Get references:** Call Linear MCP `get_issue(storyId)` -> extract URL + identifier. Call `list_issues(filter: {parent: {id: storyId}, status: "Done"})` -> extract Done implementation Task URLs/identifiers (exclude label "tests").
    - If project stores tasks locally (e.g., `docs/tasks/`) -> use local file paths instead of Linear URLs.
 
-3) **Ensure .agent-review/:** Create `.agent-review/{agent}/` dirs for each available agent (e.g., `codex/`, `gemini/`). Create `.agent-review/.gitignore` with content `*` + `!.gitignore`. Add `.agent-review/` to project root `.gitignore` if missing.
+3) **Ensure .agent-review/:**
+   - If `.agent-review/` exists -> reuse as-is, do NOT recreate `.gitignore`
+   - If `.agent-review/` does NOT exist -> create it + `.agent-review/.gitignore` (content: `*` + `!.gitignore`)
+   - Create `.agent-review/{agent}/` subdirs only if they don't exist
+   - Do NOT add `.agent-review/` to project root `.gitignore`
 
 4) **Build prompt:** Read template `shared/agents/prompt_templates/code_review.md`.
    - Replace `{story_ref}` with `- Linear: {url}` or `- File: {path}`
@@ -53,6 +57,7 @@ Runs parallel external agent reviews on code implementation, critically verifies
    b) When first agent completes (background task notification):
       - Read its result file from `.agent-review/{agent}/{identifier}_codereview_result.md`
       - Parse JSON between `<!-- AGENT_REVIEW_RESULT -->` / `<!-- END_AGENT_REVIEW_RESULT -->` markers
+      - Parse `session_id` from runner JSON output; write `.agent-review/{agent}/{identifier}_session.json`: `{"agent": "...", "session_id": "...", "review_type": "codereview", "created_at": "..."}`
       - Proceed to Step 6 (Critical Verification) for this agent's suggestions
 
    c) When second agent completes:
@@ -70,7 +75,10 @@ Runs parallel external agent reviews on code implementation, critically verifies
 
    b) **AGREE** → accept as-is. **DISAGREE/UNCERTAIN** → initiate challenge.
 
-   c) **Challenge + Follow-Up:** Follow Debate Protocol (Challenge Round 1 → Follow-Up Round if not resolved). Skill-specific placeholders:
+   c) **Challenge + Follow-Up (with session resume):** Follow Debate Protocol (Challenge Round 1 → Follow-Up Round if not resolved). Resume agent's review session for full context continuity:
+      - Read `session_id` from `.agent-review/{agent}/{identifier}_session.json`
+      - Run with `--resume-session {session_id}` — agent continues in same session, preserving file analysis and reasoning
+      - If `session_resumed: false` in result → log warning, result still valid (stateless fallback)
       - `{review_type}` = "Code Implementation"
       - Challenge files: `.agent-review/{agent}/{identifier}_codereview_challenge_{N}_prompt.md` / `_result.md`
       - Follow-up files: `.agent-review/{agent}/{identifier}_codereview_followup_{N}_prompt.md` / `_result.md`
@@ -132,7 +140,7 @@ debate_log:
 - JSON output schema required from agents (via `--json` / `--output-format json`)
 - Log all attempts for user visibility (agent name, duration, suggestion count)
 - **Persist** prompts, results, and challenge artifacts in `.agent-review/{agent}/` — do NOT delete
-- Ensure `.agent-review/.gitignore` exists before creating files
+- Ensure `.agent-review/.gitignore` exists before creating files (only create if `.agent-review/` is new)
 - **MANDATORY INVOCATION:** Parent skills MUST invoke this skill. Returns SKIPPED gracefully if agents unavailable. Parent must NOT pre-check and skip.
 - **NO TIMEOUT KILL:** Do NOT kill agent background tasks if they are running. Agents have no time limit as long as they have not crashed with an error. Only a hard crash (non-zero exit code, connection error) is treated as failure. TaskStop is FORBIDDEN for agent tasks.
 - **CRITICAL VERIFICATION:** Do NOT trust agent suggestions blindly. Claude MUST independently verify each suggestion and debate if disagreeing. Accept only after verification.
@@ -141,13 +149,14 @@ debate_log:
 
 - Health check executed; available agents identified (or SKIPPED returned if none)
 - Story + Done implementation Tasks fetched from Linear (or local files)
-- `.agent-review/` directory created with `.gitignore` and per-agent subdirs
+- `.agent-review/` directory ensured (reused if exists, created with `.gitignore` if new) with per-agent subdirs
 - Prompt built from template with story/task references, saved per agent
 - All available agents launched as background tasks; raw results saved to `.agent-review/{agent}/`
 - Each suggestion critically verified by Claude; challenges executed for disagreements
 - Follow-up rounds executed for suggestions rejected after Round 1 (DEFEND+weak / MODIFY+disagree)
 - Challenge and follow-up prompts/results persisted alongside review artifacts
 - Suggestions aggregated, deduplicated by (area, issue), filtered (confidence >= 90, impact > 2%)
+- Session files persisted in `.agent-review/{agent}/{identifier}_session.json` for debate resume
 - JSON result returned to parent skill with verdict, suggestions list, agent_stats, and debate_log
 
 ## Reference Files
