@@ -627,8 +627,8 @@ Append Infrastructure Issues section:
   ELSE:
     _No infrastructure issues._
 
-Append Recommendations section (auto-generated):
-  ## Recommendations
+Append Operational Recommendations section (auto-generated from counters):
+  ## Operational Recommendations
   - IF any quality_cycles > 0: "Story {id} needed {N} quality cycles. Improve task specs or acceptance criteria."
   - IF any validation_retries > 0: "Story {id} failed validation. Review Story/Task structure."
   - IF any crash_count > 0: "Worker crashed {N} times for {id}. Check for context-heavy operations."
@@ -638,6 +638,33 @@ Append Recommendations section (auto-generated):
   - IF any infra_issues with type "git": "Git conflicts encountered. Rebase feature branches more frequently."
   - IF any infra_issues with type "worktree": "Worktree failures. Check disk space and existing worktree state."
   - IF all DONE with 0 retries AND no infra_issues: "Clean run — no issues detected."
+
+Append Process Improvement section (auto-generated from pipeline analysis):
+  ## Process Improvement Suggestions
+  Analyze pipeline session and generate suggestions in 4 categories:
+
+  ### Efficiency (reduce time/steps)
+  - IF any story went through all 4 stages (0→1→2→3): "Consider skipping Stage 0/1 for stories with pre-validated tasks (resume from Stage 2)."
+  - IF multiple stories produced similar Stage 0 output: "Stories {ids} had similar task plans. Consider task templates to skip planning."
+  - IF Stage 2 was bottleneck (longest stage across stories): "Execution dominated pipeline time. Split large stories for better parallelism."
+
+  ### Cost (reduce token usage)
+  - IF any crash_count > 0: "Crashes waste full stage token budget. Reduce context-heavy operations or add intermediate checkpoints."
+  - IF quality_cycles > 0: "Rework cycles multiply cost — Stage 2+3 repeated {N} times. Invest in better task specs upfront (ln-300)."
+  - IF validation_retries > 0: "Validation retry = wasted Stage 0+1. Improve story templates or run ln-310 earlier."
+  - General: "Review worker prompt sizes. Shorter focused prompts reduce per-spawn token cost."
+
+  ### Quality (improve output)
+  - IF any Stage 3 verdict was CONCERNS: "Story {id} passed with concerns. Tighter AC or stricter test coverage may prevent debt."
+  - IF any Stage 3 score < 80: "Low quality ({score}/100) for {id}. Consider: more specific AC, ln-002 research before coding, stricter ln-402 review."
+  - IF agent reviews (ln-512) found issues not caught by ln-402: "External agents caught missed issues. Consider running agent review earlier."
+  - IF all scores > 90: "High quality scores. Current process works well — maintain."
+
+  ### Process Architecture (structural improvements)
+  - IF pipeline ran > 5 stories: "Large batch. Consider increasing max_workers or grouping into sub-batches."
+  - IF any PAUSED: "PAUSED stories indicate systematic issues. Analyze: task spec quality? Missing context? Unclear AC?"
+  - IF depends_on blocked stories for extended periods: "Dependency chains caused idle workers. Reorder stories to minimize blocking."
+  - General: "Compare metrics across runs to track trends: quality_score, avg cycles per story, crash rate."
 
 # 4. Show pipeline summary to user
 ```
