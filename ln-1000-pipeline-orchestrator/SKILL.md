@@ -133,6 +133,30 @@ This skill runs as a **team lead** in delegate mode. The agent executing ln-1000
 
 ### Phase 3: Team Setup
 
+**MANDATORY READ:** Load `references/settings_template.json` for required permissions and hooks.
+
+#### 3.1 Pre-flight: Settings Verification
+
+Verify `.claude/settings.local.json` in target project:
+- `defaultMode` = `"bypassPermissions"` (required for workers)
+- `hooks.Stop` registered → `pipeline-keepalive.sh`
+- `hooks.TeammateIdle` registered → `worker-keepalive.sh`
+
+If missing or incomplete → copy from `references/settings_template.json` and install hook scripts:
+```
+Copy references/hooks/pipeline-keepalive.sh → .claude/hooks/pipeline-keepalive.sh
+Copy references/hooks/worker-keepalive.sh  → .claude/hooks/worker-keepalive.sh
+```
+
+#### 3.2 Initialize Pipeline State
+
+```
+Write .pipeline/state.json:
+  { "complete": false, "active_workers": 0, "stories_remaining": N, "last_check": <now> }
+```
+
+#### 3.3 Create Team & Spawn Workers
+
 1. Create team:
    ```
    TeamCreate(team_name: "pipeline-{YYYY-MM-DD}")
@@ -144,6 +168,7 @@ This skill runs as a **team lead** in delegate mode. The agent executing ln-1000
      name: "story-{storyId}",
      team_name: "pipeline-{date}",
      model: "sonnet",
+     mode: "bypassPermissions",
      subagent_type: "general-purpose",
      prompt: <worker prompt from references/worker_prompts.md>
    )
@@ -161,6 +186,24 @@ This skill runs as a **team lead** in delegate mode. The agent executing ln-1000
 **MANDATORY READ:** Load `references/worker_health_contract.md` for crash detection and respawn rules.
 
 **Lead operates in delegate mode — coordination only, no code writing.**
+
+**MANDATORY READ:** Load `references/checkpoint_format.md` for checkpoint schema and resume protocol.
+
+#### Communication Rules
+
+```
+FORBIDDEN PATTERNS (lead and workers):
+- Reading ~/.claude/teams/*/inboxes/*.json directly
+- Bash sleep loops for polling messages
+- Parsing internal JSON formats (permission_request, idle_notification)
+- Any filesystem access to ~/.claude/ internal structures
+
+CORRECT PATTERNS:
+- Messages arrive automatically as conversation turns (TeammateIdle notifications)
+- Use SendMessage(type: "message") for all communication
+- Use SendMessage(type: "shutdown_request") for shutdown
+- Lead processes messages in event-driven style (ON ... handlers below)
+```
 
 ```
 # --- INITIALIZATION ---
@@ -189,11 +232,14 @@ WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
     target_stage = determine_stage(story)    # See pipeline_states.md guards
     worker_name = "story-{story.id}"
     Task(name: worker_name, team_name: "pipeline-{date}",
-         model: "sonnet", subagent_type: "general-purpose",
+         model: "sonnet", mode: "bypassPermissions",
+         subagent_type: "general-purpose",
          prompt: worker_prompt(story, target_stage, business_answers))
     worker_map[story.id] = worker_name
     story_state[story.id] = "STAGE_{target_stage}"
     active_workers++
+    Write .pipeline/worker-{worker_name}-active.flag     # For TeammateIdle hook
+    Update .pipeline/state.json: active_workers, last_check
     SendMessage(recipient: worker_name,
                 content: "Execute Stage {target_stage} for {story.id}",
                 summary: "Stage {target_stage} assignment")
@@ -242,6 +288,8 @@ WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
   ON "Stage 3 COMPLETE for {id}. Verdict: PASS|CONCERNS|WAIVED. Quality Score: {score}":
     story_state[id] = "DONE"
     active_workers--
+    Remove .pipeline/worker-{worker_map[id]}-active.flag
+    Update .pipeline/state.json: active_workers, stories_remaining, last_check
     Auto PR (see Phase 4a below)
     Update kanban: Story → Done
     SendMessage(type: "shutdown_request", recipient: worker_map[id])
@@ -275,7 +323,16 @@ WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
       crash_count[id]++
       IF crash_count[id] <= 1:
         active_workers--
-        Re-spawn worker for same Story at story_state[id]  # See health_contract.md
+        # Resume protocol (see checkpoint_format.md):
+        checkpoint = read(".pipeline/checkpoint-{id}.json")
+        IF checkpoint.agentId exists:
+          Task(resume: checkpoint.agentId)          # Try 1: full context resume
+        ELSE:
+          new_prompt = worker_prompt(story, checkpoint.stage) + CHECKPOINT_RESUME block
+          Task(name: "story-{id}-retry", team_name: "pipeline-{date}",
+               mode: "bypassPermissions", subagent_type: "general-purpose",
+               prompt: new_prompt)                  # Try 2: checkpoint-based new worker
+        worker_map[id] = new_worker_name
         active_workers++
       ELSE:
         story_state[id] = "PAUSED"
@@ -314,6 +371,9 @@ After Stage 3 PASS for each Story:
 ### Phase 5: Cleanup & Self-Verification
 
 ```
+# 0. Signal pipeline complete (allows Stop hook to pass)
+Write .pipeline/state.json: { "complete": true, ... }
+
 # 1. Wait for all active workers to complete
 ASSERT active_workers == 0
 
@@ -345,7 +405,10 @@ FOR EACH worker_name IN worker_map.values():
 # 5. Cleanup team
 TeamDelete
 
-# 6. Report all PR URLs to user
+# 6. Remove pipeline state files
+Delete .pipeline/ directory
+
+# 7. Report all PR URLs to user
 ```
 
 ## Kanban as Single Source of Truth
@@ -385,6 +448,9 @@ TeamDelete
 - Skipping quality gate after execution
 - Creating PR before quality gate PASS
 - Caching kanban state instead of re-reading
+- Reading `~/.claude/teams/*/inboxes/*.json` directly (messages arrive automatically)
+- Using `sleep` + filesystem polling for message checking
+- Parsing internal Claude Code JSON formats (permission_request, idle_notification)
 
 ## Plan Mode Support
 
@@ -427,6 +493,9 @@ When invoked in Plan Mode, generate execution plan without creating team:
 ## Reference Files
 - **Message protocol:** `references/message_protocol.md`
 - **Worker health:** `references/worker_health_contract.md`
+- **Checkpoint format:** `references/checkpoint_format.md`
+- **Settings template:** `references/settings_template.json`
+- **Hooks:** `references/hooks/pipeline-keepalive.sh`, `references/hooks/worker-keepalive.sh`
 - **Kanban parsing:** `references/kanban_parser.md`
 - **Pipeline states:** `references/pipeline_states.md`
 - **Worker prompts:** `references/worker_prompts.md`

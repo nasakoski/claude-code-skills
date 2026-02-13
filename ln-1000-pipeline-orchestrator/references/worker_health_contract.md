@@ -64,9 +64,9 @@ ON TeammateIdle again WITHOUT response:
     ESCALATE: "Story {id} worker crashed twice at Stage {N}. Manual intervention required."
 ```
 
-## Respawn Rules
+## Respawn Rules (Resume + Checkpoint)
 
-When crash confirmed (Step 3):
+When crash confirmed (Step 3). See `references/checkpoint_format.md` for checkpoint schema.
 
 1. **Shutdown old worker** (best effort — may already be dead):
    ```
@@ -78,21 +78,29 @@ When crash confirmed (Step 3):
    active_workers--
    ```
 
-3. **Spawn replacement:**
+3. **Try resume with agentId** (preserves full conversation context):
    ```
-   new_worker = "story-{id}-retry"
-   Task(name: new_worker, team_name: "pipeline-{date}",
-        model: "sonnet", subagent_type: "general-purpose",
-        prompt: worker_prompt(story, story_state[id].stage, business_answers))
-   worker_map[id] = new_worker
-   active_workers++
+   checkpoint = read(".pipeline/checkpoint-{id}.json")
+   IF checkpoint.agentId exists:
+     Task(resume: checkpoint.agentId)
+     # If resume succeeds → worker continues exactly where it left off
    ```
 
-4. **Resume from last stage:**
+4. **Fallback: new worker with checkpoint context** (if resume fails or no checkpoint):
    ```
-   SendMessage(recipient: new_worker,
-               content: "Execute Stage {last_known_stage} for {id}",
-               summary: "{id} Stage {N} respawn")
+   new_worker = "story-{id}-retry"
+   new_prompt = worker_prompt(story, checkpoint.stage, business_answers) + """
+     CHECKPOINT RESUME — DO NOT re-execute completed work.
+     Tasks already completed: {checkpoint.tasksCompleted}
+     Tasks remaining: {checkpoint.tasksRemaining}
+     Last action: {checkpoint.lastAction}
+     Continue from remaining tasks only.
+   """
+   Task(name: new_worker, team_name: "pipeline-{date}",
+        model: "sonnet", mode: "bypassPermissions",
+        subagent_type: "general-purpose", prompt: new_prompt)
+   worker_map[id] = new_worker
+   active_workers++
    ```
 
 ## Respawn Limits
@@ -122,6 +130,33 @@ SendMessage(type: "shutdown_request", recipient: worker_map[id],
 ```
 
 **Rule:** Always attempt graceful shutdown before cleanup. Never force-kill via TaskStop.
+
+## Keepalive Hooks
+
+Two hooks prevent premature termination. Installed by lead in Phase 3 from `references/hooks/`.
+
+| Hook | File | Trigger | Exit 2 Condition |
+|------|------|---------|-----------------|
+| Stop | `pipeline-keepalive.sh` | Claude tries to stop | `.pipeline/state.json` has `complete: false` |
+| TeammateIdle | `worker-keepalive.sh` | Worker goes idle | `.pipeline/worker-{name}-active.flag` exists |
+
+**Lead responsibilities:**
+- Write `.pipeline/state.json` with `complete: false` at pipeline start (Phase 3)
+- Create `.pipeline/worker-{name}-active.flag` when assigning stage
+- Remove flag when worker reports stage completion
+- Set `complete: true` in Phase 5 before cleanup
+
+## Forbidden Patterns
+
+Workers and lead MUST NOT use any of these patterns:
+
+| Pattern | Why Forbidden | Correct Alternative |
+|---------|-------------|-------------------|
+| Read `~/.claude/teams/*/inboxes/*.json` | Internal format, undocumented, fragile | Messages arrive automatically as conversation turns |
+| `sleep N` + poll loop | Blocks agent, can't receive messages while sleeping | WAIT (idle) — Claude Code delivers messages |
+| Parse `permission_request` JSON | Internal protocol, changes without notice | Use `mode: "bypassPermissions"` at spawn |
+| Parse `idle_notification` JSON | Internal protocol | Use TeammateIdle hook or ON handlers |
+| `Bash(cat ~/.claude/...)` | Internal file structure | Use SendMessage for all communication |
 
 ---
 **Version:** 1.0.0

@@ -21,7 +21,8 @@
                 <li><strong>Concurrency:</strong> Max 2 Stories processed simultaneously (per-story workers, Sonnet model)</li>
                 <li><strong>Lead Role:</strong> Delegate mode only - coordination, kanban updates, PR creation. No code writing</li>
                 <li><strong>Auto PR:</strong> After quality gate PASS, auto-create PR via gh CLI</li>
-                <li><strong>Error Recovery:</strong> Quality cycle limit (2), validation retry (1), rework escalation (3)</li>
+                <li><strong>Error Recovery:</strong> Quality cycle limit (2), validation retry (1), rework escalation (3), crash resume via checkpoint</li>
+                <li><strong>Keepalive:</strong> Stop hook prevents lead exit, TeammateIdle hook prevents worker idle during stages</li>
             </ul>
         </div>
 
@@ -85,12 +86,18 @@ stateDiagram-v2
     Phase2_Questions --> Phase3_TeamSetup
 
     state "Phase 3: Team Setup" as Phase3_TeamSetup {
-        [*] --> CreateTeam
+        [*] --> VerifySettings
+        VerifySettings: Verify settings.local.json (bypassPermissions)
+        VerifySettings --> InstallHooks
+        InstallHooks: Install Stop + TeammateIdle hooks
+        InstallHooks --> InitState
+        InitState: Write .pipeline/state.json (complete=false)
+        InitState --> CreateTeam
         CreateTeam: TeamCreate(pipeline-{date})
         CreateTeam --> SpawnWorker1
-        SpawnWorker1: Spawn story-worker-1 (Sonnet)
+        SpawnWorker1: Spawn worker-1 (Sonnet, bypassPermissions)
         SpawnWorker1 --> SpawnWorker2
-        SpawnWorker2: Spawn story-worker-2 (Sonnet)
+        SpawnWorker2: Spawn worker-2 (Sonnet, bypassPermissions)
     }
 
     Phase3_TeamSetup --> Phase4_Loop
@@ -138,7 +145,7 @@ stateDiagram-v2
         Escalate: Ask user, pause Story
         Escalate --> SpawnNext
 
-        ErrorHandler: Re-spawn worker
+        ErrorHandler: Resume/re-spawn worker (checkpoint)
         ErrorHandler --> AssignStages
 
         AllDone: All Stories processed
@@ -147,13 +154,17 @@ stateDiagram-v2
     Phase4_Loop --> Phase5_Cleanup
 
     state "Phase 5: Cleanup & Report" as Phase5_Cleanup {
-        [*] --> ShowSummary
+        [*] --> MarkComplete
+        MarkComplete: Write state.json complete=true
+        MarkComplete --> ShowSummary
         ShowSummary: Pipeline summary table
         ShowSummary --> ShutdownWorkers
         ShutdownWorkers: shutdown_request to all workers
         ShutdownWorkers --> DeleteTeam
         DeleteTeam: TeamDelete
-        DeleteTeam --> ReportPRs
+        DeleteTeam --> CleanPipeline
+        CleanPipeline: Delete .pipeline/ directory
+        CleanPipeline --> ReportPRs
         ReportPRs: Report all PR URLs to user
     }
 
@@ -272,7 +283,7 @@ stateDiagram-v2
 
     EXECUTING --> CRASHED: No completion message
 
-    state "Crash Detection" as CRASHED {
+    state "Crash Detection & Recovery" as CRASHED {
         [*] --> SuspiciousIdle
         SuspiciousIdle: TeammateIdle WITHOUT completion
         SuspiciousIdle --> DiagnosticProbe
@@ -280,9 +291,14 @@ stateDiagram-v2
         DiagnosticProbe --> Recovered: Worker responds
         DiagnosticProbe --> ConfirmedCrash: Still idle, no response
         Recovered --> [*]
-        ConfirmedCrash --> Respawn: crash_count <= 1
+        ConfirmedCrash --> TryResume: crash_count <= 1
         ConfirmedCrash --> Escalate: crash_count > 1
-        Respawn: Spawn replacement worker
+        TryResume: Task(resume: agentId) from checkpoint
+        TryResume --> ResumeOK: Resume succeeds
+        TryResume --> CheckpointFallback: Resume fails
+        CheckpointFallback: New worker + checkpoint context
+        ResumeOK --> [*]
+        CheckpointFallback --> [*]
         Escalate: PAUSED + ask user
     }
 

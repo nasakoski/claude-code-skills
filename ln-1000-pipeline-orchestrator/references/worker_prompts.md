@@ -17,6 +17,39 @@ Templates for spawning story-workers via Task tool with team_name.
 Status for {id}: Stage {N} {EXECUTING|WAITING|ERROR}. Current step: {description}.
 ```
 
+## Communication Rules
+
+**All workers MUST follow these rules:**
+- NEVER read `~/.claude/teams/*/inboxes/*.json` or any `~/.claude/` internal files
+- NEVER use `sleep` loops or filesystem polling to check for messages
+- Messages from lead arrive **automatically** as conversation turns
+- Use **ONLY** `SendMessage` to communicate with lead
+- After reporting, WAIT — do not poll, do not sleep, do not read inbox files
+
+## Checkpoint Protocol
+
+Workers write checkpoint files after significant steps to enable crash recovery. See `references/checkpoint_format.md` for schema.
+
+```
+Write .pipeline/checkpoint-{storyId}.json after each significant step:
+{
+  "storyId": "{storyId}",
+  "stage": {N},
+  "agentId": <your agent ID from Task context>,
+  "tasksCompleted": [<completed task IDs>],
+  "tasksRemaining": [<remaining task IDs>],
+  "lastAction": "<description of last completed action>",
+  "timestamp": "<ISO 8601>"
+}
+```
+
+| Stage | When to Write |
+|-------|--------------|
+| 0 | After tasks created |
+| 1 | After validation completes |
+| 2 | After EACH task completes (critical — most work happens here) |
+| 3 | After quality gate completes |
+
 ## Spawn Template
 
 ```
@@ -24,6 +57,7 @@ Task(
   name: "story-{storyId}",
   team_name: "pipeline-{date}",
   model: "sonnet",
+  mode: "bypassPermissions",
   subagent_type: "general-purpose",
   prompt: <use appropriate template below based on target stage>
 )
@@ -44,12 +78,16 @@ Step 2: After ln-300 completes, check result:
   - Tasks created successfully (1-8 tasks): Report success with task count
   - Error or plan score <2/4: Report failure with details
 
-Step 3: Report to lead:
+Step 3: Write checkpoint:
+  Write .pipeline/checkpoint-{storyId}.json with stage=0, tasksCompleted=[], tasksRemaining=[created task IDs]
+
+Step 4: Report to lead:
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 0 COMPLETE for {storyId}. {N} tasks created. Plan score: {score}/4.",
     summary: "{storyId} Stage 0 {N} tasks")
 
 Then WAIT for lead's next instruction. Do NOT proceed to Stage 1 without lead's message.
+NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
 
 CONTEXT:
 {businessAnswers}
@@ -70,7 +108,10 @@ Step 2: After ln-310 completes, check result:
   - If GO (Readiness >= 5, Penalty = 0): Report success to lead
   - If NO-GO: Report failure with reason to lead
 
-Step 3: Report to lead (use EXACT format per verdict):
+Step 3: Write checkpoint:
+  Write .pipeline/checkpoint-{storyId}.json with stage=1, tasksCompleted=[], tasksRemaining=[]
+
+Step 4: Report to lead (use EXACT format per verdict):
   IF GO:
     SendMessage(type: "message", recipient: "pipeline-lead",
       content: "Stage 1 COMPLETE for {storyId}. Verdict: GO. Readiness: {score}.",
@@ -81,6 +122,7 @@ Step 3: Report to lead (use EXACT format per verdict):
       summary: "{storyId} Stage 1 NO-GO")
 
 Then WAIT for lead's next instruction. Do NOT proceed to Stage 2 without lead's message.
+NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
 
 CONTEXT:
 {businessAnswers}
@@ -97,16 +139,24 @@ TASK: Execute Stage 2 — Story Execution.
 Step 1: Invoke executor:
   Skill(skill: "ln-400-story-executor", args: "{storyId}")
 
+  CHECKPOINT: After EACH task completes within ln-400, update checkpoint:
+    Write .pipeline/checkpoint-{storyId}.json with stage=2,
+    move completed task ID from tasksRemaining to tasksCompleted
+
 Step 2: After ln-400 completes, check result:
   - All tasks Done, Story = To Review: Report success
   - Any task stuck or error: Report issue with details
 
-Step 3: Report to lead:
+Step 3: Write final checkpoint:
+  Write .pipeline/checkpoint-{storyId}.json with stage=2, all tasks in tasksCompleted
+
+Step 4: Report to lead:
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 2 COMPLETE for {storyId}. All tasks Done. Story set to To Review.",
     summary: "{storyId} Stage 2 Done")
 
 Then WAIT for lead's next instruction.
+NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
 
 CONTEXT:
 {businessAnswers}
@@ -129,7 +179,10 @@ Step 2: After ln-500 completes, check verdict:
   - FAIL: Report failure with issues list
   - WAIVED: Report success with waiver reason
 
-Step 3: Report to lead (use EXACT format per verdict):
+Step 3: Write checkpoint:
+  Write .pipeline/checkpoint-{storyId}.json with stage=3, all tasks in tasksCompleted
+
+Step 4: Report to lead (use EXACT format per verdict):
   IF PASS/CONCERNS/WAIVED:
     SendMessage(type: "message", recipient: "pipeline-lead",
       content: "Stage 3 COMPLETE for {storyId}. Verdict: {PASS|CONCERNS|WAIVED}. Quality Score: {score}/100.",
@@ -140,6 +193,7 @@ Step 3: Report to lead (use EXACT format per verdict):
       summary: "{storyId} Stage 3 FAIL")
 
 Then WAIT for lead's next instruction.
+NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
 
 CONTEXT:
 {businessAnswers}
