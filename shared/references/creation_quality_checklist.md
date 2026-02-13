@@ -18,7 +18,7 @@ For ln-220-story-coordinator and ln-221-story-creator.
 | 9 | Story Size | 3 | 1-8 tasks (3-5 optimal), 3-5 AC, 6-20 hours total, 10-28 tests planned. If outside range — split or merge |
 | 11 | YAGNI | 3 | Each AC = real user need. No speculative features. Every Task maps to >= 1 AC |
 | 12 | KISS | 3 | Simplest approach. No task requires >3 new abstractions. If >3 — split or simplify |
-| 14 | Documentation | 5 | Pattern docs (from ln-002 research) referenced in Technical Notes. No orphan patterns |
+| 14 | Documentation Complete | 5 | Pattern docs (from ln-002 research) referenced in Technical Notes. No orphan patterns |
 | 16 | Story-Task Alignment | 3 | Each Task title contains keyword from Story AC (grep-verifiable) |
 | 17 | AC-Task Coverage | 3 | Coverage matrix: every AC covered by >= 1 Task. No empty rows |
 | 18 | Story Dependencies | 10 | No forward dependencies on Stories not yet created. Only reference earlier Stories |
@@ -31,23 +31,24 @@ For ln-300-task-coordinator and ln-301-task-creator.
 
 | # | Criterion | Penalty | Rule |
 |---|-----------|---------|------|
-| 2 | Tasks Structure | 1/task | 7 sections per template (in order): Context, Implementation Plan, Technical Approach, Acceptance Criteria, Affected Components, Existing Code Impact, Definition of Done |
-| 8 | Doc Integration | 3 | No standalone doc-only tasks. Doc updates fold into implementation task DoD |
+| 2 | Tasks Structure | 1 | 7 sections per template (in order): Context, Implementation Plan, Technical Approach, Acceptance Criteria, Affected Components, Existing Code Impact, Definition of Done |
+| 8 | Documentation Integration | 3 | No standalone doc-only tasks. Doc updates fold into implementation task DoD |
 | 13 | Task Order | 3 | Foundation-First: DB -> Service -> API -> UI. Each layer builds on previous |
-| 15 | Code Quality | 3 | No hardcoded values in Technical Approach. Use config/env/constants |
+| 15 | Code Quality Basics | 3 | No hardcoded values in Technical Approach. Use config/env/constants |
 | 19 | Task Dependencies | 3 | Task N uses only Tasks 1..N-1. No forward references to N+1, N+2 |
 
-**Total exposure:** 13+ penalty points (criterion #2 multiplies per task).
+**Total exposure:** 13 penalty points.
 
 ## Validation-Only Criteria
 
-These 3 criteria are handled by ln-310 during validation, NOT by creators:
+These 4 criteria are handled by ln-310 during validation, NOT by creators:
 
 | # | Criterion | Why validation-only |
 |---|-----------|---------------------|
 | 7 | Test Strategy | Section is placeholder at creation; filled by test planning later |
 | 10 | Test Task Cleanup | Cleanup action during validation; no premature test tasks expected |
 | 20 | Risk Analysis | Validator scans Story/Tasks for unmitigated risks (R1-R6) via keyword detection in Technical Notes and Implementation Plan |
+| 21 | Alternative Solutions | Validator searches MCP Ref + web for modern alternatives; adds "Alternative Considered" note if better option exists |
 
 ---
 **Version:** 1.0.0
