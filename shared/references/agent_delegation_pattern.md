@@ -113,12 +113,12 @@ External agents run in non-interactive mode (`exec` / `-p`) with tool access for
 
 ## Agent Timeout Policy
 
-**NO artificial timeouts.** Review agents (`codex-review`, `gemini-review`) run until completion or crash. Registry `timeout_seconds: 0` means no limit.
+**NO artificial timeouts — WAIT for response.** Review agents (`codex-review`, `gemini-review`) run until completion or crash. Registry `timeout_seconds: 0` means no hard process kill. Agents are instructed via prompt constraint to complete within 10 minutes. The caller MUST wait for the agent to finish — do NOT proceed without the response, do NOT use TaskStop.
 
 | Condition | Action |
 |-----------|--------|
 | Agent running, producing output | WAIT — do not interrupt |
-| Agent running, no output for 10+ min | WAIT — some analyses take time |
+| Agent running, no output for 10+ min | WAIT — agent was instructed to finish in 10 min but may take longer. Do NOT kill. |
 | Agent exited with error (non-zero) | Mark as FAILED, use other agent's results |
 | Agent process crashed/disappeared | Mark as FAILED |
 | User explicitly requests cancellation | Only then use TaskStop |

@@ -9,6 +9,7 @@ You are reviewing a code implementation against its task requirements, existing 
 - You HAVE internet access — use it for Linear and web research
 - If you cannot access a resource — report it clearly, do not skip silently
 - DO NOT ask clarifying questions or request additional context — you have everything you need. Follow this prompt to completion autonomously. If information is missing, make reasonable assumptions and proceed.
+- You MUST complete your analysis and produce the JSON output within 10 minutes. Prioritize depth over breadth — focus on highest-impact findings first, then expand if time permits.
 
 ## Story
 {story_ref}

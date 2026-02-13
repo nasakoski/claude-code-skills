@@ -92,18 +92,18 @@ Step 2: After ln-300 completes, check result:
 Step 3: Write checkpoint:
   Write .pipeline/checkpoint-{storyId}.json with stage=0, tasksCompleted=[], tasksRemaining=[created task IDs]
 
-Step 4a: Report SUCCESS to lead:
+Step 4: Signal completion (BEFORE reporting — prevents zombie worker race condition):
+  Write empty file: .pipeline/worker-{workerName}-done.flag
+
+Step 5a: Report SUCCESS to lead:
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 0 COMPLETE for {storyId}. {N} tasks created. Plan score: {score}/4.",
     summary: "{storyId} Stage 0 {N} tasks")
 
-Step 4b: Report ERROR to lead (if Step 2 failed):
+Step 5b: Report ERROR to lead (if Step 2 failed):
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 0 ERROR for {storyId}: {details}",
     summary: "{storyId} Stage 0 ERROR")
-
-Step 5: Signal completion:
-  Write empty file: .pipeline/worker-{workerName}-done.flag
 
 After reporting, your work is DONE. Lead will send shutdown_request — approve it immediately.
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
@@ -137,7 +137,10 @@ Step 2: After ln-310 completes, check result:
 Step 3: Write checkpoint:
   Write .pipeline/checkpoint-{storyId}.json with stage=1, tasksCompleted=[], tasksRemaining=[]
 
-Step 4: Report to lead (use EXACT format per verdict):
+Step 4: Signal completion (BEFORE reporting — prevents zombie worker race condition):
+  Write empty file: .pipeline/worker-{workerName}-done.flag
+
+Step 5: Report to lead (use EXACT format per verdict):
   IF GO:
     SendMessage(type: "message", recipient: "pipeline-lead",
       content: "Stage 1 COMPLETE for {storyId}. Verdict: GO. Readiness: {score}.",
@@ -146,9 +149,6 @@ Step 4: Report to lead (use EXACT format per verdict):
     SendMessage(type: "message", recipient: "pipeline-lead",
       content: "Stage 1 COMPLETE for {storyId}. Verdict: NO-GO. Readiness: {score}. Reason: {reason}",
       summary: "{storyId} Stage 1 NO-GO")
-
-Step 5: Signal completion:
-  Write empty file: .pipeline/worker-{workerName}-done.flag
 
 After reporting, your work is DONE. Lead will send shutdown_request — approve it immediately.
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
@@ -186,18 +186,18 @@ Step 2: After ln-400 completes, check result:
 Step 3: Write final checkpoint:
   Write .pipeline/checkpoint-{storyId}.json with stage=2, all tasks in tasksCompleted
 
-Step 4a: Report SUCCESS to lead:
+Step 4: Signal completion (BEFORE reporting — prevents zombie worker race condition):
+  Write empty file: .pipeline/worker-{workerName}-done.flag
+
+Step 5a: Report SUCCESS to lead:
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 2 COMPLETE for {storyId}. All tasks Done. Story set to To Review.",
     summary: "{storyId} Stage 2 Done")
 
-Step 4b: Report ERROR to lead (if Step 2 failed):
+Step 5b: Report ERROR to lead (if Step 2 failed):
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 2 ERROR for {storyId}: {details}",
     summary: "{storyId} Stage 2 ERROR")
-
-Step 5: Signal completion:
-  Write empty file: .pipeline/worker-{workerName}-done.flag
 
 After reporting, your work is DONE. Lead will send shutdown_request — approve it immediately.
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
@@ -233,7 +233,10 @@ Step 2: After ln-500 completes, check verdict:
 Step 3: Write checkpoint:
   Write .pipeline/checkpoint-{storyId}.json with stage=3, all tasks in tasksCompleted
 
-Step 4: Report to lead (use EXACT format per verdict):
+Step 4: Signal completion (BEFORE reporting — prevents zombie worker race condition):
+  Write empty file: .pipeline/worker-{workerName}-done.flag
+
+Step 5: Report to lead (use EXACT format per verdict):
   IF PASS/CONCERNS/WAIVED:
     SendMessage(type: "message", recipient: "pipeline-lead",
       content: "Stage 3 COMPLETE for {storyId}. Verdict: {PASS|CONCERNS|WAIVED}. Quality Score: {score}/100.",
@@ -242,9 +245,6 @@ Step 4: Report to lead (use EXACT format per verdict):
     SendMessage(type: "message", recipient: "pipeline-lead",
       content: "Stage 3 COMPLETE for {storyId}. Verdict: FAIL. Quality Score: {score}/100. Issues: {issues list}",
       summary: "{storyId} Stage 3 FAIL")
-
-Step 5: Signal completion:
-  Write empty file: .pipeline/worker-{workerName}-done.flag
 
 After reporting, your work is DONE. Lead will send shutdown_request — approve it immediately.
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
