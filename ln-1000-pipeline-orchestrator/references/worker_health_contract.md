@@ -137,7 +137,9 @@ Two hooks prevent premature termination. Installed by lead in Phase 3 from `refe
 | Hook | File | Trigger | Exit 2 Condition |
 |------|------|---------|-----------------|
 | Stop | `pipeline-keepalive.sh` | Claude tries to stop | `complete: false` AND `session_id` matches `.pipeline/lead-session.id` |
-| TeammateIdle | `worker-keepalive.sh` | Worker goes idle | `active.flag` exists AND `done.flag` does NOT exist |
+| TeammateIdle | `worker-keepalive.sh` | Worker goes idle | `active.flag`* exists AND `done.flag`* does NOT exist |
+
+*Short names. Full paths: `.pipeline/worker-{name}-active.flag`, `.pipeline/worker-{name}-done.flag`
 
 **Flag lifecycle:**
 ```
@@ -199,8 +201,11 @@ Lead writes ALL state variables to `.pipeline/state.json` on **every heartbeat c
 | `quality_cycles` | Yes | FAIL→retry counters |
 | `validation_retries` | Yes | NO-GO retry counters |
 | `crash_count` | Yes | Respawn counters |
-| `pr_urls` | Yes | Completed PR URLs |
 | `priority_queue_ids` | Yes | Remaining queue order |
+| `worktree_map` | Yes | Story → worktree directory mapping |
+| `depends_on` | Yes | Story → prerequisite IDs mapping |
+| `story_results` | Yes | Per-story stage results for report |
+| `infra_issues` | Yes | Infrastructure problems list |
 | `suspicious_idle` | No (ephemeral) | Reset to false on recovery |
 
 ### Recovery Sequence

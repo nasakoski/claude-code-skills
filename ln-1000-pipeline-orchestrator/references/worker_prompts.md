@@ -65,6 +65,8 @@ Task(
 
 **Note:** Stage templates include `WORKING DIRECTORY` block only when the worker runs in a worktree (parallel mode). When absent, the worker operates in the project root (CWD). Lead includes this block conditionally based on `worktree_dir` parameter.
 
+**Worker name:** The `{workerName}` variable in templates = the `name` parameter from Task() spawn. Workers derive it from prompt context: `story-{storyId}-s{stage}` (or `-retry` suffix for retries).
+
 ## Stage 0: Task Planning (ln-300)
 
 ```
@@ -84,16 +86,21 @@ Step 1: Invoke task coordinator:
   Skill(skill: "ln-300-task-coordinator", args: "{storyId}")
 
 Step 2: After ln-300 completes, check result:
-  - Tasks created successfully (1-8 tasks): Report success with task count
-  - Error or plan score <2/4: Report failure with details
+  - Tasks created successfully (1-8 tasks): Report success (Step 4a)
+  - Error or plan score <2/4: Report failure (Step 4b)
 
 Step 3: Write checkpoint:
   Write .pipeline/checkpoint-{storyId}.json with stage=0, tasksCompleted=[], tasksRemaining=[created task IDs]
 
-Step 4: Report to lead:
+Step 4a: Report SUCCESS to lead:
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 0 COMPLETE for {storyId}. {N} tasks created. Plan score: {score}/4.",
     summary: "{storyId} Stage 0 {N} tasks")
+
+Step 4b: Report ERROR to lead (if Step 2 failed):
+  SendMessage(type: "message", recipient: "pipeline-lead",
+    content: "Stage 0 ERROR for {storyId}: {details}",
+    summary: "{storyId} Stage 0 ERROR")
 
 Step 5: Signal completion:
   Write empty file: .pipeline/worker-{workerName}-done.flag
@@ -173,16 +180,21 @@ Step 1: Invoke executor:
     move completed task ID from tasksRemaining to tasksCompleted
 
 Step 2: After ln-400 completes, check result:
-  - All tasks Done, Story = To Review: Report success
-  - Any task stuck or error: Report issue with details
+  - All tasks Done, Story = To Review: Report success (Step 4a)
+  - Any task stuck or error: Report error (Step 4b)
 
 Step 3: Write final checkpoint:
   Write .pipeline/checkpoint-{storyId}.json with stage=2, all tasks in tasksCompleted
 
-Step 4: Report to lead:
+Step 4a: Report SUCCESS to lead:
   SendMessage(type: "message", recipient: "pipeline-lead",
     content: "Stage 2 COMPLETE for {storyId}. All tasks Done. Story set to To Review.",
     summary: "{storyId} Stage 2 Done")
+
+Step 4b: Report ERROR to lead (if Step 2 failed):
+  SendMessage(type: "message", recipient: "pipeline-lead",
+    content: "Stage 2 ERROR for {storyId}: {details}",
+    summary: "{storyId} Stage 2 ERROR")
 
 Step 5: Signal completion:
   Write empty file: .pipeline/worker-{workerName}-done.flag

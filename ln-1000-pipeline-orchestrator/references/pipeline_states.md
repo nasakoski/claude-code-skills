@@ -11,7 +11,7 @@ Transition rules and guards for the 4-stage pipeline.
 | **STAGE_1** | ln-310-story-validator running | Story status = Backlog, tasks exist |
 | **STAGE_2** | ln-400-story-executor running | Story status = Todo or To Rework |
 | **STAGE_3** | ln-500-story-quality-gate running | Story status = To Review |
-| **DONE** | Pipeline complete, PR created | Quality gate PASS/CONCERNS/WAIVED |
+| **DONE** | Pipeline complete, merged to develop | Quality gate PASS/CONCERNS/WAIVED |
 | **PAUSED** | Waiting for user input | Escalation triggered |
 
 ## Transitions
@@ -37,7 +37,7 @@ STAGE_3 --[FAIL, cycles >= 2]--> PAUSED
 
 PAUSED --[user resolves]--> (appropriate stage)
 
-DONE --[PR created]--> (worker shutdown, next Story from queue)
+DONE --[merged to develop]--> (worker shutdown, next Story from queue)
 ```
 
 ## Guards
@@ -58,6 +58,7 @@ DONE --[PR created]--> (worker shutdown, next Story from queue)
 |---------|---------|-----------|-------|----------|
 | `quality_cycles` | 0 | +1 on STAGE_3 FAIL | 2 | Escalate to user |
 | `validation_retries` | 0 | +1 on STAGE_1 NO-GO | 1 | Escalate to user |
+| `crash_count` | 0 | +1 on confirmed crash | 1 | PAUSED + escalate |
 
 ## Stage-to-Status Mapping
 

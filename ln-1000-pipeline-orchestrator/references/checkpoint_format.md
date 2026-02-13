@@ -50,11 +50,11 @@ Lead writes ALL state variables to `.pipeline/state.json` on every heartbeat cyc
 | `quality_cycles` | object | `{storyId: count}` — FAIL→retry counter (limit 2) |
 | `validation_retries` | object | `{storyId: count}` — NO-GO retry counter (limit 1) |
 | `crash_count` | object | `{storyId: count}` — crash respawn counter (limit 1) |
-| `pr_urls` | object | `{storyId: "https://..."}` — PR URLs for DONE stories |
 | `priority_queue_ids` | string[] | Remaining story IDs in priority order |
 | `story_results` | object | `{storyId: {stage0: "...", stage1: "...", ...}}` — per-stage results for report |
-| `remote_type` | string | `"github"\|"gitlab"\|"unknown"` — detected in Phase 1 |
 | `infra_issues` | array | `[{phase, type, message}]` — infrastructure issues for report |
+| `worktree_map` | object | `{storyId: worktree_dir \| null}` — story → worktree mapping |
+| `depends_on` | object | `{storyId: [prerequisite IDs]}` — dependency graph |
 
 **Example:**
 ```json
@@ -68,11 +68,11 @@ Lead writes ALL state variables to `.pipeline/state.json` on every heartbeat cyc
   "quality_cycles": { "API-427": 0, "API-428": 0 },
   "validation_retries": { "API-427": 0, "API-428": 0 },
   "crash_count": { "API-427": 0, "API-428": 0 },
-  "pr_urls": {},
   "priority_queue_ids": ["API-429", "API-430", "API-431"],
   "story_results": { "API-427": { "stage0": "skip", "stage1": "skip", "stage2": "Done" } },
-  "remote_type": "github",
-  "infra_issues": []
+  "infra_issues": [],
+  "worktree_map": { "API-427": ".worktrees/story-API-427", "API-428": null },
+  "depends_on": { "API-429": ["API-427"], "API-430": [] }
 }
 ```
 
