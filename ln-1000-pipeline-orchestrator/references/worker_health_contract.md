@@ -163,7 +163,7 @@ Lead turn ends → Stop event → pipeline-keepalive.sh → exit 2
 - Each heartbeat creates a new processing cycle where worker messages arrive
 - Lead MUST NOT output "waiting for messages" and stop — the heartbeat keeps it running
 - If no worker messages: output brief status (`"Heartbeat: N workers active"`), let turn end
-- Frequency: ~10 seconds per cycle (throttled by `sleep 10` in Stop hook)
+- Frequency: ~60 seconds per cycle (throttled by `sleep 60` in Stop hook)
 - Stage transitions = shutdown old worker + spawn fresh (net-zero active_workers)
 
 **Anti-pattern:** Lead says "I'm waiting for workers" and sits idle. This breaks the pipeline because the lead's turn has ended and it cannot process future messages.

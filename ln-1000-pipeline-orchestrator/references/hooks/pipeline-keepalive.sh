@@ -14,7 +14,7 @@ if [ "$COMPLETE" = "false" ]; then
   REMAINING=$(echo "$PIPELINE_STATE" | jq -r '.stories_remaining // 0')
   LAST=$(echo "$PIPELINE_STATE" | jq -r '.last_check // "unknown"')
   echo "HEARTBEAT: ${WORKERS} active workers, ${REMAINING} stories remaining. Last check: ${LAST}. Process any queued worker messages now." >&2
-  sleep 10
+  sleep 60
   exit 2
 fi
 
