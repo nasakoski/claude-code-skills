@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pipeline-keepalive.sh"
+            "command": "bash .claude/hooks/pipeline-keepalive.sh"
           }
         ]
       }
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worker-keepalive.sh"
+            "command": "bash .claude/hooks/worker-keepalive.sh"
           }
         ]
       }

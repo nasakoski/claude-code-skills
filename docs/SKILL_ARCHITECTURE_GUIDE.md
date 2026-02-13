@@ -1,11 +1,12 @@
 ﻿# Skill Architecture Guide
 
-**Industry Best Practices for Claude Code Skills (2024-2025)**
+**Industry Best Practices for Claude Code Skills (2024-2026)**
 
 <!-- SCOPE: Skill architecture patterns and best practices ONLY. Contains Orchestrator-Worker Pattern, SRP, Token Efficiency, Task Decomposition, Red Flags. -->
 <!-- DO NOT add here: skill-specific workflows → individual SKILL.md files, project documentation → templates/, versioning → CLAUDE.md -->
+<!-- RELATED: For Agent Teams runtime patterns (hooks, heartbeat, crash recovery, Windows) → AGENT_TEAMS_PLATFORM_GUIDE.md -->
 
-This document captures industry standards and best practices for designing Claude Code skills, based on research from Claude Skills Guidelines, Multi-Agent Orchestration patterns, and Agile methodologies.
+This document captures industry standards and best practices for designing Claude Code skills, based on research from Claude Skills Guidelines, Multi-Agent Orchestration patterns, Agile methodologies, and Anthropic's official documentation (2026).
 
 ---
 
@@ -156,16 +157,17 @@ Target: 400-600 lines for core principles, 600-800 lines with advanced documenta
 6. [When to Combine Skills](#when-to-combine-skills)
 7. [Skill Architecture Patterns](#skill-architecture-patterns)
 8. [Token Efficiency](#token-efficiency)
-9. [Task Decomposition (Agile)](#task-decomposition-agile)
-10. [Red Flags](#red-flags)
-11. [Best Practices Checklist](#best-practices-checklist)
+9. [Execution Patterns: Subagents vs Agent Teams (2026)](#execution-patterns-subagents-vs-agent-teams-2026)
+10. [Task Decomposition (Agile)](#task-decomposition-agile)
+11. [Red Flags](#red-flags)
+12. [Best Practices Checklist](#best-practices-checklist)
     - [Skill Creation Checklist](#skill-creation-checklist)
     - [Task Creation Checklist](#task-creation-checklist)
     - [Orchestrator Design Checklist](#orchestrator-design-checklist)
     - [Worker Design Checklist](#worker-design-checklist)
     - [Idempotent Operations Checklist](#idempotent-operations-checklist)
-12. [References](#references)
-13. [Appendix A: Concise Terms Dictionary](#appendix-a-concise-terms-dictionary)
+13. [References](#references)
+14. [Appendix A: Concise Terms Dictionary](#appendix-a-concise-terms-dictionary)
 
 ---
 
@@ -264,11 +266,12 @@ This architecture follows industry-proven pattern where:
 
 **Our Implementation:**
 
-| Level | Role | Responsibilities | Data Loading | Examples |
-|-------|------|------------------|--------------|----------|
-| **Level 1** | Top Orchestrator | Coordinate full lifecycle workflows | Metadata only | `ln-400-story-executor` |
-| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | `ln-310-story-validator`, `ln-510-quality-coordinator`, `ln-300-task-coordinator`, `ln-520-test-planner` |
-| **Level 3** | Worker | Execute atomic work | FULL descriptions when needed | `ln-401-task-executor`, `ln-404-test-executor`, `ln-402-task-reviewer`, `ln-301-task-creator`, etc. |
+| Level | Role | Responsibilities | Data Loading | Delegation | Examples |
+|-------|------|------------------|--------------|------------|----------|
+| **Level 0** | Meta-Orchestrator | Coordinate multiple Stories via Agent Teams (TeamCreate) | Metadata only | Agent Teams (TeamCreate + SendMessage) | `ln-1000-pipeline-orchestrator` |
+| **Level 1** | Top Orchestrator | Coordinate full lifecycle workflows | Metadata only | Skill tool (shared context) | `ln-400-story-executor` |
+| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | Skill tool or Task tool | `ln-310-story-validator`, `ln-510-quality-coordinator`, `ln-300-task-coordinator`, `ln-520-test-planner` |
+| **Level 3** | Worker | Execute atomic work | FULL descriptions when needed | None (leaf) | `ln-401-task-executor`, `ln-404-test-executor`, `ln-402-task-reviewer`, `ln-301-task-creator`, etc. |
 
 **Critical Rules:**
 
@@ -600,6 +603,57 @@ Phase 3: Orchestration Loop - Delegate to worker → Worker loads FULL descripti
 
 ---
 
+## Execution Patterns: Subagents vs Agent Teams (2026)
+
+**Source:** [Anthropic Agent Teams docs](https://code.claude.com/docs/en/agent-teams), [Custom subagents docs](https://code.claude.com/docs/en/sub-agents), [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)
+
+### Complexity Ladder (from Anthropic)
+
+**Start simple, add complexity only when needed:**
+
+| Level | Pattern | When to Use |
+|-------|---------|-------------|
+| 1 | Single LLM call + retrieval | Well-defined task, clear input/output |
+| 2 | Prompt chaining (sequential) | Fixed subtasks, needs validation gates |
+| 3 | Routing (classification) | Distinct categories needing different handling |
+| 4 | Subagents (Task tool) | Parallel independent tasks, only result matters |
+| 5 | Agent Teams (TeamCreate) | Complex work requiring inter-agent coordination |
+
+**Key insight (Anthropic):** "Deploy agents only when flexibility and model-driven decision-making become essential at scale. Agents demand higher costs and risk compounding errors."
+
+### Subagents vs Agent Teams Decision
+
+| Dimension | Subagents (Task tool) | Agent Teams (TeamCreate) |
+|-----------|----------------------|--------------------------|
+| Context | Own window, results return to caller | Own window, fully independent |
+| Communication | Report back to parent only | Teammates message each other directly |
+| Coordination | Parent manages all work | Shared task list + self-coordination |
+| Token cost | Lower (results summarized) | Higher (each teammate = separate instance) |
+| Nesting | Cannot spawn subagents | Cannot spawn nested teams |
+| Best for | Focused tasks, only result matters | Multi-stage lifecycle, coordination needed |
+
+**In this repository:**
+- **L1-L3 hierarchy** uses Subagents (Skill tool / Task tool) — orchestrators delegate to workers within single session
+- **L0 (ln-1000)** uses Agent Teams (TeamCreate) — lead coordinates independent Story workers across sessions
+
+### Custom Subagent Configuration (2026)
+
+Subagents are `.md` files with YAML frontmatter in `.claude/agents/`:
+
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `tools` | Allowlist of tools | `Read, Grep, Glob` (read-only reviewer) |
+| `disallowedTools` | Denylist | `Write, Edit` (prevent modifications) |
+| `model` | Model routing | `haiku` (fast/cheap), `opus` (complex), `inherit` |
+| `permissionMode` | Permission level | `bypassPermissions` for automation, `plan` for read-only |
+| `skills` | Preloaded skill content | Injects domain knowledge at startup |
+| `memory` | Persistent memory scope | `user` (global), `project` (repo-specific) |
+| `hooks` | Lifecycle hooks | `PreToolUse` for validation, `Stop` for cleanup |
+
+**For Agent Teams runtime patterns** (hooks, heartbeat, crash detection, Windows compatibility): see [AGENT_TEAMS_PLATFORM_GUIDE.md](AGENT_TEAMS_PLATFORM_GUIDE.md).
+
+---
+
 ## Task Decomposition (Agile)
 
 ### Vertical Slicing (RECOMMENDED)
@@ -787,21 +841,39 @@ Every User Story should be:
 
 ## References
 
-### Industry Sources
+### Anthropic Official (2025-2026)
 
-1. **Claude Skills Deep Dive** (leehanchung.github.io) - Single responsibility, orchestrator pattern, skill composition. Key Insight: "Skill composition > monoliths"
+1. **[Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)** - Architecture patterns (orchestrator-worker, prompt chaining, routing, parallelization, evaluator-optimizer). Key Insight: "Start with single LLM, progress to workflows, deploy agents only when flexibility is essential at scale"
 
-2. **Multi-Agent Orchestration (2024-2025)** (GitHub claude-flow, Medium) - Orchestrator-Worker pattern, performance benefits. Key Insight: "90.2% performance improvement on complex tasks". Production Stats: 85 specialized agents, 15 orchestrators
+2. **[Multi-Agent Research System](https://www.anthropic.com/engineering/multi-agent-research-system)** - Production multi-agent orchestration. Key Insight: "90.2% performance improvement. Minor issues cascade unpredictably — one step failing causes entirely different trajectories"
 
-3. **Agile Task Decomposition** (Pluralsight) - Vertical slicing, INVEST criteria, task sizing. Key Insight: "Horizontal splitting fails at independent and valuable"
+3. **[Agent Teams docs](https://code.claude.com/docs/en/agent-teams)** - TeamCreate, shared task lists, delegate mode, hooks. Key Insight: "Agent teams add coordination overhead — best when teammates operate independently"
 
-4. **Humanizing Work Guide** - Story splitting patterns, anti-patterns. Key Insight: "Never split by architectural layer"
+4. **[Custom Subagents docs](https://code.claude.com/docs/en/sub-agents)** - Subagent configuration (tools, model, memory, hooks, skills). Key Insight: "Subagents cannot spawn subagents — prevents infinite nesting"
+
+5. **[Claude Agent SDK](https://claude.com/blog/building-agents-with-the-claude-agent-sdk)** - Context compaction, tool design as ACI, poka-yoke approach. Key Insight: "Tool definitions deserve as much prompt engineering as your overall prompts"
+
+### Industry Sources (2024-2025)
+
+6. **Claude Skills Deep Dive** (leehanchung.github.io) - Single responsibility, orchestrator pattern. Key Insight: "Skill composition > monoliths"
+
+7. **Multi-Agent Orchestration** (GitHub claude-flow, Medium) - Orchestrator-Worker pattern. Production Stats: 85 specialized agents, 15 orchestrators
+
+8. **Agile Task Decomposition** (Pluralsight) - Vertical slicing, INVEST criteria. Key Insight: "Horizontal splitting fails at independent and valuable"
+
+9. **Humanizing Work Guide** - Story splitting patterns. Key Insight: "Never split by architectural layer"
+
+### Related Documents
+
+- **[AGENT_TEAMS_PLATFORM_GUIDE.md](AGENT_TEAMS_PLATFORM_GUIDE.md)** - Runtime patterns: hooks, heartbeat, crash detection, Windows compatibility, state persistence
 
 ### Repository-Specific Examples
 
-**Good Orchestrators:** `ln-400-story-executor` (280 lines), `ln-300-task-coordinator` v6.0.0 (150 lines)
+**L0 Meta-Orchestrator:** `ln-1000-pipeline-orchestrator` (778 lines — complex but justified: 4-stage state machine + crash recovery + Agent Teams coordination)
 
-**Good Workers:** `ln-301-task-creator` (150 lines), `ln-302-task-replanner` (250 lines), `ln-401-task-executor`, `ln-404-test-executor`
+**Good L1 Orchestrators:** `ln-400-story-executor` (280 lines), `ln-300-task-coordinator` v6.0.0 (150 lines)
+
+**Good L3 Workers:** `ln-301-task-creator` (150 lines), `ln-302-task-replanner` (250 lines), `ln-401-task-executor`, `ln-404-test-executor`
 
 **Monolithic (Before Refactoring):** `ln-300-task-coordinator` v5.1.0 (470 lines, mixed CREATE/REPLAN logic)
 
@@ -811,17 +883,19 @@ Every User Story should be:
 
 **Key Takeaways:**
 
-1. **Orchestrator-Worker Pattern** - Industry standard 2024-2025 (90%+ performance improvement, proven in production: 85 agents + 15 orchestrators)
+1. **Simplicity First** - Start with single LLM call, add complexity only when needed (Anthropic: "agents demand higher costs and risk compounding errors")
 
-2. **Single Responsibility** - One skill = one job (< 800 lines, < 200 char description, ≤ 3-4 major workflow steps)
+2. **Orchestrator-Worker Pattern** - Industry standard 2024-2026 (90%+ performance improvement). 4-level hierarchy: L0 (Agent Teams) → L1 (Top Orchestrator) → L2 (Domain) → L3 (Worker)
 
-3. **Vertical Slicing** - Cross all layers (UI + API + Service + DB), avoid horizontal splitting, exception: Story-level test tasks after manual testing
+3. **Single Responsibility** - One skill = one job (< 800 lines, < 200 char description, ≤ 3-4 major workflow steps)
 
-4. **Token Efficiency** - Lazy loading (orchestrators: metadata only, workers: full descriptions when needed)
+4. **Vertical Slicing** - Cross all layers (UI + API + Service + DB), avoid horizontal splitting
 
-5. **Consistency** - All `x-*-executor` and `x-*-manager` skills follow orchestrator pattern
+5. **Token Efficiency** - Lazy loading (orchestrators: metadata only, workers: full descriptions when needed)
 
-**When in doubt:** Narrow specialization > monoliths, use orchestrator pattern for coordination, load data lazily, vertical slice tasks.
+6. **Subagents for isolation, Agent Teams for coordination** - Use Subagents (Task tool) when only result matters. Use Agent Teams (TeamCreate) when workers need inter-agent communication
+
+**When in doubt:** Simple > complex, narrow specialization > monoliths, Subagents > Agent Teams (unless coordination needed).
 
 ---
 
@@ -909,5 +983,5 @@ Quality gates run before completion."
 
 ---
 
-**Version:** 1.4.0
-**Last Updated:** 2025-11-16
+**Version:** 1.5.0
+**Last Updated:** 2026-02-13

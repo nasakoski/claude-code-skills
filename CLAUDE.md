@@ -11,7 +11,7 @@ This is a collection of skills for Claude Code, integrated with Linear for Agile
 
 > [!WARNING]
 
-> Before starting any work with skills in this repository, **ALWAYS read** [docs/SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md) for industry best practices (2024-2025): Orchestrator-Worker Pattern, Single Responsibility Principle, Token Efficiency, Task Decomposition guidelines, and Red Flags to avoid.
+> Before starting any work with skills in this repository, **ALWAYS read** [docs/SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md) for industry best practices (2024-2026): Orchestrator-Worker Pattern, Single Responsibility Principle, Token Efficiency, Subagents vs Agent Teams, Task Decomposition guidelines, and Red Flags to avoid. For Agent Teams runtime patterns (hooks, heartbeat, crash recovery, Windows): [docs/AGENT_TEAMS_PLATFORM_GUIDE.md](docs/AGENT_TEAMS_PLATFORM_GUIDE.md).
 
 ## Documentation Levels
 

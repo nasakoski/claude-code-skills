@@ -172,16 +172,17 @@ Verify `.claude/settings.local.json` in target project:
 - `hooks.Stop` registered → `pipeline-keepalive.sh`
 - `hooks.TeammateIdle` registered → `worker-keepalive.sh`
 
-If missing or incomplete → copy from `references/settings_template.json` and install hook scripts:
+If missing or incomplete → copy from `references/settings_template.json` and install hook scripts via Bash `cp` (NOT Write tool — Write produces CRLF on Windows, breaking `#!/bin/bash` shebang):
 ```
-Copy references/hooks/pipeline-keepalive.sh → .claude/hooks/pipeline-keepalive.sh
-Copy references/hooks/worker-keepalive.sh  → .claude/hooks/worker-keepalive.sh
+mkdir -p .claude/hooks
+Bash: cp {skill_repo}/ln-1000-pipeline-orchestrator/references/hooks/pipeline-keepalive.sh .claude/hooks/pipeline-keepalive.sh
+Bash: cp {skill_repo}/ln-1000-pipeline-orchestrator/references/hooks/worker-keepalive.sh  .claude/hooks/worker-keepalive.sh
 ```
 
 **Hook troubleshooting:** If hooks fail with "No such file or directory":
-1. Verify hook commands in `.claude/settings.local.json` use correct quoting: `"\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/script.sh"` (quotes around variable only, NOT `bash "..."` wrapper)
+1. Verify hook commands use `bash .claude/hooks/script.sh` (relative path, no env vars — `$CLAUDE_PROJECT_DIR` is NOT available in hook shell context)
 2. Verify `.claude/hooks/*.sh` files exist and have `#!/bin/bash` shebang
-3. On Windows: ensure forward slashes in paths, verify Git Bash is available
+3. On Windows: ensure LF line endings in .sh files (see hook installation above — use Bash `cp`, not Write tool)
 
 #### 3.2 Initialize Pipeline State
 
@@ -330,6 +331,14 @@ WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
   #   VERIFY message.sender == worker_map[id]
   #   IF mismatch: LOG "Ignoring stale message from {sender} for {id}"; SKIP handler
   #   This prevents old/dead workers from corrupting pipeline state.
+  #
+  # STATE GUARD: Before processing ANY stage completion, verify story is in expected state:
+  #   Stage 0 COMPLETE → story_state[id] must be "STAGE_0"
+  #   Stage 1 COMPLETE → story_state[id] must be "STAGE_1"
+  #   Stage 2 COMPLETE → story_state[id] must be "STAGE_2"
+  #   Stage 3 COMPLETE → story_state[id] must be "STAGE_3"
+  #   IF mismatch: LOG "Duplicate/stale message for {id} (state={story_state[id]})"; SKIP handler
+  #   This prevents double-spawn when same completion message is delivered across heartbeats.
 
   ON "Stage 0 COMPLETE for {id}. {N} tasks created. Plan score: {score}/4.":
     Re-read kanban board
@@ -433,7 +442,7 @@ WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
       # Shutdown old worker, spawn fresh for Stage 2 re-entry (fix tasks)
       Remove .pipeline/worker-{worker_map[id]}-active.flag and .pipeline/worker-{worker_map[id]}-done.flag
       SendMessage(type: "shutdown_request", recipient: worker_map[id])
-      next_worker = "story-{id}-s2-fix"
+      next_worker = "story-{id}-s2-fix{quality_cycles[id]}"
       Task(name: next_worker, team_name: "pipeline-{date}",
            model: "opus", mode: "bypassPermissions", subagent_type: "general-purpose",    # Stage 2 medium effort (fix)
            prompt: worker_prompt(story, 2, business_answers, worktree_map[id]))

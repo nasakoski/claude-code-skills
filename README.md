@@ -131,7 +131,8 @@ claude-code-skills/                      # MARKETPLACE: 2 plugins, 101 skills
 |   |-- code-quality.py                # PostToolUse: DRY/KISS/YAGNI checks
 |
 |-- shared/css/diagram.css             # Universal diagram styles
-|-- docs/SKILL_ARCHITECTURE_GUIDE.md   # Orchestrator-Worker Pattern
+|-- docs/SKILL_ARCHITECTURE_GUIDE.md   # Orchestrator-Worker Pattern (L0-L3)
+|-- docs/AGENT_TEAMS_PLATFORM_GUIDE.md # Agent Teams runtime patterns
 |-- CLAUDE.md                          # Full documentation
 ```
 
@@ -284,14 +285,14 @@ Through the Orchestrator-Worker pattern. Instead of feeding the entire codebase 
 <details>
 <summary><b>How is it different from custom prompts or slash commands?</b></summary>
 
-Custom prompts are ad-hoc and context-free. Claude Code Skills provides 101 coordinated skills with an [Orchestrator-Worker architecture](docs/SKILL_ARCHITECTURE_GUIDE.md) — L1 orchestrators delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
+Custom prompts are ad-hoc and context-free. Claude Code Skills provides 101 coordinated skills with an [Orchestrator-Worker architecture](docs/SKILL_ARCHITECTURE_GUIDE.md) — L0 meta-orchestrator (Agent Teams) coordinates L1 orchestrators, which delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
 
 </details>
 
 <details>
 <summary><b>What is the Orchestrator-Worker pattern?</b></summary>
 
-A 3-level hierarchy: L1 orchestrators (e.g., `ln-200-scope-decomposer`) manage the full pipeline, L2 coordinators (e.g., `ln-220-story-coordinator`) handle mid-level scope, and L3 workers (e.g., `ln-221-story-creator`) execute specific tasks. Each level has single responsibility and loads only the context it needs. See [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md).
+A 4-level hierarchy: L0 meta-orchestrator (`ln-1000-pipeline-orchestrator`) coordinates via Agent Teams (TeamCreate), L1 orchestrators (e.g., `ln-400-story-executor`) manage Story lifecycle, L2 coordinators (e.g., `ln-220-story-coordinator`) handle mid-level scope, and L3 workers (e.g., `ln-221-story-creator`) execute specific tasks. Each level has single responsibility and loads only the context it needs. See [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md).
 
 </details>
 
@@ -342,6 +343,7 @@ ln -s ~/.claude/plugins/<PLUGIN_DIR> ~/.codex/skills
 |---|---|
 | **Documentation** | [CLAUDE.md](CLAUDE.md) |
 | **Architecture** | [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md) |
+| **Agent Teams** | [AGENT_TEAMS_PLATFORM_GUIDE.md](docs/AGENT_TEAMS_PLATFORM_GUIDE.md) |
 | **Issues** | [GitHub Issues](https://github.com/levnikolaevich/claude-code-skills/issues) |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
