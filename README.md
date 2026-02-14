@@ -5,8 +5,11 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
+> [!IMPORTANT]
+> **✨ NEW: ln-1000 Pipeline Orchestrator** — Autonomous multi-agent system that manages full development lifecycle. Orchestrates a team of specialized agents working in parallel to execute complete development cycles: from task planning (ln-300) → validation (ln-310) → implementation (ln-400) → quality gate (ln-500) → automatic merge to `develop`. One command, zero manual intervention.
+
 > [!TIP]
-> **NEW: Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
+> **Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
 
 > Tired of manual Epic decomposition? Stories without standards research? Tasks that miss quality gates?
 >
