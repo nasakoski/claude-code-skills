@@ -240,6 +240,64 @@ Add to `~/.claude/settings.json`:
 
 ---
 
+## AI Review Models (Optional)
+
+Multi-model review uses external AI agents (Codex + Gemini) for parallel code/story analysis. Both agents run simultaneously with automatic fallback to Claude Opus if unavailable.
+
+| Model | CLI | Version | Used by | Settings |
+|-------|-----|---------|---------|----------|
+| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-311, ln-512 | `--json --full-auto` (read-only, internet access) |
+| **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-311, ln-512 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
+
+**Review Workflow:**
+1. **Parallel Execution** — Both agents run simultaneously (background tasks)
+2. **Critical Verification** — Claude validates each suggestion (AGREE/DISAGREE/UNCERTAIN)
+3. **Debate Protocol** — Challenge rounds (max 2) for controversial findings
+4. **Filtering** — Only high-confidence (≥90%), high-impact (>2%) suggestions surface
+5. **Fallback** — Self-Review (Claude Opus) if agents unavailable
+
+**Installation:**
+```bash
+# Codex (OpenAI)
+npm install -g @anthropic/codex-cli
+codex login
+
+# Gemini (Google)
+pip install google-gemini-cli
+gemini auth login
+```
+
+**Configuration:**
+Review agents auto-configure via `shared/agents/agent_registry.json`. No manual setup required.
+
+**Audit Trail:**
+All prompts/results saved to `.agent-review/{agent}/` for transparency:
+```
+.agent-review/
+├── codex/
+│   ├── PROJ-123_storyreview_prompt.md
+│   ├── PROJ-123_storyreview_result.md
+│   └── PROJ-123_session.json
+└── gemini/
+    └── (same structure)
+```
+
+<details>
+<summary><b>Skills using external AI review</b></summary>
+
+- **ln-311-agent-reviewer** — Story/Tasks validation (called by ln-310-story-validator Phase 5)
+- **ln-512-agent-reviewer** — Code implementation review (called by ln-511-code-quality-checker Step 7)
+
+Both skills support:
+- Session Resume for multi-round debates
+- Zero timeout (wait for completion)
+- Read-only analysis (no project modifications)
+- Internet access for research
+
+</details>
+
+---
+
 ## Workflow
 
 ```
