@@ -240,6 +240,7 @@ Write .pipeline/state.json (full schema — see checkpoint_format.md):
     "skill_repo_path": <absolute path to skills repository root>,
     "team_name": "pipeline-{YYYY-MM-DD}",
     "business_answers": {<question: answer pairs from Phase 2, or {} if skipped>},
+    "total_merged_stories": 0,
     "storage_mode": "file"|"linear",
     "project_brief": {<name, tech, type, key_rules from Phase 1 step 2>},
     "story_briefs": {<storyId: {tech, keyFiles, approach, complexity} from Phase 1 step 9>} }   # Recovery-critical
@@ -452,6 +453,26 @@ WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
 - Kanban + Linear verification (sync check)
 
 Executed after Stage 3 PASS verdict from ln-500-story-quality-gate.
+
+#### Phase 4b: Cross-Story Health Check (every 5th merged Story)
+
+After squash-merge, increment `total_merged_stories` counter. When `total_merged_stories % 5 == 0`:
+
+1. On develop branch, Grep for top-5 hotspot patterns across `src/` (count mode):
+   - Error handlers: `catch.*Error|handleError|handleCommandError`
+   - Validators: `validate|isValid|checkInput`
+   - Config access: `getSettings|getConfig|loadConfig`
+   - HTTP wrappers: `httpClient|apiClient|fetchWrapper`
+   - Parsers: `parseResponse|parseError|parseApi`
+2. If ANY pattern appears in **5+ files** → WARN user:
+   ```
+   Cross-Story Health Check (after {N} Stories):
+   WARNING: {pattern} duplicated in {count} files.
+   Recommend: create refactoring Epic or run ln-620-codebase-auditor.
+   ```
+3. Log result in pipeline report (`story_results` → health_check entry)
+
+**NOTE:** Warning-only — does NOT block pipeline. User decides whether to act.
 
 ### Phase 5: Cleanup & Self-Verification
 
@@ -695,6 +716,7 @@ When invoked in Plan Mode, generate execution plan without creating team:
 | 2 | Business questions asked in single batch (or none found) | `business_answers` stored OR skip |
 | 3 | Team created, workers spawned (max 3 concurrent) | `active_workers` never exceeded 3 |
 | 4 | ALL Stories processed: state = DONE or PAUSED | `ALL story_state[id] IN ("DONE", "PAUSED")` |
+| 4b | Cross-story health checked (if threshold met) | Warning logged or N/A |
 | 5 | Every DONE Story squash-merged into develop | Feature branches merged, on develop branch |
 | 6 | Pipeline summary shown to user | Phase 5 table output |
 | 7 | Team cleaned up (workers shutdown, TeamDelete) | `active_workers == 0`, TeamDelete called |

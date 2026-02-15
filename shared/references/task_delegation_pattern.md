@@ -21,7 +21,33 @@ Task(
 
 ## Worker Output Contract
 
-L3 workers return standardized JSON to coordinator:
+Two delivery modes depending on coordinator scale:
+
+### File-Based Output (ln-620, ln-640 workers)
+
+Workers write full report to `docs/project/.audit/{worker_id}.md` and return minimal summary in-context.
+
+**Template:** `shared/templates/audit_worker_report_template.md`
+
+**Worker return (in-context, ~50 tokens):**
+```
+Report written: docs/project/.audit/621-security.md
+Score: 7.5/10 | Issues: 5 (C:0 H:2 M:2 L:1)
+```
+
+4-score workers (ln-641, ln-643) include sub-scores:
+```
+Report written: docs/project/.audit/641-pattern-job-processing.md
+Score: 7.9/10 (C:72 K:85 Q:68 I:90) | Issues: 3 (H:1 M:2 L:0)
+```
+
+**Coordinator receives:** path + score + counts (enough for aggregation). Reads files only during report assembly (ln-620) or cross-domain aggregation (ln-640).
+
+**Use when:** Coordinator has 7+ workers OR domain-aware mode with N×workers (e.g., ln-620 with 9 workers, ln-640 with 4 workers × N domains).
+
+### In-Context JSON Output (other coordinators)
+
+Workers return standardized JSON directly to coordinator:
 
 ```json
 {
@@ -40,6 +66,8 @@ L3 workers return standardized JSON to coordinator:
   ]
 }
 ```
+
+**Use when:** Coordinator has <7 workers (e.g., ln-640 with 4, ln-650 with 3).
 
 ## Audit Coordinator → Worker Contract
 
@@ -74,18 +102,42 @@ See `audit_output_schema.md` for full schema. Workers MUST return:
 - `checks[]`: each rule checked
 - `findings[]`: issues with locations
 
-### Data Flow Diagram
+### Data Flow Diagrams
 
+**File-based (ln-620, ln-640):**
 ```
 ┌─────────────────────┐
 │ L2 Coordinator      │
-│ (ln-620/ln-630)     │
+│ (ln-620 / ln-640)   │
+└─────────┬───────────┘
+          │ contextStore + output_dir
+          ▼
+┌─────────────────────┐     ┌─────────────────────┐
+│ L3 Worker (Task)    │     │ L3 Worker (Task)    │
+└──┬──────────────┬───┘     └──┬──────────────┬───┘
+   │ Write file   │ Return     │ Write file   │ Return
+   ▼              │ ~50 tok    ▼              │ ~50 tok
+ .audit/          └─────┬──────.audit/        └────┬──
+ 6XX-slug.md            │      6XX-slug.md         │
+                        ▼                          ▼
+              ┌─────────────────────┐
+              │ Aggregation         │
+              │ Read return values  │
+              │ Read files for      │
+              │ report/cross-domain │
+              └─────────────────────┘
+```
+
+**In-context JSON (ln-650, ln-630):**
+```
+┌─────────────────────┐
+│ L2 Coordinator      │
+│ (ln-650/ln-630)     │
 └─────────┬───────────┘
           │ contextStore
           ▼
 ┌─────────────────────┐     ┌─────────────────────┐
 │ L3 Worker (Task)    │     │ L3 Worker (Task)    │
-│ ln-621 Security     │     │ ln-622 Build        │
 └─────────┬───────────┘     └─────────┬───────────┘
           │ JSON output               │ JSON output
           └───────────┬───────────────┘
@@ -169,5 +221,5 @@ Task(
 ```
 
 ---
-**Version:** 1.1.0
-**Last Updated:** 2026-02-05
+**Version:** 2.0.0
+**Last Updated:** 2026-02-15

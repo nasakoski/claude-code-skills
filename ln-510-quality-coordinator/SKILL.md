@@ -30,23 +30,28 @@ Sequential coordinator for code quality pipeline. Invokes 4 workers in index ord
 1) Auto-discover team/config from `docs/tasks/kanban_board.md`
 2) Load Story + task metadata from Linear (no full descriptions)
 
-**Fast-track mode:** When invoked with `--fast-track` flag (readiness 10/10), skip Phase 2 (ln-511), Phase 3 (ln-512), Phase 4 (ln-513). Run Phase 5 (criteria), Phase 6 (linters), Phase 7 (ln-514) only.
+**Fast-track mode:** When invoked with `--fast-track` flag (readiness 10/10), run Phase 2 with `--skip-mcp-ref` (metrics + static only, no MCP Ref), skip Phase 3 (ln-512), Phase 4 (ln-513). Run Phase 5 (criteria), Phase 6 (linters), Phase 7 (ln-514).
 
 **Input:** Story ID from ln-500-story-quality-gate
 
-### Phase 2: Code Quality (delegate to ln-511 — SKIP if --fast-track)
+### Phase 2: Code Quality (delegate to ln-511 — ALWAYS runs)
 
-> **MANDATORY STEP (full gate):** ln-511 invocation required.
-> **Fast-track:** SKIP this phase. Readiness 10/10 = pre-validated code quality.
+> **MANDATORY STEP:** ln-511 invocation required in ALL modes.
+> **Full gate:** ln-511 runs everything (metrics + MCP Ref + static analysis).
+> **Fast-track:** ln-511 runs with `--skip-mcp-ref` (metrics + static analysis only — catches complexity, DRY, dead code without expensive MCP Ref calls).
 
 1) **Invoke ln-511-code-quality-checker** via Skill tool
-   - ln-511 runs code metrics, MCP Ref validation (OPT/BP/PERF), static analysis
+   - Full: ln-511 runs code metrics, MCP Ref validation (OPT/BP/PERF), static analysis
+   - Fast-track: ln-511 runs code metrics + static analysis only (skips OPT-, BP-, PERF- MCP Ref checks)
    - Returns verdict (PASS/CONCERNS/ISSUES_FOUND) + code_quality_score + issues list
 2) **If ln-511 returns ISSUES_FOUND** -> aggregate issues, continue (ln-500 decides action)
 
 **Invocation:**
 ```
+# Full gate:
 Skill(skill: "ln-511-code-quality-checker", args: "{storyId}")
+# Fast-track:
+Skill(skill: "ln-511-code-quality-checker", args: "{storyId} --skip-mcp-ref")
 ```
 
 ### Phase 3: Tech Debt Cleanup (delegate to ln-512 — SKIP if --fast-track)
@@ -166,7 +171,7 @@ issues:
 - Do not create tasks or change statuses; ln-500 decides next actions
 
 ## Definition of Done
-- ln-511 invoked (or skipped if --fast-track), code quality score returned
+- ln-511 invoked (ALWAYS — full or `--skip-mcp-ref` in fast-track), code quality score returned
 - ln-512 invoked (or skipped if --fast-track), tech debt cleanup results returned
 - ln-513 invoked (or skipped if --fast-track), agent review results returned
 - Criteria Validation completed (3 checks)

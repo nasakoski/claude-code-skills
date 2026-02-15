@@ -22,15 +22,16 @@ Specialized worker auditing build health and code quality tooling.
 
 **MANDATORY READ:** Load `shared/references/task_delegation_pattern.md#audit-coordinator--worker-contract` for contextStore structure.
 
-Receives `contextStore` with: `tech_stack` (including build_tool, test_framework), `best_practices`, `principles`, `codebase_root`.
+Receives `contextStore` with: `tech_stack` (including build_tool, test_framework), `best_practices`, `principles`, `codebase_root`, `output_dir`.
 
 ## Workflow
 
-1) **Parse Context:** Extract tech stack, build tools, test framework from contextStore
+1) **Parse Context:** Extract tech stack, build tools, test framework, output_dir from contextStore
 2) **Run Build Checks:** Execute compiler, linter, type checker, tests (see Audit Rules below)
 3) **Collect Findings:** Record each violation with severity, location, effort, recommendation
 4) **Calculate Score:** Count violations by severity, calculate compliance score (X/10)
-5) **Return Results:** Return JSON with category, score, findings to coordinator
+5) **Write Report:** Build full markdown report in memory per `shared/templates/audit_worker_report_template.md`, write to `{output_dir}/622-build.md` in single Write call
+6) **Return Summary:** Return minimal summary to coordinator (see Output Format)
 
 ## Audit Rules (Priority: CRITICAL)
 
@@ -124,9 +125,15 @@ Receives `contextStore` with: `tech_stack` (including build_tool, test_framework
 
 ## Output Format
 
-**MANDATORY READ:** Load `shared/references/audit_output_schema.md` for JSON structure.
+**MANDATORY READ:** Load `shared/templates/audit_worker_report_template.md` for file format.
 
-Return JSON with `category: "Build Health"` and checks: compilation_errors, linter_warnings, type_errors, test_failures, build_config.
+Write report to `{output_dir}/622-build.md` with `category: "Build Health"` and checks: compilation_errors, linter_warnings, type_errors, test_failures, build_config.
+
+Return summary to coordinator:
+```
+Report written: docs/project/.audit/622-build.md
+Score: X.X/10 | Issues: N (C:N H:N M:N L:N)
+```
 
 ## Critical Rules
 
@@ -138,14 +145,16 @@ Return JSON with `category: "Build Health"` and checks: compilation_errors, lint
 
 ## Definition of Done
 
-- contextStore parsed successfully
+- contextStore parsed successfully (including output_dir)
 - All 5 build checks completed (compiler, linter, type checker, tests, config)
 - Findings collected with severity, location, effort, recommendation
 - Score calculated using penalty algorithm
-- JSON result returned to coordinator
+- Report written to `{output_dir}/622-build.md` (atomic single Write call)
+- Summary returned to coordinator
 
 ## Reference Files
 
+- **Worker report template:** `shared/templates/audit_worker_report_template.md`
 - **Audit scoring formula:** `shared/references/audit_scoring.md`
 - **Audit output schema:** `shared/references/audit_output_schema.md`
 - Build audit rules: [references/build_rules.md](references/build_rules.md)

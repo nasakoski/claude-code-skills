@@ -102,7 +102,9 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
    - Nesting depth (target ≤3)
    - Parameter count (target ≤4)
 
-4) **MCP Ref Validation (MANDATORY for code changes):**
+4) **MCP Ref Validation (MANDATORY for code changes — SKIP if `--skip-mcp-ref` flag passed):**
+
+   > **Fast-track mode:** When invoked with `--skip-mcp-ref`, skip this entire step (no OPT-, BP-, PERF- checks). Proceed directly to step 5 (static analysis). This reduces cost from ~5000 to ~800 tokens while preserving metrics + static analysis coverage.
 
    **Level 1 — OPTIMALITY (OPT-):**
    - Extract goal from task (e.g., "user authentication", "caching", "API rate limiting")
@@ -132,6 +134,8 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
    **MANDATORY READ:** `shared/references/clean_code_checklist.md`
    - SEC-: hardcoded creds, unvalidated input, SQL injection, race conditions
    - MNT-: DRY violations (MNT-DRY-: duplicate logic), dead code (MNT-DC-: per checklist), complex conditionals, poor naming
+   - **MNT-DRY- cross-story hotspot scan:** Grep for common pattern signatures (error handlers: `catch.*Error|handleError`, validators: `validate|isValid`, config access: `getSettings|getConfig`) across ALL `src/` files (count mode). If any pattern appears in 5+ files, sample 3 files (Read 50 lines each) and check structural similarity. If >80% similar → MNT-DRY-CROSS (medium, -10 points): `Pattern X duplicated in N files — extract to shared module.`
+   - **MNT-DC- cross-story unused export scan:** For each file modified by Story, count `export` declarations. Then Grep across ALL `src/` for import references to those exports. Exports with 0 import references → MNT-DC-CROSS (medium, -10 points): `{export} in {file} exported but never imported — remove or mark internal.`
    - ARCH-: layer violations, circular dependencies, guide non-compliance
    - ARCH-LB-: layer boundary violations (HTTP/DB/FS calls outside infrastructure layer)
    - ARCH-TX-: transaction boundary violations (commit() across multiple layers)

@@ -1,8 +1,40 @@
 # Audit Worker Output Schema
 
-Standard JSON output format for all L3 audit workers.
+Standard output format for all L3 audit workers. Two delivery modes: **file-based** (primary) and **in-context JSON** (small coordinators).
 
-## L3 Worker Output (to L2 Coordinator)
+## File-Based Output (Primary — ln-620, ln-640 workers)
+
+Workers write markdown reports to `docs/project/.audit/` and return minimal summary in-context.
+
+**Full template:** See `shared/templates/audit_worker_report_template.md` for file format, naming convention, AUDIT-META block, FINDINGS-EXTENDED spec (ln-623), and DATA-EXTENDED spec (ln-640 workers).
+
+### Worker Return (In-Context)
+
+Instead of full JSON, worker returns ~50 tokens:
+
+```
+Report written: docs/project/.audit/621-security.md
+Score: 7.5/10 | Issues: 5 (C:0 H:2 M:2 L:1)
+```
+
+4-score workers (ln-641, ln-643) include sub-scores:
+```
+Report written: docs/project/.audit/641-pattern-job-processing.md
+Score: 7.9/10 (C:72 K:85 Q:68 I:90) | Issues: 3 (H:1 M:2 L:0)
+```
+
+### When to Use File-Based
+
+| Coordinator | Workers | Mode |
+|-------------|---------|------|
+| ln-620 (9 workers) | ln-621..ln-629 | **File-based** (prevents context overflow) |
+| ln-640 (4 workers, domain-aware) | ln-641..ln-644 | **File-based** (up to 20+ invocations in domain-aware mode) |
+| ln-650 (3 workers) | ln-651..ln-653 | In-context JSON (3 workers manageable) |
+| ln-630 (5 workers) | ln-631..ln-635 | In-context JSON (5 workers manageable) |
+
+**Rule of thumb:** File-based when coordinator has 7+ workers OR domain-aware mode with 4+ workers × N domains.
+
+## In-Context JSON Output (Legacy/Other Coordinators)
 
 ```json
 {
@@ -200,5 +232,5 @@ Return JSON with:
 ```
 
 ---
-**Version:** 1.1.0
-**Last Updated:** 2026-02-05
+**Version:** 2.0.0
+**Last Updated:** 2026-02-15
