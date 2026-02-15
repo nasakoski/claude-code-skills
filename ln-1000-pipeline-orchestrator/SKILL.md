@@ -1,6 +1,6 @@
 ---
 name: ln-1000-pipeline-orchestrator
-description: "Meta-orchestrator (L0): reads kanban board, drives Stories through pipeline 300->310->400->500 in parallel via TeamCreate. Max 2 concurrent Stories. Auto squash-merge to develop on quality gate PASS."
+description: "Meta-orchestrator (L0): reads kanban board, drives Stories through pipeline 300->310->400->500 in parallel via TeamCreate. Max 3 concurrent Stories. Auto squash-merge to develop on quality gate PASS."
 ---
 
 > **Paths:** File paths (`shared/`, `references/`, `../ln-*`) are relative to skills repo root. If not found at CWD, locate this SKILL.md directory and go up one level for repo root.
@@ -12,7 +12,7 @@ Meta-orchestrator that reads the kanban board, builds a priority queue of Storie
 ## Purpose & Scope
 - Parse kanban board and build Story priority queue
 - Ask business questions in ONE batch before execution; make technical decisions autonomously
-- Spawn per-story workers via TeamCreate (max 2 concurrent)
+- Spawn per-story workers via TeamCreate (max 3 concurrent)
 - Drive each Story through 4 stages: ln-300 -> ln-310 -> ln-400 -> ln-500
 - Auto squash-merge to develop after quality gate PASS
 - Handle failures, retries, and escalation to user
@@ -88,8 +88,7 @@ This skill runs as a **team lead** in delegate mode. The agent executing ln-1000
 | Responsibility | Description |
 |---------------|-------------|
 | **Coordinate** | Assign stages to workers, process completion reports, advance pipeline |
-| **Verify** | Re-read kanban after each stage, ASSERT expected state transitions |
-| **Update** | Single writer to kanban_board.md — workers never edit the board |
+| **Verify board** | Re-read kanban/Linear after each stage. Workers update via skills; lead ASSERTs expected state transitions |
 | **Escalate** | Route failures to user when retry limits exceeded |
 | **Merge to develop** | Squash-merge to develop after quality gate PASS (lead-only action) |
 | **Shutdown** | Graceful worker shutdown, team cleanup |
@@ -222,7 +221,10 @@ Write .pipeline/state.json (full schema — see checkpoint_format.md):
     "worktree_map": {}, "depends_on": {}, "story_results": {}, "infra_issues": [],
     "status_cache": {<status_name: status_uuid>},    # Empty object if file mode
     "stage_timestamps": {}, "git_stats": {}, "pipeline_start_time": <now>, "readiness_scores": {},
-    "skill_repo_path": <absolute path to skills repository root> }   # For Stop hook recovery context
+    "skill_repo_path": <absolute path to skills repository root>,
+    "team_name": "pipeline-{YYYY-MM-DD}",
+    "business_answers": {<question: answer pairs from Phase 2, or {} if skipped>},
+    "storage_mode": "file"|"linear" }                               # Recovery-critical fields
 Write .pipeline/lead-session.id with current session_id   # Stop hook uses this to only keep lead alive
 ```
 
@@ -269,7 +271,7 @@ Workers are spawned by Phase 4 spawn loop on first heartbeat — NOT here. This 
 
 ```
 # --- INITIALIZATION ---
-active_workers = 0                    # Current worker count (invariant: <= 2)
+active_workers = 0                    # Current worker count (invariant: <= 3)
 quality_cycles = {}                   # {storyId: count} — FAIL→retry counter, limit 2
 validation_retries = {}               # {storyId: count} — NO-GO retry counter, limit 1
 crash_count = {}                      # {storyId: count} — crash respawn counter, limit 1
@@ -333,11 +335,14 @@ FOR EACH story IN priority_queue:
 # The Stop hook includes "---PIPELINE RECOVERY CONTEXT---" in EVERY heartbeat stderr.
 #
 # IF you see this block and don't recall the pipeline protocol:
-#   1. Read .pipeline/state.json → restore ALL state variables listed above (lines 271-286)
-#   2. Re-read THIS file Phase 4 + references/phases/phase4_handlers.md + phase4_heartbeat.md
-#   3. Resume event loop: process messages → verify flags → persist state → end turn
+#   1. Read .pipeline/state.json → restore ALL state (including team_name, business_answers)
+#   2. Re-read THIS file (FULL) → restore phases, rules, error handling, known issues
+#   3. Read references/phases/phase4_handlers.md + phase4_heartbeat.md
+#   4. Read references/known_issues.md → self-diagnostic patterns
+#   5. ToolSearch("+hashline-edit") → reload MCP tools
+#   6. Resume event loop: process messages → verify flags → persist state → end turn
 #
-# Cost: ~3 file reads (~500 lines), one-time per compression event.
+# Cost: ~4 file reads (~800 lines), one-time per compression event.
 # Normal operation: 0 extra reads. Recovery block in stderr is passive anchor.
 #
 # FRESH WORKER PER STAGE: Each stage transition = shutdown old worker + spawn new one.
@@ -351,7 +356,7 @@ FOR EACH story IN priority_queue:
 WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
 
   # 1. Spawn workers for queued stories (respecting concurrency + dependency limits)
-  WHILE active_workers < 2 AND priority_queue NOT EMPTY:
+  WHILE active_workers < 3 AND priority_queue NOT EMPTY:
     story = priority_queue.peek()            # Don't pop yet — may be blocked
 
     # Dependency guard: all prerequisites must be DONE
@@ -372,10 +377,11 @@ WHILE ANY story_state[id] NOT IN ("DONE", "PAUSED"):
       worktree_dir = null                    # Solo mode — work in project CWD
 
     worktree_map[story.id] = worktree_dir
+    project_root = Bash("pwd")           # Absolute path for PIPELINE_DIR in worktree mode
     Task(name: worker_name, team_name: "pipeline-{date}",
          model: "opus", mode: "bypassPermissions",
          subagent_type: "general-purpose",
-         prompt: worker_prompt(story, target_stage, business_answers, worktree_dir))
+         prompt: worker_prompt(story, target_stage, business_answers, worktree_dir, project_root))
     worker_map[story.id] = worker_name
     story_state[story.id] = "STAGE_{target_stage}"
     stage_timestamps[story.id] = stage_timestamps.get(story.id, {})
@@ -619,19 +625,23 @@ Delete .pipeline/ directory
 
 ## Critical Rules
 
-1. **Max 2 concurrent Stories.** Never spawn more than 2 story-workers simultaneously
+1. **Max 3 concurrent Stories.** Never spawn more than 3 story-workers simultaneously
 2. **Delegate mode.** Lead coordinates only — never invoke ln-310/ln-400/ln-500 directly. Workers do all execution
 3. **Skills as-is.** Never modify or bypass existing skill logic. Workers call `Skill("ln-310-story-validator", args)` exactly as documented
-4. **Single kanban writer.** Only lead updates kanban_board.md. Workers report via SendMessage
+4. **Kanban verification.** Workers update Linear/kanban via skills. Lead re-reads and ASSERTs expected state after each stage. In file mode, lead resolves merge conflicts
 5. **Quality cycle limit.** Max 2 quality FAILs per Story (1 retry cycle). After 2nd FAIL, escalate to user
 6. **Squash per Story.** Each Story that passes quality gate gets squash-merged to develop separately. No batch merges
 7. **Re-read kanban.** After every stage completion, re-read board for fresh state. Never cache
 8. **Graceful shutdown.** Always shutdown workers via shutdown_request. Never force-kill
 
+## Known Issues
+
+**MANDATORY READ:** Load `references/known_issues.md` for production-discovered problems and self-recovery patterns.
+
 ## Anti-Patterns
 - Running ln-300/ln-310/ln-400/ln-500 directly from lead instead of delegating to workers
-- Spawning >2 workers simultaneously
-- Updating kanban from worker (only lead updates)
+- Spawning >3 workers simultaneously
+- Lead skipping kanban verification after worker updates (workers write via skills, lead MUST re-read + ASSERT)
 - Skipping quality gate after execution
 - Merging to develop before quality gate PASS
 - Caching kanban state instead of re-reading
@@ -673,7 +683,7 @@ When invoked in Plan Mode, generate execution plan without creating team:
 |---|-----------|-------------|
 | 1 | Kanban board parsed, priority queue built | `priority_queue` was populated |
 | 2 | Business questions asked in single batch (or none found) | `business_answers` stored OR skip |
-| 3 | Team created, workers spawned (max 2 concurrent) | `active_workers` never exceeded 2 |
+| 3 | Team created, workers spawned (max 3 concurrent) | `active_workers` never exceeded 3 |
 | 4 | ALL Stories processed: state = DONE or PAUSED | `ALL story_state[id] IN ("DONE", "PAUSED")` |
 | 5 | Every DONE Story squash-merged into develop | Feature branches merged, on develop branch |
 | 6 | Pipeline summary shown to user | Phase 5 table output |
@@ -687,6 +697,7 @@ When invoked in Plan Mode, generate execution plan without creating team:
 - **Git flow:** `references/phases/phase4a_git_merge.md` (Squash merge, worktree cleanup, sync verification)
 
 ### Core Infrastructure
+- **Known issues:** `references/known_issues.md` (production-discovered problems and self-recovery)
 - **Message protocol:** `references/message_protocol.md`
 - **Worker health:** `references/worker_health_contract.md`
 - **Checkpoint format:** `references/checkpoint_format.md`

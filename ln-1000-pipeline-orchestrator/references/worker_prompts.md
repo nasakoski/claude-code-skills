@@ -69,7 +69,7 @@ Task(
 )
 ```
 
-**Note:** Stage templates include `WORKING DIRECTORY` block only when the worker runs in a worktree (parallel mode). When absent, the worker operates in the project root (CWD). Lead includes this block conditionally based on `worktree_dir` parameter.
+**Note:** Stage templates include `WORKING DIRECTORY` and `PIPELINE_DIR` blocks conditionally based on `worktree_dir` parameter. When absent, the worker operates in the project root (CWD) and PIPELINE_DIR defaults to `.pipeline`. When present, PIPELINE_DIR is set to the absolute project root path to ensure `.pipeline/` files (checkpoint, done.flag) always land in the project root, not the worktree.
 
 **Worker name:** The `{workerName}` variable in templates = the `name` parameter from Task() spawn. Workers derive it from prompt context: `story-{storyId}-s{stage}` (or `-retry` suffix for retries).
 
@@ -84,6 +84,10 @@ Your assignment: Story {storyId} "{storyTitle}"
 {IF worktree_dir:}
 WORKING DIRECTORY: {worktree_dir}
 ALL commands must execute in this directory. cd to {worktree_dir} before any operation.
+PIPELINE_DIR: {project_root}/.pipeline
+ALL .pipeline/ file operations (checkpoint, done.flag) MUST use PIPELINE_DIR absolute path.
+{ELSE:}
+PIPELINE_DIR: .pipeline
 {ENDIF}
 
 TASK: Execute Stage 0 — Task Planning (create implementation tasks).
@@ -96,7 +100,7 @@ Step 2: After ln-300 completes, check result:
   - Error or plan score <2/4: Report failure (Step 4b)
 
 Step 3: Write checkpoint:
-  Write .pipeline/checkpoint-{storyId}.json with:
+  Write {PIPELINE_DIR}/checkpoint-{storyId}.json with:
     stage=0, tasksCompleted=[], tasksRemaining=[created task IDs],
     planScore={score from ln-300 (0-4)}
 
@@ -110,7 +114,7 @@ Step 4b: Report ERROR to lead (if Step 2 failed):
     summary: "{storyId} Stage 0 ERROR")
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 0 for {storyId}" after processing your report.
-  - ON ACK received: Write .pipeline/worker-{workerName}-done.flag -> approve next shutdown_request
+  - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
   - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).
@@ -135,6 +139,10 @@ Your assignment: Story {storyId} "{storyTitle}"
 {IF worktree_dir:}
 WORKING DIRECTORY: {worktree_dir}
 ALL commands must execute in this directory. cd to {worktree_dir} before any operation.
+PIPELINE_DIR: {project_root}/.pipeline
+ALL .pipeline/ file operations (checkpoint, done.flag) MUST use PIPELINE_DIR absolute path.
+{ELSE:}
+PIPELINE_DIR: .pipeline
 {ENDIF}
 
 TASK: Execute Stage 1 — Story Validation.
@@ -147,7 +155,7 @@ Step 2: After ln-310 completes, check result:
   - If NO-GO: Report failure with reason to lead
 
 Step 3: Write checkpoint:
-  Write .pipeline/checkpoint-{storyId}.json with:
+  Write {PIPELINE_DIR}/checkpoint-{storyId}.json with:
     stage=1, tasksCompleted=[], tasksRemaining=[],
     readiness={score from ln-310 (1-10)}, verdict={GO or NO-GO},
     reason={reason if NO-GO, omit if GO}
@@ -163,7 +171,7 @@ Step 4: Report to lead (use EXACT format per verdict):
       summary: "{storyId} Stage 1 NO-GO")
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 1 for {storyId}" after processing your report.
-  - ON ACK received: Write .pipeline/worker-{workerName}-done.flag -> approve next shutdown_request
+  - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
   - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).
@@ -188,6 +196,10 @@ Your assignment: Story {storyId} "{storyTitle}"
 {IF worktree_dir:}
 WORKING DIRECTORY: {worktree_dir}
 ALL commands must execute in this directory. cd to {worktree_dir} before any operation.
+PIPELINE_DIR: {project_root}/.pipeline
+ALL .pipeline/ file operations (checkpoint, done.flag) MUST use PIPELINE_DIR absolute path.
+{ELSE:}
+PIPELINE_DIR: .pipeline
 {ENDIF}
 
 MCP TOOL PREFERENCES (code editing only):
@@ -206,7 +218,7 @@ Step 1: Invoke executor:
   Skill(skill: "ln-400-story-executor", args: "{storyId}")
 
   CHECKPOINT: After EACH task completes within ln-400, update checkpoint:
-    Write .pipeline/checkpoint-{storyId}.json with stage=2,
+    Write {PIPELINE_DIR}/checkpoint-{storyId}.json with stage=2,
     move completed task ID from tasksRemaining to tasksCompleted
 
 Step 2: After ln-400 completes, check result:
@@ -214,7 +226,7 @@ Step 2: After ln-400 completes, check result:
   - Any task stuck or error: Report error (Step 4b)
 
 Step 3: Write final checkpoint:
-  Write .pipeline/checkpoint-{storyId}.json with stage=2, all tasks in tasksCompleted
+  Write {PIPELINE_DIR}/checkpoint-{storyId}.json with stage=2, all tasks in tasksCompleted
 
 Step 4a: Report SUCCESS to lead:
   SendMessage(type: "message", recipient: "pipeline-lead",
@@ -226,7 +238,7 @@ Step 4b: Report ERROR to lead (if Step 2 failed):
     summary: "{storyId} Stage 2 ERROR")
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 2 for {storyId}" after processing your report.
-  - ON ACK received: Write .pipeline/worker-{workerName}-done.flag -> approve next shutdown_request
+  - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
   - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).
@@ -251,6 +263,10 @@ Your assignment: Story {storyId} "{storyTitle}"
 {IF worktree_dir:}
 WORKING DIRECTORY: {worktree_dir}
 ALL commands must execute in this directory. cd to {worktree_dir} before any operation.
+PIPELINE_DIR: {project_root}/.pipeline
+ALL .pipeline/ file operations (checkpoint, done.flag) MUST use PIPELINE_DIR absolute path.
+{ELSE:}
+PIPELINE_DIR: .pipeline
 {ENDIF}
 
 TASK: Execute Stage 3 — Quality Gate.
@@ -265,7 +281,7 @@ Step 2: After ln-500 completes, check verdict:
   - WAIVED: Report success with waiver reason
 
 Step 3: Write checkpoint:
-  Write .pipeline/checkpoint-{storyId}.json with:
+  Write {PIPELINE_DIR}/checkpoint-{storyId}.json with:
     stage=3, all tasks in tasksCompleted,
     verdict={PASS/CONCERNS/WAIVED/FAIL from ln-500}, qualityScore={score from ln-500 (0-100)},
     issues={issues if FAIL, omit otherwise}
@@ -281,7 +297,7 @@ Step 4: Report to lead (use EXACT format per verdict):
       summary: "{storyId} Stage 3 FAIL")
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 3 for {storyId}" after processing your report.
-  - ON ACK received: Write .pipeline/worker-{workerName}-done.flag -> approve next shutdown_request
+  - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
   - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).

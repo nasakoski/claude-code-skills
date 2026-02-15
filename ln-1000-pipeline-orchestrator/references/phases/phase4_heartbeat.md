@@ -15,19 +15,20 @@ Lead detects context loss when:
 
 ### Recovery Steps
 
-1. **Read** `.pipeline/state.json` → restore ALL state variables (story_state, worker_map, quality_cycles, validation_retries, crash_count, priority_queue_ids, story_results, worktree_map, depends_on, stage_timestamps, git_stats, readiness_scores)
-2. **Read** SKILL.md Phase 4 section → restore event loop structure, spawn logic
+1. **Read** `.pipeline/state.json` → restore ALL state variables including team_name, business_answers, storage_mode
+2. **Read** SKILL.md (FULL) → restore all phases, rules, error handling, anti-patterns
 3. **Read** `references/phases/phase4_handlers.md` → restore all ON message handlers
 4. **Read** `references/phases/phase4_heartbeat.md` → restore verification + heartbeat output
-5. **Set** ephemeral variables: `suspicious_idle = {}`, `heartbeat_count = 0`
-6. **Resume** event loop: process messages → verify flags → persist state → end turn
+5. **Read** `references/known_issues.md` → restore self-diagnostic patterns
+6. **Set** ephemeral variables: `suspicious_idle = {}`, `heartbeat_count = 0`. Run `ToolSearch("+hashline-edit")` for MCP tools
+7. **Resume** event loop: process messages → verify flags → persist state → end turn
 
 ### Token Cost
 
 | Scenario | Files Read | Approx Tokens |
 |----------|-----------|---------------|
 | Normal heartbeat (no compression) | 0 | 0 |
-| After compression (one-time recovery) | 3 files | ~2000 |
+| After compression (one-time recovery) | 4 files | ~2500 |
 | Recovery block in stderr (every heartbeat) | -- | ~120 |
 
 ## Active Done-Flag Verification (Step 2.5)
@@ -204,7 +205,7 @@ ON NO NEW MESSAGES (heartbeat cycle with no worker updates):
 | {worker.story} | {worker.stage} | {worker.activity} | {worker.progress} | {worker.status} |
 {END FOR}
 
-Active Workers: {active_workers}/2
+Active Workers: {active_workers}/3
 Stories Remaining: {stories_remaining}
 
 Next Steps:

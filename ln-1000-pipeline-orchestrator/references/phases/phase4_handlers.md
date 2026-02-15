@@ -52,7 +52,7 @@ SendMessage(type: "shutdown_request", recipient: worker_map[id])
 next_worker = "story-{id}-s1"
 Task(name: next_worker, team_name: "pipeline-{date}",
      model: "opus", mode: "bypassPermissions", subagent_type: "general-purpose",
-     prompt: worker_prompt(story, 1, business_answers, worktree_map[id]))
+     prompt: worker_prompt(story, 1, business_answers, worktree_map[id], project_root))
 worker_map[id] = next_worker
 Write .pipeline/worker-{next_worker}-active.flag
 story_results[id].stage0 = "{N} tasks, {score}/4"
@@ -93,7 +93,7 @@ SendMessage(type: "shutdown_request", recipient: worker_map[id])
 next_worker = "story-{id}-s2"
 Task(name: next_worker, team_name: "pipeline-{date}",
      model: "opus", mode: "bypassPermissions", subagent_type: "general-purpose",      # Stage 2 medium effort
-     prompt: worker_prompt(story, 2, business_answers, worktree_map[id]))
+     prompt: worker_prompt(story, 2, business_answers, worktree_map[id], project_root))
 worker_map[id] = next_worker
 Write .pipeline/worker-{next_worker}-active.flag
 story_results[id].stage1 = "GO, {score}"
@@ -111,7 +111,7 @@ IF validation_retries[id] <= 1:
   next_worker = "story-{id}-s1-retry"
   Task(name: next_worker, team_name: "pipeline-{date}",
        model: "opus", mode: "bypassPermissions", subagent_type: "general-purpose",    # Stage 1 = review
-       prompt: worker_prompt(story, 1, business_answers, worktree_map[id]))
+       prompt: worker_prompt(story, 1, business_answers, worktree_map[id], project_root))
   worker_map[id] = next_worker
   Write .pipeline/worker-{next_worker}-active.flag
 ELSE:
@@ -163,7 +163,7 @@ SendMessage(type: "shutdown_request", recipient: worker_map[id])
 next_worker = "story-{id}-s3"
 Task(name: next_worker, team_name: "pipeline-{date}",
      model: "opus", mode: "bypassPermissions", subagent_type: "general-purpose",      # Stage 3 = QA
-     prompt: worker_prompt(story, 3, business_answers, worktree_map[id]))
+     prompt: worker_prompt(story, 3, business_answers, worktree_map[id], project_root))
 worker_map[id] = next_worker
 Write .pipeline/worker-{next_worker}-active.flag
 story_results[id].stage2 = "Done"
@@ -202,7 +202,7 @@ IF quality_cycles[id] < 2:
   next_worker = "story-{id}-s2-fix{quality_cycles[id]}"
   Task(name: next_worker, team_name: "pipeline-{date}",
        model: "opus", mode: "bypassPermissions", subagent_type: "general-purpose",    # Stage 2 medium effort (fix)
-       prompt: worker_prompt(story, 2, business_answers, worktree_map[id]))
+       prompt: worker_prompt(story, 2, business_answers, worktree_map[id], project_root))
   worker_map[id] = next_worker
   Write .pipeline/worker-{next_worker}-active.flag
 ELSE:
@@ -247,7 +247,7 @@ ON TeammateIdle again WITHOUT response:
     IF checkpoint.agentId exists:
       Task(resume: checkpoint.agentId)          # Try 1: full context resume
     ELSE:
-      new_prompt = worker_prompt(story, checkpoint.stage, business_answers, worktree_map[id]) + CHECKPOINT_RESUME block
+      new_prompt = worker_prompt(story, checkpoint.stage, business_answers, worktree_map[id], project_root) + CHECKPOINT_RESUME block
       Task(name: "story-{id}-s{checkpoint.stage}-retry", team_name: "pipeline-{date}",
            model: "opus", mode: "bypassPermissions", subagent_type: "general-purpose",
            prompt: new_prompt)                  # Try 2: Opus for crash recovery/troubleshooting

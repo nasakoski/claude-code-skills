@@ -68,12 +68,15 @@ Lead writes ALL state variables to `.pipeline/state.json` on every heartbeat cyc
 | `git_stats` | object | `{storyId: {lines_added, lines_deleted, files_changed}}` — code output metrics |
 | `pipeline_start_time` | string | ISO 8601 timestamp of pipeline start — for wall-clock duration |
 | `readiness_scores` | object | `{storyId: readiness_score}` — from Stage 1 GO, for Stage 3 fast-track decision |
+| `team_name` | string | Team name for Task() spawns (e.g., "pipeline-2026-02-15") |
+| `business_answers` | object | `{question: answer}` from Phase 2 — passed to worker prompts |
+| `storage_mode` | string | `"file"` or `"linear"` — task storage backend |
 
 **Example:**
 ```json
 {
   "complete": false,
-  "active_workers": 2,
+  "active_workers": 3,
   "stories_remaining": 3,
   "last_check": "2026-02-13T14:30:00Z",
   "story_state": { "API-427": "STAGE_2", "API-428": "STAGE_1" },
@@ -104,7 +107,7 @@ Lead executes on confirmed crash (3-step protocol passed):
    IF resume succeeds → worker continues where it left off → DONE
 
 3. Fallback — new worker with checkpoint context:
-   prompt = worker_prompt(story, checkpoint.stage, business_answers, worktree_map[id]) + CHECKPOINT_RESUME block
+   prompt = worker_prompt(story, checkpoint.stage, business_answers, worktree_map[id], project_root) + CHECKPOINT_RESUME block
    Task(name: "story-{id}-s{N}-retry", model: "opus", prompt: prompt, mode: "bypassPermissions", ...)
 ```
 

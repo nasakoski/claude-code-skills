@@ -180,7 +180,7 @@ Pipeline runs can exceed Windows idle timeout, causing the system to sleep mid-e
 
 | Rule | Details |
 |------|---------|
-| Max 2 concurrent workers | Anthropic recommends right-sizing: "Too many subagents for simple queries" is anti-pattern |
+| Max 3 concurrent workers | Anthropic recommends right-sizing: "Too many subagents for simple queries" is anti-pattern |
 | Worktrees created lazily | Only when 2nd worker starts (parallel mode). Solo worker uses project CWD |
 | Each worker = own worktree | Anthropic: "Each agent works in independent Git Worktree, preventing overwrites" |
 | Dependency guard before spawn | All prerequisites must be DONE before spawning dependent story's worker |

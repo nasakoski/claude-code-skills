@@ -22,15 +22,18 @@ if [ "$COMPLETE" = "false" ]; then
     STORY_STATE=$(echo "$PIPELINE_STATE" | jq -c '.story_state // {}')
     WORKER_MAP=$(echo "$PIPELINE_STATE" | jq -c '.worker_map // {}')
     SKILL_REPO=$(echo "$PIPELINE_STATE" | jq -r '.skill_repo_path // ""')
+    TEAM_NAME=$(echo "$PIPELINE_STATE" | jq -r '.team_name // ""')
 
     cat >&2 <<RECOVERY_EOF
 HEARTBEAT: ${WORKERS} active workers, ${REMAINING} stories remaining. Last check: ${LAST}.
 ---PIPELINE RECOVERY CONTEXT---
-You are pipeline lead (ln-1000-pipeline-orchestrator).
+You are pipeline lead (ln-1000-pipeline-orchestrator). Team: ${TEAM_NAME}
 STATE: story_state=${STORY_STATE} worker_map=${WORKER_MAP}
-FULL STATE: Read .pipeline/state.json
-PROTOCOL: Read ${SKILL_REPO}/ln-1000-pipeline-orchestrator/SKILL.md Phase 4 + references/phases/phase4_handlers.md + references/phases/phase4_heartbeat.md
-ACTIONS: 1) Process queued worker messages (ON handlers) 2) Verify done-flags (Step 2.5) 3) Write .pipeline/state.json 4) Output status table, end turn
+RECOVER: 1) Read .pipeline/state.json (ALL state + team_name + business_answers)
+2) Read ${SKILL_REPO}/ln-1000-pipeline-orchestrator/SKILL.md (FULL)
+3) Read references/phases/phase4_handlers.md + phase4_heartbeat.md + references/known_issues.md
+4) ToolSearch("+hashline-edit") for MCP tools
+5) Resume event loop: process messages → verify flags → persist state → end turn
 RECOVERY_EOF
     sleep 60
     exit 2
