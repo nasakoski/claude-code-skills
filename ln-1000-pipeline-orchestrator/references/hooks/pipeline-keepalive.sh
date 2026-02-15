@@ -23,11 +23,12 @@ if [ "$COMPLETE" = "false" ]; then
     WORKER_MAP=$(echo "$PIPELINE_STATE" | jq -c '.worker_map // {}')
     SKILL_REPO=$(echo "$PIPELINE_STATE" | jq -r '.skill_repo_path // ""')
     TEAM_NAME=$(echo "$PIPELINE_STATE" | jq -r '.team_name // ""')
+    PROJECT_TECH=$(echo "$PIPELINE_STATE" | jq -r '.project_brief.tech // "unknown"')
 
     cat >&2 <<RECOVERY_EOF
 HEARTBEAT: ${WORKERS} active workers, ${REMAINING} stories remaining. Last check: ${LAST}.
 ---PIPELINE RECOVERY CONTEXT---
-You are pipeline lead (ln-1000-pipeline-orchestrator). Team: ${TEAM_NAME}
+You are pipeline lead (ln-1000-pipeline-orchestrator). Team: ${TEAM_NAME}. Project tech: ${PROJECT_TECH}
 STATE: story_state=${STORY_STATE} worker_map=${WORKER_MAP}
 RECOVER: 1) Read .pipeline/state.json (ALL state + team_name + business_answers)
 2) Read ${SKILL_REPO}/ln-1000-pipeline-orchestrator/SKILL.md (FULL)

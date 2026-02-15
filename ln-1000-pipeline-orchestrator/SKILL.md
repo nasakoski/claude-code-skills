@@ -127,31 +127,47 @@ IF .pipeline/state.json NOT exists OR complete == true:
 **MANDATORY READ:** Load `references/kanban_parser.md` for parsing patterns.
 
 1. Auto-discover `docs/tasks/kanban_board.md` (or Linear API via storage mode detection)
-2. Parse all status sections: Backlog, Todo, In Progress, To Review, To Rework
-3. Extract Story list with: ID, title, status, Epic name, task presence
-4. Build priority queue:
+2. Extract project brief from target project's CLAUDE.md (NOT skills repo):
+   ```
+   project_brief = {
+     name: <from H1 or first line>,
+     tech: <from Development Commands / tech references>,
+     type: <inferred: "CLI", "API", "web app", "library">,
+     key_rules: <2-3 critical rules>
+   }
+   IF not found: project_brief = { name: basename(project_root), tech: "unknown" }
+   ```
+3. Parse all status sections: Backlog, Todo, In Progress, To Review, To Rework
+4. Extract Story list with: ID, title, status, Epic name, task presence
+5. Build priority queue:
    ```
    Priority: To Review > To Rework > In Progress > Todo > Backlog
    ```
-5. Filter: skip Stories in Done, Postponed, Canceled
-6. Detect task presence per Story:
+6. Filter: skip Stories in Done, Postponed, Canceled
+7. Detect task presence per Story:
    - Has `_(tasks not created yet)_` → **no tasks** → Stage 0
    - Has task lines (4-space indent) → **tasks exist** → Stage 1+
-7. Extract dependencies per Story (see `references/kanban_parser.md` Dependency Extraction):
+8. Extract dependencies per Story (see `references/kanban_parser.md` Dependency Extraction):
    - Read each Story file → parse `## Dependencies / ### Depends On` section
    - Build `depends_on[storyId] = [prerequisite IDs]`
    - Prerequisites already Done → satisfied, ignore. Not found → WARN, treat as none
    - Circular dependencies → ESCALATE to user
-8. Show pipeline plan to user:
+9. Extract story briefs from Linear (for lead awareness):
    ```
+   FOR EACH story in priority_queue:
+     description = get_issue(story.id).description
+     story_briefs[id] = parse <!-- ORCHESTRATOR_BRIEF_START/END --> markers
+     IF no markers: story_briefs[id] = { tech: project_brief.tech, keyFiles: "unknown" }
+   ```
+10. Show pipeline plan to user:
+   ```
+   Project: {project_brief.name} ({project_brief.tech})
+
    Pipeline Plan:
-   | # | Story | Status | Stage | Deps | Action |
-   |---|-------|--------|-------|------|--------|
-   | 1 | PROJ-42 | To Review | 3 | — | Quality gate |
-   | 2 | PROJ-38 | To Rework | 2 | — | Re-execute with fix tasks |
-   | 3 | PROJ-45 | Todo | 2 | PROJ-42 | Execute (after PROJ-42) |
-   | 4 | PROJ-50 | Backlog | 1 | — | Validate |
-   | 5 | PROJ-55 | Backlog | 0 | PROJ-50 | Create tasks (after PROJ-50) |
+   | # | Story | Tech | Approach | Stage | Deps | Action |
+   |---|-------|------|----------|-------|------|--------|
+   | 1 | PROJ-42 | Python, FastAPI | Token middleware | 3 | — | Quality gate |
+   | 2 | PROJ-55 | Python, FastAPI | CRUD + Alembic | 0 | PROJ-42 | Create tasks |
    ```
 
 ### Phase 2: Pre-flight Questions (ONE batch)
@@ -166,9 +182,9 @@ IF .pipeline/state.json NOT exists OR complete == true:
     Story PROJ-42: Which payment provider? (Stripe/PayPal/both)
     Story PROJ-45: Auth flow — JWT or session-based?"
    ```
-4. Technical questions — resolve autonomously:
-   - Library versions: MCP Ref / Context7
-   - Architecture patterns: project docs + CLAUDE.md
+4. Technical questions — resolve using project_brief:
+   - Library versions: MCP Ref / Context7 (for `project_brief.tech` ecosystem)
+   - Architecture patterns: `project_brief.key_rules`
    - Standards compliance: ln-310 Phase 2 handles this
 5. Store answers in shared context (pass to workers via spawn prompt)
 
@@ -224,7 +240,9 @@ Write .pipeline/state.json (full schema — see checkpoint_format.md):
     "skill_repo_path": <absolute path to skills repository root>,
     "team_name": "pipeline-{YYYY-MM-DD}",
     "business_answers": {<question: answer pairs from Phase 2, or {} if skipped>},
-    "storage_mode": "file"|"linear" }                               # Recovery-critical fields
+    "storage_mode": "file"|"linear",
+    "project_brief": {<name, tech, type, key_rules from Phase 1 step 2>},
+    "story_briefs": {<storyId: {tech, keyFiles, approach, complexity} from Phase 1 step 9>} }   # Recovery-critical
 Write .pipeline/lead-session.id with current session_id   # Stop hook uses this to only keep lead alive
 ```
 

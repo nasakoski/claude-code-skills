@@ -312,6 +312,8 @@ Lead writes ALL state variables to `.pipeline/state.json` on **every heartbeat c
 | `storage_mode` | Yes | "file" or "linear" task backend |
 | `status_cache` | Yes | Linear status name→UUID mapping |
 | `skill_repo_path` | Yes | Skills repository path for recovery |
+| `project_brief` | Yes | Project context (name, tech, type, key_rules) from CLAUDE.md |
+| `story_briefs` | Yes | Per-story orchestrator briefs from Linear ORCHESTRATOR_BRIEF markers |
 | `suspicious_idle` | No (ephemeral) | Reset to false on recovery |
 
 ### Recovery Sequence

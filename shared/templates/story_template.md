@@ -88,6 +88,16 @@ Tasks created separately (parentId -> this Story):
 
 ## Technical Notes
 
+### Orchestrator Brief
+<!-- ORCHESTRATOR_BRIEF_START -->
+| Aspect | Value |
+|--------|-------|
+| **Tech** | [languages, frameworks, key libraries] |
+| **Key Files** | [2-5 files/dirs most affected] |
+| **Approach** | [1-line implementation strategy] |
+| **Complexity** | Low / Medium / High ([reason]) |
+<!-- ORCHESTRATOR_BRIEF_END -->
+
 ### Architecture Considerations
 - Which layers affected? (API, Service, Repository, Client)
 - What patterns apply?

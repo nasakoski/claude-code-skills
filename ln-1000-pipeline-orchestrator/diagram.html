@@ -28,6 +28,7 @@
                 <li><strong>Dependencies:</strong> Stories with Depends On fields are scheduled after prerequisites complete (dependency guard in Phase 4)</li>
                 <li><strong>Keepalive:</strong> Stop hook prevents lead exit, TeammateIdle hook prevents worker idle during stages</li>
                 <li><strong>Fresh Per Stage:</strong> Each stage = new worker with clean context. Prevents context exhaustion in long pipelines</li>
+                <li><strong>Project Awareness:</strong> Lead reads CLAUDE.md (project_brief) + Story ORCHESTRATOR_BRIEF markers (story_briefs) for tech context</li>
             </ul>
         </div>
 
@@ -82,7 +83,9 @@ stateDiagram-v2
     state "Phase 1: Discovery & Kanban Parsing" as Phase1_Discovery {
         [*] --> ParseKanban
         ParseKanban: Auto-discover kanban_board.md
-        ParseKanban --> ExtractStories
+        ParseKanban --> ProjectBrief
+        ProjectBrief: Read project CLAUDE.md, extract project_brief
+        ProjectBrief --> ExtractStories
         ExtractStories: Extract Stories by status section
         ExtractStories --> DetectTasks
         DetectTasks: Detect task presence per Story
@@ -90,10 +93,12 @@ stateDiagram-v2
         BuildQueue: Priority: To Review > To Rework > In Progress > Todo > Backlog
         BuildQueue --> ExtractDeps
         ExtractDeps: Extract dependencies per Story (depends_on)
-        ExtractDeps --> DetectRemote
+        ExtractDeps --> StoryBriefs
+        StoryBriefs: Parse ORCHESTRATOR_BRIEF from each Story
+        StoryBriefs --> DetectRemote
         DetectRemote: Detect remote type (github/gitlab/unknown)
         DetectRemote --> ShowPlan
-        ShowPlan: Display pipeline plan to user
+        ShowPlan: Display plan with project tech context
     }
 
     Phase1_Discovery --> Phase2_Questions

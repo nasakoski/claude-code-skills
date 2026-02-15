@@ -149,7 +149,8 @@ ON HEARTBEAT (Stop hook stderr: "HEARTBEAT: N workers, M stories..."):
     crash_count, priority_queue_ids, story_results, infra_issues,
     worktree_map, depends_on, stage_timestamps, git_stats,
     pipeline_start_time, readiness_scores, team_name,
-    business_answers, storage_mode, status_cache, skill_repo_path
+    business_answers, storage_mode, status_cache, skill_repo_path,
+    project_brief, story_briefs
   # Full state write enables Phase 0 recovery if lead crashes between heartbeats
   # ALL fields from checkpoint_format.md Pipeline State Schema must be persisted
 ```

@@ -72,6 +72,8 @@ Lead writes ALL state variables to `.pipeline/state.json` on every heartbeat cyc
 | `business_answers` | object | `{question: answer}` from Phase 2 — passed to worker prompts |
 | `storage_mode` | string | `"file"` or `"linear"` — task storage backend |
 | `skill_repo_path` | string | Skills repository absolute path (for recovery hook) |
+| `project_brief` | object | `{name, tech, type, key_rules}` — project context from CLAUDE.md |
+| `story_briefs` | object | `{storyId: {tech, keyFiles, approach, complexity}}` — per-story orchestrator briefs from Linear |
 
 **Example:**
 ```json
