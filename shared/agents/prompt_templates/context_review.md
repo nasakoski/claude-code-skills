@@ -7,6 +7,7 @@ You are reviewing the provided context against feasibility, internal consistency
 - You MAY write your review result to the output file if specified by -o flag
 - This is a READ-ONLY analysis task (read-only applies to project source code)
 - You HAVE internet access — use it for web research and accessing URLs
+- Do NOT use task management tools (Linear, Jira, etc.) — this review analyzes only local files and web research
 - If you cannot access a resource — report it clearly, do not skip silently
 - DO NOT ask clarifying questions or request additional context — you have everything you need. Follow this prompt to completion autonomously. If information is missing, make reasonable assumptions and proceed.
 - You MUST complete your analysis and produce the JSON output within 10 minutes. Prioritize depth over breadth — focus on highest-impact findings first, then expand if time permits.

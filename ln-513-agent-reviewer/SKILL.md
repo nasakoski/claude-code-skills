@@ -46,18 +46,19 @@ Runs parallel external agent reviews on code implementation, critically verifies
 4) **Build prompt:** Read template `shared/agents/prompt_templates/code_review.md`.
    - Replace `{story_ref}` with `- Linear: {url}` or `- File: {path}`
    - Replace `{task_refs}` with bullet list: `- {identifier}: {url_or_path}` per task
-   - Save to `.agent-review/{agent}/{identifier}_codereview_prompt.md` (one copy per agent — identical content)
+   - Save to `.agent-review/{identifier}_codereview_prompt.md` (single shared file — both agents read the same prompt)
 
 5) **Run agents (background, process-as-arrive):**
 
    a) Launch BOTH agents as background Bash tasks (run_in_background=true):
-      - `python shared/agents/agent_runner.py --agent codex-review --prompt-file .agent-review/codex/{identifier}_codereview_prompt.md --output-file .agent-review/codex/{identifier}_codereview_result.md --cwd {cwd}`
-      - `python shared/agents/agent_runner.py --agent gemini-review --prompt-file .agent-review/gemini/{identifier}_codereview_prompt.md --output-file .agent-review/gemini/{identifier}_codereview_result.md --cwd {cwd}`
+      - `python shared/agents/agent_runner.py --agent codex-review --prompt-file .agent-review/{identifier}_codereview_prompt.md --output-file .agent-review/codex/{identifier}_codereview_result.md --cwd {cwd}`
+      - `python shared/agents/agent_runner.py --agent gemini-review --prompt-file .agent-review/{identifier}_codereview_prompt.md --output-file .agent-review/gemini/{identifier}_codereview_result.md --cwd {cwd}`
 
    b) When first agent completes (background task notification):
-      - Read its result file from `.agent-review/{agent}/{identifier}_codereview_result.md`
+      - Result file is already written by agent_runner.py — do NOT write or rewrite it
+      - Read `.agent-review/{agent}/{identifier}_codereview_result.md`
       - Parse JSON between `<!-- AGENT_REVIEW_RESULT -->` / `<!-- END_AGENT_REVIEW_RESULT -->` markers
-      - Parse `session_id` from runner JSON output; write `.agent-review/{agent}/{identifier}_session.json`: `{"agent": "...", "session_id": "...", "review_type": "codereview", "created_at": "..."}`
+      - Parse `session_id` from `<!-- session_id: ... -->` metadata line in result file; write `.agent-review/{agent}/{identifier}_session.json`: `{"agent": "...", "session_id": "...", "review_type": "codereview", "created_at": "..."}`
       - Proceed to Step 6 (Critical Verification) for this agent's suggestions
 
    c) When second agent completes:
@@ -128,6 +129,7 @@ debate_log:
 | Both agents succeed | Aggregate verified suggestions from both |
 | One agent fails | Use successful agent's verified suggestions, log failure |
 | Both agents fail | Return `{verdict: "SKIPPED", reason: "agents failed"}` |
+| Agent crashes immediately (< 5s, non-zero exit) | Likely MCP init failure (expired auth); log error, use other agent. If both crash → SKIPPED + note to check agent MCP config |
 | Parent skill (ln-510) | Falls back to Self-Review (native Claude) |
 
 ## Verdict Escalation
@@ -139,7 +141,7 @@ debate_log:
 - Same prompt to all agents (identical input for fair comparison)
 - JSON output schema required from agents (via `--json` / `--output-format json`)
 - Log all attempts for user visibility (agent name, duration, suggestion count)
-- **Persist** prompts, results, and challenge artifacts in `.agent-review/{agent}/` — do NOT delete
+- **Persist** shared prompt in `.agent-review/`, results and challenge artifacts in `.agent-review/{agent}/` — do NOT delete
 - Ensure `.agent-review/.gitignore` exists before creating files (only create if `.agent-review/` is new)
 - **MANDATORY INVOCATION:** Parent skills MUST invoke this skill. Returns SKIPPED gracefully if agents unavailable. Parent must NOT pre-check and skip.
 - **NO TIMEOUT KILL — WAIT FOR RESPONSE:** Do NOT kill agent background tasks. WAIT until agent completes and delivers its response — do NOT proceed without it, do NOT use TaskStop. Agents are instructed to respond within 10 minutes via prompt constraint, but the hard behavior is: wait for completion or crash. Only a hard crash (non-zero exit code, connection error) is treated as failure. TaskStop is FORBIDDEN for agent tasks.
@@ -150,7 +152,7 @@ debate_log:
 - Health check executed; available agents identified (or SKIPPED returned if none)
 - Story + Done implementation Tasks fetched from Linear (or local files)
 - `.agent-review/` directory ensured (reused if exists, created with `.gitignore` if new) with per-agent subdirs
-- Prompt built from template with story/task references, saved per agent
+- Shared prompt built from template with story/task references, saved in `.agent-review/` (single file, read by all agents)
 - All available agents launched as background tasks; raw results saved to `.agent-review/{agent}/`
 - Each suggestion critically verified by Claude; challenges executed for disagreements
 - Follow-up rounds executed for suggestions rejected after Round 1 (DEFEND+weak / MODIFY+disagree)

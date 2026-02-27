@@ -93,6 +93,8 @@ python shared/agents/agent_runner.py --health-check
 - If agent doesn't write (gemini): runner captures stdout, parses, writes file with metadata
 - Result file always has metadata markers regardless of agent type
 
+**Contract:** The result file is the runner's responsibility. Skills MUST NOT write or rewrite result files. Skills read the result file after the runner exits. The only file the skill writes is `{identifier}_session.json` (extracted from result file `<!-- session_id: ... -->` metadata line).
+
 ## Prompt Guidelines
 
 1. **Be specific** -- state exactly what output format you expect
@@ -126,6 +128,22 @@ External agents run in non-interactive mode (`exec` / `-p`) with tool access for
 | User explicitly requests cancellation | Only then use TaskStop |
 
 **FORBIDDEN:** Using TaskStop to kill agent tasks. Using timeout to prematurely end analysis. Agents have no time limit as long as they have not crashed with an error.
+
+## MCP Failure Resilience
+
+External agents may have MCP servers (Linear, GitHub, etc.) configured in their global settings. If an MCP server fails during agent startup (expired auth, network error, timeout), the agent process may crash before processing the prompt.
+
+| Failure Mode | Symptom | Handling |
+|-------------|---------|----------|
+| MCP auth expired | Agent exits non-zero immediately (< 5s) | Treat as agent crash; use other agent's results |
+| MCP server timeout | Agent hangs during init, eventually crashes | Same — crash handling via Fallback Rules |
+| MCP tool call fails mid-review | Agent may skip tool or error in output | Agent prompted to degrade gracefully (use local files) |
+
+**Mitigation layers:**
+1. **Prompt-level:** Templates instruct agents to use local alternatives when Linear/tools unavailable
+2. **Runner-level:** Non-zero exit code captured; `success: false` returned to skill
+3. **Skill-level:** Fallback Rules apply — one agent crash does not block the review
+4. **User-level:** If both agents crash on MCP, skill returns SKIPPED; user should check agent CLI MCP configuration (`~/.codex/config.json`, `~/.gemini/settings.json`)
 
 ## Fallback Rules
 
@@ -216,7 +234,7 @@ Agent Suggestion --> Claude Evaluation --> AGREE? --> Accept as-is
 
 Challenge and follow-up rounds resume the agent's original review session to preserve full context (file analysis, reasoning, codebase understanding). Initial review always runs stateless.
 
-1. After initial review: parse `session_id` from runner JSON output, write to `.agent-review/{agent}/{identifier}_session.json`
+1. After initial review: parse `session_id` from result file metadata (`<!-- session_id: ... -->`), write to `.agent-review/{agent}/{identifier}_session.json`
 2. Before challenge/follow-up: read `session_id` from session file
 3. Pass `--resume-session {session_id}` to runner — agent continues in same session
 4. If resume fails: runner falls back to stateless execution automatically (logged as warning)
@@ -279,44 +297,41 @@ Standard steps before launching agents (performed inside ln-005/ln-311/ln-513):
 1. **Get references:** Call Linear MCP `get_issue(storyId)` for Story URL + `list_issues(parent)` for Task URLs. If project stores tasks locally → use file paths.
 2. **Ensure .agent-review/:** If `.agent-review/` exists, reuse as-is. If not, create it with `.gitignore` (content: `*` + `!.gitignore`). Create `.agent-review/{agent}/` subdirs only if they don't exist. Do NOT add `.agent-review/` to project root `.gitignore`.
 3. **Build prompt:** Load template, replace `{story_ref}` and `{task_refs}` with actual references (Linear URLs or file paths).
-4. **Save prompt:** To `.agent-review/{agent_name}/{identifier}_{review_type}_prompt.md`
-5. **Run agents:** `--prompt-file {prompt_path} --output-file {result_path} --cwd {project_dir}` — agents access Story/Tasks via references, runner writes result file
+4. **Save prompt:** To `.agent-review/{identifier}_{review_type}_prompt.md` (single shared file — all agents read the same prompt)
+5. **Run agents:** `--prompt-file .agent-review/{identifier}_{review_type}_prompt.md --output-file .agent-review/{agent_name}/{identifier}_{review_type}_result.md --cwd {project_dir}` — agents access Story/Tasks via references, runner writes result file per agent
 6. **No cleanup** — `.agent-review/` persists as audit trail
 
 **Why reference passing instead of content materialization:**
 - Agents have internet access — they can read Linear directly
 - No need to load full content into files (simpler workflow, fewer steps)
-- If agent cannot access Linear — it reports the error clearly, user configures access
+- If agent cannot access Linear — agent falls back to local files (`docs/tasks/`, `git log`). Reports what it couldn't access.
 - Prompts stay focused (references instead of full content dumps)
 
 ## Review Persistence Pattern
 
 ```
 .agent-review/
-├── .gitignore              # * + !.gitignore
-├── context/                # Materialized context files (ln-005)
+├── .gitignore                                      # * + !.gitignore
+├── arch-proposal_contextreview_prompt.md            # ln-005: shared prompt (both agents)
+├── PROJ-123_storyreview_prompt.md                   # ln-311: shared prompt (both agents)
+├── PROJ-123_codereview_prompt.md                    # ln-513: shared prompt (both agents)
+├── context/                                         # Materialized context files (ln-005)
 │   └── arch-proposal_context.md
 ├── codex/
-│   ├── arch-proposal_session.json                   # ln-005: universal context review
-│   ├── arch-proposal_contextreview_prompt.md
-│   ├── arch-proposal_contextreview_result.md
-│   ├── PROJ-123_session.json                        # ln-311: session tracking for debate resume
-│   ├── PROJ-123_storyreview_prompt.md
+│   ├── arch-proposal_session.json                   # Session tracking for debate resume
+│   ├── arch-proposal_contextreview_result.md        # Result (written by agent_runner.py)
+│   ├── PROJ-123_session.json
 │   ├── PROJ-123_storyreview_result.md
-│   ├── PROJ-123_storyreview_challenge_1_prompt.md    # Round 1 debate
-│   ├── PROJ-123_storyreview_challenge_1_result.md    # Round 1 debate
-│   ├── PROJ-123_storyreview_followup_1_prompt.md     # Follow-up (if Round 1 not resolved)
-│   ├── PROJ-123_storyreview_followup_1_result.md     # Follow-up result
-│   ├── PROJ-123_codereview_prompt.md
+│   ├── PROJ-123_storyreview_challenge_1_prompt.md   # Round 1 debate (per-agent)
+│   ├── PROJ-123_storyreview_challenge_1_result.md
+│   ├── PROJ-123_storyreview_followup_1_prompt.md    # Follow-up (per-agent)
+│   ├── PROJ-123_storyreview_followup_1_result.md
 │   └── PROJ-123_codereview_result.md
 └── gemini/
-    ├── arch-proposal_session.json                   # ln-005: universal context review
-    ├── arch-proposal_contextreview_prompt.md
+    ├── arch-proposal_session.json
     ├── arch-proposal_contextreview_result.md
-    ├── PROJ-123_session.json                        # ln-311: session tracking for debate resume
-    ├── PROJ-123_storyreview_prompt.md
+    ├── PROJ-123_session.json
     ├── PROJ-123_storyreview_result.md
-    ├── PROJ-123_codereview_prompt.md
     └── PROJ-123_codereview_result.md
 ```
 
@@ -340,7 +355,8 @@ Standard steps before launching agents (performed inside ln-005/ln-311/ln-513):
 |-------|-----|
 | Auto-retry in runner | Let skill decide fallback |
 | Embed full story/task content in prompt | Pass references (Linear URLs / file paths) |
-| Delete review artifacts after agents complete | Persist prompts, results, and challenges in `.agent-review/{agent}/` |
+| Delete review artifacts after agents complete | Persist shared prompt in `.agent-review/`, results and challenges in `.agent-review/{agent}/` |
+| Write/rewrite result files from skill | Result files are runner's responsibility; skill only reads them and writes `_session.json` |
 | Trust agent output blindly | Claude critically verifies each suggestion + debates if disagreeing |
 | Use agents for project file writes | Agents write only to `-o` output file; analysis-only |
 | Chain multiple agent calls | One call per task; challenge/follow-up use `--resume-session` for context continuity |

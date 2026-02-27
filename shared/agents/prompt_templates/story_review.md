@@ -19,7 +19,7 @@ You are reviewing a validated Story and its implementation Tasks against the act
 
 ## Instructions
 1. Access the Story and Tasks using the references above (Linear URLs or local file paths)
-2. If you cannot access Linear — report the access error clearly so the user can configure your access
+2. If you cannot access Linear — use local alternatives: check `docs/tasks/` directory, `git log`, `git diff`, README.md. Produce your review based on available information. Note what you could not access in your output.
 3. Examine the actual codebase in your working directory
 4. Search the web for current best practices relevant to the technical domains
 5. Compare Story/Tasks against:

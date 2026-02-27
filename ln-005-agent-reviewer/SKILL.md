@@ -62,18 +62,19 @@ Runs parallel external agent reviews on arbitrary context, critically verifies s
    - Replace `{review_title}` with title or `"Context Review"`
    - Replace `{context_refs}` with bullet list: `- {path}` per context file
    - Replace `{focus_areas}` with filtered subset or `"All default areas"` if no focus specified
-   - Save to `.agent-review/{agent}/{identifier}_contextreview_prompt.md` (one copy per agent — identical content)
+   - Save to `.agent-review/{identifier}_contextreview_prompt.md` (single shared file — both agents read the same prompt)
 
 6) **Run agents (background, process-as-arrive):**
 
    a) Launch BOTH agents as background Bash tasks (run_in_background=true):
-      - `python shared/agents/agent_runner.py --agent codex-review --prompt-file .agent-review/codex/{identifier}_contextreview_prompt.md --output-file .agent-review/codex/{identifier}_contextreview_result.md --cwd {cwd}`
-      - `python shared/agents/agent_runner.py --agent gemini-review --prompt-file .agent-review/gemini/{identifier}_contextreview_prompt.md --output-file .agent-review/gemini/{identifier}_contextreview_result.md --cwd {cwd}`
+      - `python shared/agents/agent_runner.py --agent codex-review --prompt-file .agent-review/{identifier}_contextreview_prompt.md --output-file .agent-review/codex/{identifier}_contextreview_result.md --cwd {cwd}`
+      - `python shared/agents/agent_runner.py --agent gemini-review --prompt-file .agent-review/{identifier}_contextreview_prompt.md --output-file .agent-review/gemini/{identifier}_contextreview_result.md --cwd {cwd}`
 
    b) When first agent completes (background task notification):
-      - Read its result file from `.agent-review/{agent}/{identifier}_contextreview_result.md`
+      - Result file is already written by agent_runner.py — do NOT write or rewrite it
+      - Read `.agent-review/{agent}/{identifier}_contextreview_result.md`
       - Parse JSON between `<!-- AGENT_REVIEW_RESULT -->` / `<!-- END_AGENT_REVIEW_RESULT -->` markers
-      - Parse `session_id` from runner JSON output; write `.agent-review/{agent}/{identifier}_session.json`: `{"agent": "...", "session_id": "...", "review_type": "contextreview", "created_at": "..."}`
+      - Parse `session_id` from `<!-- session_id: ... -->` metadata line in result file; write `.agent-review/{agent}/{identifier}_session.json`: `{"agent": "...", "session_id": "...", "review_type": "contextreview", "created_at": "..."}`
       - Proceed to Step 7 (Critical Verification) for this agent's suggestions
 
    c) When second agent completes:
@@ -149,6 +150,7 @@ debate_log:
 | Both agents succeed | Aggregate verified suggestions from both |
 | One agent fails | Use successful agent's verified suggestions, log failure |
 | Both agents fail | Return `{verdict: "SKIPPED", reason: "agents failed"}` |
+| Agent crashes immediately (< 5s, non-zero exit) | Likely MCP init failure (expired auth); log error, use other agent. If both crash → SKIPPED + note to check agent MCP config |
 
 ## Verdict Escalation
 - **No escalation.** Suggestions are advisory only.
@@ -160,14 +162,14 @@ debate_log:
 - Same prompt to all agents (identical input for fair comparison)
 - JSON output schema required from agents (via `--json` / `--output-format json`)
 - Log all attempts for user visibility (agent name, duration, suggestion count)
-- **Persist** prompts, results, and challenge artifacts in `.agent-review/{agent}/` — do NOT delete
+- **Persist** shared prompt in `.agent-review/`, results and challenge artifacts in `.agent-review/{agent}/` — do NOT delete
 - Ensure `.agent-review/.gitignore` exists before creating files (only create if `.agent-review/` is new)
 - **NO TIMEOUT KILL — WAIT FOR RESPONSE:** Do NOT kill agent background tasks. WAIT until agent completes and delivers its response — do NOT proceed without it, do NOT use TaskStop. Agents are instructed to respond within 10 minutes via prompt constraint, but the hard behavior is: wait for completion or crash. Only a hard crash (non-zero exit code, connection error) is treated as failure. TaskStop is FORBIDDEN for agent tasks.
 - **CRITICAL VERIFICATION:** Do NOT trust agent suggestions blindly. Claude MUST independently verify each suggestion and debate if disagreeing. Accept only after verification.
 
 ## Definition of Done
 - All available agents launched as background tasks (or gracefully failed with logged reason)
-- Prompts persisted in `.agent-review/{agent}/` for each agent
+- Shared prompt persisted in `.agent-review/` (single file, read by all agents)
 - Raw results persisted in `.agent-review/{agent}/` (no cleanup)
 - Each suggestion critically verified by Claude; challenges executed for disagreements
 - Follow-up rounds executed for suggestions rejected after Round 1 (DEFEND+weak / MODIFY+disagree)
