@@ -435,6 +435,9 @@ def run_agent(agent_name, prompt, cwd, timeout, registry, output_file=None,
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(
         description="Universal Agent Runner for Multi-Model Orchestration")
     parser.add_argument("--agent", help="Agent name (gemini, codex)")
