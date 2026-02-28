@@ -137,6 +137,8 @@
 
 ### Implementation
 - `path/to/file` - Changes
+- Side-effects introduced: [DB writes, notifications, events, HTTP calls]
+- Side-effect depth: [1-2 = flat, 3+ = document justification]
 
 ### Documentation (REQUIRED in this task)
 - `README.md` - Feature documentation

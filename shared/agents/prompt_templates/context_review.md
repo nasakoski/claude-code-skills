@@ -34,8 +34,8 @@ Default areas (when no focus filter applied):
 - **logic** — Is the reasoning sound? Are there logical gaps or contradictions?
 - **feasibility** — Is this achievable given constraints (time, tech, team)?
 - **completeness** — Are there missing considerations, edge cases, steps?
-- **consistency** — Does this align with existing decisions, architecture, patterns?
-- **best_practices** — Does this follow industry best practices (2025-2026)?
+- **consistency** — Alignment with existing decisions/patterns? Side-effects contained? Interfaces honest (no hidden writes in read-named functions)?
+- **best_practices** — Industry best practices (2025-2026)? Flat orchestration (no deep service chains)? Modules as sinks (self-contained) not pipes (cascading side-effects)?
 - **risk** — What could go wrong? Failure modes, dependencies, unknowns?
 
 ## Alternative Approaches

@@ -99,9 +99,11 @@ Tasks created separately (parentId -> this Story):
 <!-- ORCHESTRATOR_BRIEF_END -->
 
 ### Architecture Considerations
-- Which layers affected? (API, Service, Repository, Client)
-- What patterns apply?
-- Any constraints?
+- Layers affected: (API, Service, Repository, Client)
+- Patterns: (e.g., Repository, CQRS, Event-Driven)
+- Side-effect boundary: (what state does this Story mutate outside its own domain?)
+- Orchestration depth: (flat 1-2 levels preferred; document if deeper)
+- Constraints: (e.g., no new external dependencies)
 
 ### Library Research
 

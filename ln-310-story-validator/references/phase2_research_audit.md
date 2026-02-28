@@ -35,7 +35,7 @@ Receive file paths to created documentation (`docs/guides/`, `docs/manuals/`, `d
 
 ## Step 5: Penalty Points Calculation
 
-- Evaluate all 21 criteria against Story/Tasks (see Auto-Fix Actions Reference below)
+- Evaluate all 23 criteria against Story/Tasks (see Auto-Fix Actions Reference below)
 - Assign penalty points per violation (CRITICAL=10, HIGH=5, MEDIUM=3, LOW=1)
 - Calculate total penalty points
 - Build fix plan for each violation
@@ -111,7 +111,13 @@ Detailed criteria table for Phase 4 auto-fix execution and Phase 2 penalty calcu
 |---|-----------|----------------|---------|------------------|
 | 22 | AC Verify Methods | Every task AC has `verify:` method (test/command/inspect); at least 1 non-inspect per task | MEDIUM (3) | Generate `verify:` methods based on AC content: HTTP endpoints → command, DB operations → inspect, business logic → test; update Linear |
 
-**Maximum Penalty:** 88 points (sum of all 22 criteria; #20 capped at 15)
+## AI-Readiness (#23)
+
+| # | Criterion | What it checks | Penalty | Auto-fix actions |
+|---|-----------|----------------|---------|------------------|
+| 23 | Architecture Considerations Complete | Story has: layers affected, side-effect boundary, orchestration depth | MEDIUM (3) | Add Architecture Considerations section from story_template.md with placeholder fields; update Linear |
+
+**Maximum Penalty:** 91 points (sum of all 23 criteria; #20 capped at 15)
 
 ---
 **Version:** 1.0.0
