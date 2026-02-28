@@ -101,6 +101,13 @@ Used by ln-620-codebase-auditor to write `docs/project/codebase_audit.md`.
 | Severity | Location | Issue | Principle Violated | Recommendation | Effort |
 |----------|----------|-------|-------------------|----------------|--------|
 
+### Advisory Findings (Context-Validated)
+
+Findings that triggered metric thresholds but were downgraded by context validation (see `shared/references/context_validation.md`). Not included in penalty scoring. Listed for transparency.
+
+| Location | Original Severity | Rule Applied | Evidence | Note |
+|----------|-------------------|-------------|----------|------|
+
 ### Recommended Actions (Priority-Sorted)
 
 | Priority | Category | Domain | Location | Issue | Recommendation | Effort |

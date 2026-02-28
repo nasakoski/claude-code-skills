@@ -153,6 +153,7 @@ ln-640 workers use the same file-based approach with two extensions: **4-score A
 | ln-643 | `api-contract` | domain-aware | `643-api-contract-users.md` / `643-api-contract.md` |
 | ln-644 | `dep-graph` | domain-aware | `644-dep-graph-users.md` / `644-dep-graph.md` |
 | ln-645 | `open-source-replacer` | domain-aware | `645-open-source-replacer-users.md` / `645-open-source-replacer.md` |
+| ln-646 | `structure` | domain-aware | `646-structure-users.md` / `646-structure.md` |
 
 **Pattern name slug:** lowercase, hyphens, no spaces: `Job Processing` → `job-processing`.
 
@@ -230,6 +231,11 @@ JSON in HTML comment for coordinator cross-domain aggregation. All ln-640 worker
 {"modules_scanned":15,"modules_with_alternatives":8,"reuse_opportunity_score":6.5,"replacements":[{"module":"src/utils/email-validator.ts","lines":245,"classification":"utility","goal":"Email validation with MX checking","alternative":"zod + zod-email","confidence":"HIGH","stars":28000,"license":"MIT","license_class":"PERMISSIVE","security_status":"CLEAN","ecosystem_match":true,"feature_coverage":95,"effort":"M","migration_steps":["Install","Create schema","Replace calls","Remove module","Test"]}],"no_replacement_found":[{"module":"src/lib/domain-scorer.ts","reason":"Domain-specific business logic","classification":"domain-specific"}]}
 ```
 
+**ln-646 (Project Structure):**
+```json
+{"tech_stack":{"language":"typescript","framework":"react","structure":"monolith"},"dimensions":{"file_hygiene":{"checks":6,"issues":2},"ignore_files":{"checks":4,"issues":1},"framework_conventions":{"checks":3,"issues":0},"domain_organization":{"checks":3,"issues":1},"naming_conventions":{"checks":3,"issues":0}},"junk_drawers":[{"path":"src/utils","file_count":23}],"naming_dominant_case":"PascalCase","naming_violations_pct":5}
+```
+
 ## Worker Return Value (ln-640)
 
 ### 4-Score Workers (ln-641, ln-643)
@@ -241,7 +247,7 @@ Score: 7.9/10 (C:72 K:85 Q:68 I:90) | Issues: 3 (H:1 M:2 L:0)
 
 Format: `C`=Compliance, `K`=Completeness, `Q`=Quality, `I`=Implementation.
 
-### Penalty-Based Workers (ln-642, ln-644)
+### Penalty-Based Workers (ln-642, ln-644, ln-646)
 
 ```
 Report written: docs/project/.audit/642-layer-boundary-users.md

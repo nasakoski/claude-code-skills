@@ -1,7 +1,7 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-3.1.0-blue)
-![Skills](https://img.shields.io/badge/skills-104-green)
+![Skills](https://img.shields.io/badge/skills-105-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -20,9 +20,9 @@
 ## What's Inside
 
 ```
-claude-code-skills/                      # MARKETPLACE: 2 plugins, 105 skills
+claude-code-skills/                      # MARKETPLACE: 2 plugins, 106 skills
 |
-|  ┌─ Plugin: full-development-workflow-skills (72 skills) ─┐
+|  ┌─ Plugin: full-development-workflow-skills (73 skills) ─┐
 |
 |-- ln-001-standards-researcher/       # Research standards via MCP Context7/Ref
 |-- ln-002-best-practices-researcher/  # Create ADRs, guides, manuals
@@ -104,6 +104,7 @@ claude-code-skills/                      # MARKETPLACE: 2 plugins, 105 skills
 |   |   |-- ln-643-api-contract-auditor/  # Layer leakage, missing DTOs
 |   |   |-- ln-644-dependency-graph-auditor/ # Cycles, coupling metrics (Ca/Ce/I)
 |   |   |-- ln-645-open-source-replacer/ # Goal-based OSS replacement audit + migration plan
+|   |   |-- ln-646-project-structure-auditor/ # Physical structure audit with framework-specific rules
 |   |-- ln-650-persistence-performance-auditor/ # DB performance coordinator:
 |   |   |-- ln-651-query-efficiency-auditor/    # N+1, over-fetching, missing bulk ops
 |   |   |-- ln-652-transaction-correctness-auditor/ # Scope, rollback, long-held txns
@@ -447,7 +448,7 @@ A 4-level hierarchy: L0 meta-orchestrator (`ln-1000-pipeline-orchestrator`) coor
 <details>
 <summary><b>Can it catch technical debt from AI-generated code?</b></summary>
 
-Yes. Audit skills specifically target AI-induced tech debt: `ln-623` checks DRY/KISS/YAGNI violations, `ln-626` finds dead code and unused imports, `ln-640` audits architectural pattern evolution, `ln-644` detects dependency cycles and coupling metrics, and `ln-645` finds custom code that can be replaced by battle-tested open-source packages. Run `ln-620-codebase-auditor` to scan all 9 categories in parallel.
+Yes. Audit skills specifically target AI-induced tech debt: `ln-623` checks DRY/KISS/YAGNI violations, `ln-626` finds dead code and unused imports, `ln-640` audits architectural pattern evolution, `ln-644` detects dependency cycles and coupling metrics, `ln-645` finds custom code that can be replaced by battle-tested open-source packages, and `ln-646` validates project structure against framework-specific conventions. Run `ln-620-codebase-auditor` to scan all 9 categories in parallel.
 
 </details>
 
