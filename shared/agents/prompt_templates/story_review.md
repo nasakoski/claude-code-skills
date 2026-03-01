@@ -66,7 +66,41 @@ Use area `architecture` for design alternatives, `best_practices` for implementa
 - Impact threshold: >10% improvement in execution quality
 - If you have no suggestions meeting these thresholds, the story is acceptable
 
-## Output Format (JSON)
+## Output Format
+
+Write a structured review report in markdown, ending with a JSON block for programmatic parsing.
+
+### Report Structure
+
+```
+# Review Report
+
+## Goal
+State what specific question this review answers (1-2 sentences).
+
+## Analysis Process
+Brief summary of your approach: what files you examined, what patterns you checked,
+what web research you conducted (3-5 bullet points).
+
+## Findings
+
+### 1. {Finding title}
+- **Area:** {area category}
+- **Issue:** What is wrong or could be improved — explain fully, cite code locations
+- **Evidence:** Standards, benchmarks, code patterns that support this finding
+- **Suggestion:** Specific change to Story or Tasks
+- **Confidence:** {N}% | **Impact:** {N}%
+
+(Repeat for each finding. If no findings meet thresholds, write "No findings above threshold.")
+
+## Verdict
+One sentence: is the story acceptable or are there suggestions?
+
+## Structured Data
+{JSON block}
+```
+
+### JSON Schema (in Structured Data section)
 ```json
 {
   "verdict": "STORY_ACCEPTABLE | SUGGESTIONS",
@@ -82,3 +116,10 @@ Use area `architecture` for design alternatives, `best_practices` for implementa
   ]
 }
 ```
+
+### Report Rules
+- The report IS the deliverable — it must be readable standalone without the JSON block
+- Findings section must explain WHY, not just WHAT — include your reasoning chain
+- Evidence must be specific: file paths, line references, standard citations
+- JSON block must match the report findings exactly (same count, same content)
+- Budget: report should be 100-300 lines. Prioritize depth on high-impact findings.

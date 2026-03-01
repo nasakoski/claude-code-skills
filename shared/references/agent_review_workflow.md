@@ -29,6 +29,20 @@ python shared/agents/agent_runner.py --health-check
 - Create `.agent-review/{agent}/` subdirs only if they don't exist
 - Do NOT add `.agent-review/` to project root `.gitignore`
 
+## Step: Load Review Memory
+
+**MANDATORY READ:** Load `shared/references/agent_review_memory.md`
+
+a) If `.agent-review/review_history.md` exists:
+   - Parse all entries (## blocks), take last 15
+   - Compute per-agent calibration: `accuracy = accepted_count / total_count` per agent across loaded entries
+   - Build known-suggestions set: all accepted suggestions from history `(area, issue summary)`
+   - Build rejected-suggestions set: rejected suggestions with rejection reasons
+
+b) If not exists: proceed without memory (first review for this project)
+
+Claude uses this data during Critical Verification. It is NOT passed to agents.
+
 ## Step: Run Agents (background, process-as-arrive)
 
 a) Launch BOTH agents as background Bash tasks (`run_in_background=true`):
@@ -48,8 +62,10 @@ python shared/agents/agent_runner.py --agent gemini-review \
 b) When first agent completes (background task notification):
    - Result file is already written by agent_runner.py -- do NOT write or rewrite it
    - Read `.agent-review/{agent}/{identifier}_{review_type}_result.md`
-   - Parse JSON between `<!-- AGENT_REVIEW_RESULT -->` / `<!-- END_AGENT_REVIEW_RESULT -->` markers
+   - The result file contains the agent's full review report (markdown analysis + `## Structured Data` with JSON) wrapped in metadata markers
+   - Parse JSON from `## Structured Data` section (```json block) between `<!-- AGENT_REVIEW_RESULT -->` / `<!-- END_AGENT_REVIEW_RESULT -->` markers
    - Parse `session_id` from `<!-- session_id: ... -->` metadata line in result file
+   - The report text above Structured Data serves as the agent's reasoning (used during Critical Verification for deeper context)
    - Write `.agent-review/{agent}/{identifier}_session.json`: `{"agent": "...", "session_id": "...", "review_type": "...", "created_at": "..."}`
    - Proceed to Critical Verification for this agent's suggestions
 
@@ -66,18 +82,22 @@ Per Debate Protocol in `shared/references/agent_delegation_pattern.md`.
 
 For EACH suggestion from agent results:
 
-a) **Claude Evaluation:** Independently assess -- is the issue real? Actionable? Conflicts with project patterns?
+a) **Dedup Check (memory-informed):** If review memory was loaded, compare `(area, issue)` against known-suggestions from history. Match in accepted set -> skip as "already addressed" (not counted as rejection). Match in rejected set with same reasoning -> require 95%+ confidence to proceed. Per `shared/references/agent_review_memory.md` §Memory-Informed Verification (a).
 
-b) **AGREE** -> accept as-is. **DISAGREE/UNCERTAIN** -> initiate challenge.
+b) **Claude Evaluation:** Independently assess -- is the issue real? Actionable? Conflicts with project patterns? Read the agent's Analysis Process and Evidence sections from the report for deeper understanding of the suggestion's basis.
 
-c) **Challenge + Follow-Up (with session resume):** Follow Debate Protocol (Challenge Round 1 -> Follow-Up Round if not resolved). Resume agent's review session for full context continuity:
+c) **Calibration-Adjusted Trust (memory-informed):** If review memory was loaded, apply calibration thresholds per `shared/references/agent_review_memory.md` §Memory-Informed Verification (b). Agent accuracy < 70% -> DISAGREE at confidence < 95. Agent accuracy >= 70% -> standard threshold (90).
+
+d) **AGREE** -> accept as-is. **DISAGREE/UNCERTAIN** -> initiate challenge.
+
+e) **Challenge + Follow-Up (with session resume):** Follow Debate Protocol (Challenge Round 1 -> Follow-Up Round if not resolved). Resume agent's review session for full context continuity:
    - Read `session_id` from `.agent-review/{agent}/{identifier}_session.json`
    - Run with `--resume-session {session_id}` -- agent continues in same session, preserving file analysis and reasoning
    - If `session_resumed: false` in result -> log warning, result still valid (stateless fallback)
    - Challenge files: `.agent-review/{agent}/{identifier}_{review_type}_challenge_{N}_prompt.md` / `_result.md`
    - Follow-up files: `.agent-review/{agent}/{identifier}_{review_type}_followup_{N}_prompt.md` / `_result.md`
 
-d) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{agent}/`
+f) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{agent}/`
 
 ## Step: Aggregate + Return
 
@@ -85,6 +105,21 @@ d) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{a
 - Deduplicate by `(area, issue)` -- keep higher confidence
 - **Filter:** `confidence >= 90` AND `impact_percent > 10`
 - **Return** JSON with suggestions + agent_stats + debate_log. **NO cleanup/deletion.**
+
+## Step: Save Review Summary
+
+After returning results, append a summary entry to `.agent-review/review_history.md`. If the file doesn't exist, create it with header `# Agent Review History`.
+
+Entry format (per `shared/references/agent_review_memory.md`):
+
+```markdown
+## {identifier} | {review_type} | {YYYY-MM-DD}
+- Verdict: {verdict}
+- Accepted ({count}): {1-line per accepted suggestion, max 5}
+- Rejected ({count}): {1-line per rejected suggestion, max 3}
+- Reports: codex .agent-review/codex/{id}_{type}_result.md, gemini .agent-review/gemini/{id}_{type}_result.md
+- Stats: codex ({accepted}/{total}), gemini ({accepted}/{total})
+```
 
 ## Fallback Rules
 
@@ -99,7 +134,7 @@ d) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{a
 
 - Read-only review -- agents must NOT modify project files (enforced by prompt CRITICAL CONSTRAINTS)
 - Same prompt to all agents (identical input for fair comparison)
-- JSON output schema required from agents (via `--json` / `--output-format json`)
+- Agents produce structured review report (markdown analysis + `## Structured Data` with JSON block). CLI flags (`--json` / `--output-format json`) control stream format, not content
 - Log all attempts for user visibility (agent name, duration, suggestion count)
 - **Persist** shared prompt in `.agent-review/`, results and challenge artifacts in `.agent-review/{agent}/` -- do NOT delete
 - Ensure `.agent-review/.gitignore` exists before creating files (only create if `.agent-review/` is new)
@@ -118,6 +153,7 @@ d) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{a
 - Deduplicated verified suggestions returned with verdict, agent_stats, and debate_log
 - `.agent-review/.gitignore` exists (created only if `.agent-review/` was new)
 - Session files persisted in `.agent-review/{agent}/{identifier}_session.json` for debate resume
+- Review summary appended to `.agent-review/review_history.md`
 
 ## Output Schema (common structure)
 
@@ -157,3 +193,4 @@ debate_log:
 - **Challenge schema:** `shared/agents/schemas/challenge_review_schema.json`
 - **Agent registry:** `shared/agents/agent_registry.json`
 - **Agent runner:** `shared/agents/agent_runner.py`
+- **Agent review memory:** `shared/references/agent_review_memory.md`

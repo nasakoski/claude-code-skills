@@ -81,7 +81,7 @@ python shared/agents/agent_runner.py --health-check
 <!-- exit_code: 0 -->
 <!-- session_id: 7f9f9a2e-1b3c-4c7a-9b0e-... -->
 
-{raw agent JSON response}
+{full agent report: markdown analysis (Goal, Analysis Process, Findings) + ## Structured Data with JSON block}
 
 <!-- END_AGENT_REVIEW_RESULT -->
 ```
@@ -100,7 +100,7 @@ python shared/agents/agent_runner.py --health-check
 1. **Be specific** -- state exactly what output format you expect
 2. **Include filtering rules** -- confidence thresholds, impact minimums
 3. **Use prompt-file** -- avoids Windows shell escaping for long text
-4. **Request JSON** -- easier to parse programmatically
+4. **Request Report + JSON** -- agents produce markdown analysis + `## Structured Data` with JSON block for programmatic parsing
 5. **Keep scope narrow** -- one task per call, not multi-step workflows
 6. **Pass references** -- provide Linear URLs or file paths, let agents access content themselves
 7. **Include CRITICAL CONSTRAINTS** -- enforce project-file read-only behavior via prompt
@@ -300,6 +300,7 @@ Standard steps before launching agents (performed inside ln-005/ln-311/ln-513):
 ```
 .agent-review/
 ├── .gitignore                                      # * + !.gitignore
+├── review_history.md                               # Append-only review log (all reviews)
 ├── arch-proposal_contextreview_prompt.md            # ln-005: shared prompt (both agents)
 ├── PROJ-123_storyreview_prompt.md                   # ln-311: shared prompt (both agents)
 ├── PROJ-123_codereview_prompt.md                    # ln-513: shared prompt (both agents)
@@ -352,6 +353,9 @@ Standard steps before launching agents (performed inside ln-005/ln-311/ln-513):
 | Run health check in parent skill | Health check inside agent review worker (ln-005/ln-311/ln-513) |
 | Kill agent tasks with TaskStop | Let agents complete; no artificial timeouts |
 | Skip agent review phase | Agent review is MANDATORY in ln-310 Phase 5 and ln-510 Phase 4 |
+| Start each review verification from scratch | Load review history for dedup + calibration |
+| Re-summarize agent findings in review log | Reference agent result files (self-documented reports) |
+| Inject project memory into agent prompts | Keep agent context clean; memory on Claude's side only |
 
 ---
 **Version:** 3.0.0
