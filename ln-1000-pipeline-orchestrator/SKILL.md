@@ -273,12 +273,24 @@ IF platform == "win32":
 
 **Model routing:** All stages use `model: "opus"`. Effort routing via prompt: `effort_for_stage(0) = "low"`, `effort_for_stage(1) = "medium"`, `effort_for_stage(2) = "medium"`, `effort_for_stage(3) = "medium"`. Crash recovery = same as target stage. Thinking mode: always enabled (adaptive).
 
-1. Ensure `develop` branch exists:
+1. Ensure `develop` branch exists and is up-to-date with main:
    ```
+   main_branch = git symbolic-ref --short HEAD   # or "master"/"main" per project
    IF `develop` branch not found locally or on origin:
-     git branch develop $(git symbolic-ref --short HEAD)   # Create from current default branch
+     git branch develop $main_branch
      git push -u origin develop
-   git checkout develop               # Start pipeline from develop
+   git checkout develop
+   git pull --ff-only origin develop              # Get latest remote changes
+
+   # Ensure develop has all commits from main (prevents stale feature branches)
+   missing = git log develop..origin/$main_branch --oneline
+   IF missing is NOT empty:
+     git merge origin/$main_branch --no-edit      # Fast-forward or merge main into develop
+     IF merge conflict:
+       # Resolve conflicts (prefer develop for project files, prefer main for config/CI)
+       # After resolving: git add . && git commit --no-edit
+       # If unresolvable: ABORT merge, escalate to user with conflict file list
+     git push origin develop
    ```
 
 2. Create team:
