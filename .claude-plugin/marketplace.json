@@ -8,13 +8,13 @@
   },
 
   "metadata": {
-    "description": "2 plugins, 108 skills: Agile development workflow (Documentation, Planning, Execution, Quality, Audit, Orchestration) + Project Bootstrap (scaffolding, Docker, CI/CD, quality tooling).",
+    "description": "2 plugins, 109 skills: Agile development workflow (Documentation, Planning, Execution, Quality, Audit, Orchestration) + Project Bootstrap (scaffolding, Docker, CI/CD, quality tooling).",
     "version": "3.1.0"
   },
   "plugins": [
     {
       "name": "full-development-workflow-skills",
-      "description": "76 Agile workflow skills: Documentation, Planning, Execution, Quality, Audit, Orchestration. Integrates with Linear, Context7, Ref MCP servers.",
+      "description": "77 Agile workflow skills: Documentation, Planning, Execution, Quality, Audit, Orchestration. Integrates with Linear, Context7, Ref MCP servers.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -65,6 +65,7 @@
         "./ln-611-docs-structure-auditor",
         "./ln-612-semantic-content-auditor",
         "./ln-613-code-comments-auditor",
+        "./ln-614-docs-fact-checker",
         "./ln-620-codebase-auditor",
         "./ln-621-security-auditor",
         "./ln-622-build-auditor",

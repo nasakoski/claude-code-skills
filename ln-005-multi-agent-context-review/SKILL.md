@@ -75,31 +75,38 @@ Follows `shared/references/plan_mode_pattern.md` (Workflow B) and `shared/refere
 
 ### Shared Workflow Steps
 
-6) **Load Review Memory:** per shared workflow.
+6) **Launch Agents (background) — MANDATORY: before any foreground research:**
 
-7) **Run Agents + MCP Ref Research (parallel):**
-
-Launch agents as background tasks per shared workflow, then run MCP Ref Validation while waiting.
-
-```
-Agents (background)                    Claude (foreground)
-  codex-review ──┐                       7a) Applicability Check
-  gemini-review ─┤                       7b) Stack Detection
-                 │                       7c) Extract Topics
-                 │                       7d) MCP Ref Research
-                 │                       7e) Compare & Correct
-                 ├── first completes ──→ 7f) Save Findings
-                 └── second completes    8) Critical Verification (informed by findings)
-```
+Per shared workflow "Step: Run Agents". Prompt file is ready (step 5). Launch BOTH agents as background tasks NOW.
 
 - `{review_type}` in challenge template = review_title or "Context Review"
 - `{story_ref}` in challenge template = identifier
 
+7) **Foreground Research (while agents are running in background):**
+
+Agents are already thinking. Use this time for Review Memory + MCP Ref research.
+
+```
+Agents (background)                    Claude (foreground)
+  codex-review ──┐                       7a) Load Review Memory
+  gemini-review ─┤                       7b) Applicability Check
+                 │                       7c) Stack Detection
+                 │                       7d) Extract Topics
+                 │                       7e) MCP Ref Research
+                 │                       7f) Compare & Correct
+                 ├── first completes ──→ 7g) Save Findings
+                 └── second completes    8) Critical Verification (informed by memory + findings)
+```
+
 **MANDATORY READ:** Load `shared/references/research_tool_fallback.md`
 
-#### 7a) Applicability Check
+#### 7a) Load Review Memory
 
-Scan `context_files` for technology decision signals:
+Per shared workflow "Step: Load Review Memory". Not passed to agents — used only in step 8 (Critical Verification).
+
+#### 7b) Applicability Check
+
+Scan `context_files` for technology decision signals (skip 7c-7e if no signals found):
 
 | Signal Type | Weight | Examples |
 |-------------|--------|---------|
@@ -113,7 +120,7 @@ Scan `context_files` for technology decision signals:
 - No signals found → skip MCP Ref research, log `"MCP Ref skipped: no technology decisions detected"`
 - Fewer than 3 topics with weight >= 3 → skip
 
-#### 7b) Stack Detection
+#### 7c) Stack Detection
 
 Priority order:
 1. `tech_stack` input parameter → use directly as `query_prefix`
@@ -133,14 +140,14 @@ Priority order:
 
 Output: `detected_stack = {query_prefix}` or empty (generic queries)
 
-#### 7c) Extract Topics (3-5)
+#### 7d) Extract Topics (3-5)
 
 - Parse all context_files for technology decisions
-- Score each by weight from 7a table
+- Score each by weight from 7b table
 - Take top 3-5 with weight >= 3
 - Format: `{topic_name, plan_statement, file_path, line_ref}`
 
-#### 7d) MCP Ref Research
+#### 7e) MCP Ref Research
 
 Per `research_tool_fallback.md` chain: Ref -> Context7 -> WebSearch -> built-in knowledge.
 
@@ -149,7 +156,7 @@ For each topic:
 - Collect: `{official_position, source, matches_plan: bool}`
 - Run queries in parallel where possible
 
-#### 7e) Compare & Correct
+#### 7f) Compare & Correct
 
 For each topic where `matches_plan == false` (high confidence):
 - Apply surgical Edit to plan file (single-line or minimal multi-line change)
@@ -166,7 +173,7 @@ For each topic where finding is ambiguous:
 - Each correction must cite specific RFC/standard/doc
 - Only correct when official docs directly contradict plan statement
 
-#### 7f) Save Findings
+#### 7g) Save Findings
 
 Write to `.agent-review/context/{identifier}_mcp_ref_findings.md` (per `references/mcp_ref_findings_template.md`).
 
@@ -177,7 +184,7 @@ Display: `"MCP Ref: {N} topics validated, {M} corrections, {K} confirmed"`
 ---
 
 8) **Critical Verification + Debate:** per shared workflow, with MCP Ref enhancement:
-   - If MCP Ref research completed (7a-7f), use findings to inform AGREE/DISAGREE decisions
+   - If MCP Ref research completed (7b-7g), use findings to inform AGREE/DISAGREE decisions
    - Agent suggestion contradicts MCP Ref finding → DISAGREE with RFC/standard citation
    - Agent suggestion aligns with MCP Ref finding → AGREE with higher confidence
    - Agent suggests something MCP Ref didn't cover → standard verification (no enhancement)

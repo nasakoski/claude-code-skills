@@ -27,7 +27,7 @@ Score: 6.0/10 (C:72 K:85 Q:68 I:90) | Issues: 3 (H:1 M:2 L:0)
 
 | Coordinator | Workers | Output Dir |
 |-------------|---------|------------|
-| ln-610 (3 workers) | ln-611..ln-613 | `docs/project/.audit/ln-610/{YYYY-MM-DD}/` |
+| ln-610 (4 workers) | ln-611..ln-614 | `docs/project/.audit/ln-610/{YYYY-MM-DD}/` |
 | ln-620 (9 workers) | ln-621..ln-629 | `docs/project/.audit/ln-620/{YYYY-MM-DD}/` |
 | ln-630 (5 workers) | ln-631..ln-635 | `docs/project/.audit/ln-630/{YYYY-MM-DD}/` |
 | ln-640 (6 workers) | ln-641..ln-646 | `docs/project/.audit/ln-640/{YYYY-MM-DD}/` |

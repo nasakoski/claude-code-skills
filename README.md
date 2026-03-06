@@ -1,7 +1,7 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-3.1.0-blue)
-![Skills](https://img.shields.io/badge/skills-108-green)
+![Skills](https://img.shields.io/badge/skills-109-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -20,9 +20,9 @@
 ## What's Inside
 
 ```
-claude-code-skills/                      # MARKETPLACE: 2 plugins, 108 skills
+claude-code-skills/                      # MARKETPLACE: 2 plugins, 109 skills
 |
-|  ┌─ Plugin: full-development-workflow-skills (76 skills) ─┐
+|  ┌─ Plugin: full-development-workflow-skills (77 skills) ─┐
 |
 |-- ln-001-standards-researcher/       # Research standards via MCP Context7/Ref
 |-- ln-002-best-practices-researcher/  # Create ADRs, guides, manuals
@@ -78,11 +78,12 @@ claude-code-skills/                      # MARKETPLACE: 2 plugins, 108 skills
 |   |   |-- ln-522-manual-tester/      # Manual functional testing
 |   |   |-- ln-523-auto-test-planner/  # Plan E2E/Integration/Unit tests
 |
-|-- ln-6XX-*/                          # AUDIT (32 skills)
-|   |-- ln-610-docs-auditor/           # Documentation audit coordinator (3 workers)
-|   |   |-- ln-611-docs-structure-auditor/  # Hierarchy, SSOT, compression, actuality
-|   |   |-- ln-612-semantic-content-auditor/ # Scope alignment, fact accuracy
+|-- ln-6XX-*/                          # AUDIT (33 skills)
+|   |-- ln-610-docs-auditor/           # Documentation audit coordinator (4 workers)
+|   |   |-- ln-611-docs-structure-auditor/  # Hierarchy, SSOT, compression, freshness
+|   |   |-- ln-612-semantic-content-auditor/ # Scope alignment
 |   |   |-- ln-613-code-comments-auditor/   # WHY-not-WHAT, density, docstrings
+|   |   |-- ln-614-docs-fact-checker/       # Claims extraction, cross-doc verification
 |   |-- ln-620-codebase-auditor/       # 9 parallel auditors:
 |   |   |-- ln-621-security-auditor/      # Secrets, SQL injection, XSS
 |   |   |-- ln-622-build-auditor/         # Compiler/type errors
@@ -363,7 +364,7 @@ ln-400-story-executor      # 3. Tasks -> Review -> Quality -> Done
 <details>
 <summary><b>What is Claude Code Skills?</b></summary>
 
-A plugin for [Claude Code](https://claude.ai/code) that provides 108 production-ready skills automating the full Agile development lifecycle — from project bootstrap and documentation through scope decomposition, task execution, quality gates, and comprehensive code audits.
+A plugin for [Claude Code](https://claude.ai/code) that provides 109 production-ready skills automating the full Agile development lifecycle — from project bootstrap and documentation through scope decomposition, task execution, quality gates, and comprehensive code audits.
 
 </details>
 
@@ -440,7 +441,7 @@ Through the Orchestrator-Worker pattern. Instead of feeding the entire codebase 
 <details>
 <summary><b>How is it different from custom prompts or slash commands?</b></summary>
 
-Custom prompts are ad-hoc and context-free. Claude Code Skills provides 108 coordinated skills with an [Orchestrator-Worker architecture](docs/SKILL_ARCHITECTURE_GUIDE.md) — L0 meta-orchestrator (Agent Teams) coordinates L1 orchestrators, which delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
+Custom prompts are ad-hoc and context-free. Claude Code Skills provides 109 coordinated skills with an [Orchestrator-Worker architecture](docs/SKILL_ARCHITECTURE_GUIDE.md) — L0 meta-orchestrator (Agent Teams) coordinates L1 orchestrators, which delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
 
 </details>
 

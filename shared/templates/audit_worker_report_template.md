@@ -23,6 +23,7 @@ No deletion of previous date folders — history preserved for comparison.
 | ln-611 | `structure` | `611-structure.md` |
 | ln-612 | `semantic-{doc}` | `612-semantic-architecture.md` |
 | ln-613 | `code-comments` | `613-code-comments.md` |
+| ln-614 | `fact-checker` | `614-fact-checker.md` |
 
 ### ln-620 Codebase Workers
 
