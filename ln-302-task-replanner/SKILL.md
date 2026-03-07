@@ -21,7 +21,6 @@ Worker that re-syncs existing tasks to the latest requirements for any task type
 
 **MANDATORY READ:** Load `shared/references/tools_config_guide.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
 
-Read `docs/tools_config.md` (bootstrap if missing per tools_config_guide.md).
 Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
 ## Invocation (who/when)
@@ -35,7 +34,7 @@ Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 |-------|----------|--------|-------------|
 | `storyId` | Yes | args, git branch, kanban, user | Story whose tasks to replan |
 
-**Resolution:** Per `shared/references/input_resolution_pattern.md` — Story Resolution Chain.
+**Resolution:** Story Resolution Chain.
 **Status filter:** In Progress, To Review
 
 **Additional inputs (from orchestrator or Story context):**

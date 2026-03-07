@@ -1,6 +1,6 @@
 ---
 name: ln-645-open-source-replacer
-description: "Goal-based open-source replacement auditor: discovers custom modules (>100 LOC), analyzes PURPOSE via code reading, searches OSS alternatives via MCP Research (WebSearch, Context7, Ref), evaluates quality (stars, maintenance, license, CVE, API compatibility), generates migration plan."
+description: "Discovers custom modules (>100 LOC), analyzes purpose, searches OSS alternatives via MCP Research, evaluates quality (stars, license, CVE), generates migration plan."
 license: MIT
 ---
 

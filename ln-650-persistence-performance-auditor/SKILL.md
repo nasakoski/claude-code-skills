@@ -1,6 +1,6 @@
 ---
 name: ln-650-persistence-performance-auditor
-description: "Coordinates 4 specialized audit workers (query efficiency, transaction correctness, runtime performance, resource lifecycle). Researches DB/ORM/async best practices, delegates parallel audits, aggregates results into docs/project/persistence_audit.md."
+description: "Coordinates 4 audit workers (query efficiency, transaction, runtime performance, resource lifecycle). Delegates parallel audits, aggregates into persistence_audit.md."
 allowed-tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, mcp__Ref, mcp__context7, Skill
 license: MIT
 ---

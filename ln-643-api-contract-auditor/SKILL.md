@@ -1,6 +1,6 @@
 ---
 name: ln-643-api-contract-auditor
-description: "Checks layer leakage in method signatures, missing DTOs, entity leakage to API, inconsistent error contracts, redundant method overloads. Returns findings with penalty-based scoring + diagnostic sub-scores."
+description: "Checks layer leakage in method signatures, missing DTOs, entity leakage to API, inconsistent error contracts. Returns findings with penalty-based scoring."
 allowed-tools: Read, Grep, Glob, Bash
 license: MIT
 ---

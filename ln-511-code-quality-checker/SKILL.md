@@ -1,6 +1,6 @@
 ---
 name: ln-511-code-quality-checker
-description: "Worker that checks DRY/KISS/YAGNI/architecture compliance with quantitative Code Quality Score. Validates architectural decisions via MCP Ref: (1) Optimality (2) Compliance (3) Performance. Reports issues with SEC-, PERF-, MNT-, ARCH-, BP-, OPT- prefixes."
+description: "Checks DRY/KISS/YAGNI/architecture compliance with quantitative Code Quality Score. Validates decisions via MCP Ref. Reports with SEC-/PERF-/MNT-/ARCH-/BP-/OPT- prefixes."
 license: MIT
 ---
 
@@ -16,7 +16,7 @@ Analyzes Done implementation tasks with quantitative Code Quality Score based on
 |-------|----------|--------|-------------|
 | `storyId` | Yes | args, git branch, kanban, user | Story to process |
 
-**Resolution:** Per `shared/references/input_resolution_pattern.md` — Story Resolution Chain.
+**Resolution:** Story Resolution Chain.
 **Status filter:** In Progress, To Review
 
 ## Purpose & Scope

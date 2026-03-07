@@ -1,6 +1,6 @@
 ---
 name: ln-652-transaction-correctness-auditor
-description: "Checks missing intermediate commits, transaction scope (too wide/narrow), missing rollback handling, long-held transactions, trigger/notify interaction. Returns findings with severity, location, effort, recommendations."
+description: "Checks transaction scope, missing rollback handling, long-held transactions, trigger/notify interaction. Returns findings with severity, location, effort."
 allowed-tools: Read, Grep, Glob, Bash
 license: MIT
 ---

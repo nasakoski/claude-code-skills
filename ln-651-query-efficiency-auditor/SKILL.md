@@ -1,6 +1,6 @@
 ---
 name: ln-651-query-efficiency-auditor
-description: "Checks redundant entity fetches, N-UPDATE/DELETE loops, unnecessary resolves, over-fetching, missing bulk operations, wrong caching scope. Returns findings with severity, location, effort, recommendations."
+description: "Checks redundant fetches, N-UPDATE/DELETE loops, unnecessary resolves, over-fetching, missing bulk operations, wrong caching scope. Returns findings with severity."
 allowed-tools: Read, Grep, Glob, Bash
 license: MIT
 ---

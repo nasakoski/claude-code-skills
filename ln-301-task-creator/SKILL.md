@@ -21,7 +21,6 @@ Worker that generates task documents and creates Linear issues for implementatio
 
 **MANDATORY READ:** Load `shared/references/tools_config_guide.md` and `shared/references/storage_mode_detection.md`
 
-Read `docs/tools_config.md` (bootstrap if missing per tools_config_guide.md).
 Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
 ## Invocation (who/when)

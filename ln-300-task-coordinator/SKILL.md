@@ -16,7 +16,7 @@ Coordinates creation or replanning of implementation tasks for a Story. Builds t
 |-------|----------|--------|-------------|
 | `storyId` | Yes | args, git branch, kanban, user | Story to process |
 
-**Resolution:** Per `shared/references/input_resolution_pattern.md` — Story Resolution Chain.
+**Resolution:** Story Resolution Chain.
 **Status filter:** Backlog, Todo
 
 ## Purpose & Scope
@@ -30,7 +30,6 @@ Coordinates creation or replanning of implementation tasks for a Story. Builds t
 
 **MANDATORY READ:** Load `shared/references/tools_config_guide.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
 
-Read `docs/tools_config.md` (bootstrap if missing per tools_config_guide.md).
 Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
 Workers (ln-301, ln-302) handle the actual Linear/File operations based on `task_provider`.

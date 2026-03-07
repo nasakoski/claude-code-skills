@@ -62,7 +62,6 @@ Read every SKILL.md in scope. Check ALL dimensions across ALL skills in scope.
 - No large inline blocks that could be conditional MANDATORY READs
 - Metadata in table format where possible
 - No verbose explanations where a table/list suffices
-- Frontmatter `description` concise (under 200 chars)
 - No filler words: "simply", "quickly", "easily", "on top of that", "in many cases"
 - Passive voice where active is clearer ("File should be loaded" → "Load file")
 - Sentences over 25 words — flag for splitting
@@ -135,11 +134,13 @@ For each primary skill, read the git diff (`git diff HEAD -- {skill_dir}/`).
 - Every changed hunk maps to M1's REAL GOAL
 - No speculative features, "future use" code, premature abstraction (YAGNI)
 - No new backward-compat shims or unused artifacts per `shared/references/clean_code_checklist.md`
+- Research-to-Action Gate: if change is inspired by external research/article/benchmark — what specific defect in current output does it fix? No concrete defect → REVERT (research is informational, not actionable; changes that don't fix a real problem must be rolled back)
 - Unnecessary hunks → specific what-to-remove (SIMPLIFY)
 
 **Finding categories:**
 - **SIMPLIFY** — concrete reduction possible, may be auto-fixed
 - **RETHINK** — design decision needed, NOT auto-fixable, advisory only
+- **REVERT** — change does not fix a concrete defect, must be rolled back
 
 ## Phase 4: Fix
 
@@ -147,6 +148,7 @@ For each finding:
 - **Fixable** (wrong path, stale ref, missing bidirectional ref, duplicated content) — fix immediately via Edit
 - **Ambiguous** (conflicting thresholds where correct value unclear) — list in report, do NOT guess
 - **SIMPLIFY** (from Phase 3) with unambiguous action — fix immediately
+- **REVERT** (from Phase 3) — roll back the change via Edit (restore original content from git)
 - **RETHINK** (from Phase 3) — do NOT fix, pass to Phase 5 report
 
 ## Phase 5: Report
@@ -183,3 +185,4 @@ If zero findings: `All 9 structural dimensions + 5 intent checks clean. No issue
 - `shared/` changes affect every skill that references them — always check reverse dependencies
 - Intent review (M1-M5) evaluates DESIGN, not correctness — findings are judgment-based, not binary
 - RETHINK findings are advisory — explain WHY, author decides WHETHER to act
+- REVERT findings are executed immediately — changes without concrete defect are rolled back, listed in Fixed table

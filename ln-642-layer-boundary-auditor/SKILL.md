@@ -155,7 +155,7 @@ local_in_repo = Grep("AsyncSessionLocal\(\)", "**/repositories/**/*.py")
 
 **What:** Service-layer functions calling other services that call yet other services — deep orchestration chains.
 
-**Detection:** Per `shared/references/ai_ready_architecture.md` — map service imports, find chain depth.
+**Detection:** **MANDATORY READ:** Load `shared/references/ai_ready_architecture.md` — map service imports, find chain depth.
 
 **Violation Rules:**
 

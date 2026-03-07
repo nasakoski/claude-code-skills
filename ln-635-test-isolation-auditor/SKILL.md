@@ -287,7 +287,7 @@ Receives `contextStore` with: `tech_stack`, `testFilesMetadata`, `codebase_root`
 
 ### 7. Default Value Blindness (Tests with default config)
 
-**What:** See `shared/references/risk_based_testing_guide.md` → Anti-Pattern 9.
+**What:** Tests with default config values only. **MANDATORY READ:** Load `shared/references/risk_based_testing_guide.md` → Anti-Pattern 9.
 
 **Detection:**
 - Grep for common defaults in test setup: `:8080`, `:3000`, `30000`, `limit: 20`, `offset: 0`

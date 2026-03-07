@@ -1,13 +1,13 @@
-# CLAUDE.md
+# AGENTS.md
 
 <!-- SCOPE: Repository rules and AI agent instructions ONLY. ~140 lines index. Detailed guides in docs/. -->
 <!-- DO NOT add here: public documentation -> README.md, architecture patterns -> docs/SKILL_ARCHITECTURE_GUIDE.md, skill workflows -> individual SKILL.md files -->
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Repository
 
-This is a collection of skills for Claude Code with config-driven Agile task management (Linear or File Mode per `docs/tools_config.md`).
+This is a collection of skills for Codex with config-driven Agile task management (Linear or File Mode per `docs/tools_config.md`).
 
 > [!WARNING]
 
@@ -17,7 +17,7 @@ This is a collection of skills for Claude Code with config-driven Agile task man
 
 | Level | Files | Audience |
 |-------|-------|----------|
-| **1. Project** | CLAUDE.md + docs/ | AI agent developing/maintaining skills |
+| **1. Project** | AGENTS.md + docs/ | AI agent developing/maintaining skills |
 | **2. Public** | README.md | GitHub visitors (developers, users) |
 | **3. Templates** | {skill}/references/*_template.md | Target projects created by skills |
 
@@ -69,8 +69,6 @@ All 109 skills documented in [README.md](README.md#-features) with workflows in 
 
 **Path Resolution:** File paths in SKILL.md (`shared/`, `references/`, `../ln-*`) are relative to skills repo root, NOT target project. Every SKILL.md with file references includes a `> **Paths:**` note after frontmatter.
 
-**Research-to-Action Gate:** Before turning external research into skill changes, answer: "What specific defect in current skill output does this fix?" If no concrete defect — the research is informational, not actionable. Existing skills already working correctly is not a problem to solve.
-
 ## Working with Skill Files
 
 **SKILL.md Metadata:** YAML frontmatter with `name` and `description`. If `description` contains colons (`:`), wrap in double quotes.
@@ -89,11 +87,11 @@ All skills have versions at end of file: `**Version:** X.Y.Z` + `**Last Updated:
 
 > Version updates are performed ONLY when explicitly requested by the user, NOT automatically.
 
-**Default:** Make changes to skill files. Do NOT update versions in SKILL.md, CLAUDE.md, README.md, or CHANGELOG.md.
+**Default:** Make changes to skill files. Do NOT update versions in SKILL.md, AGENTS.md, README.md, or CHANGELOG.md.
 
 **When user explicitly requests version update:**
 1. Update skill version in `{skill}/SKILL.md`
-2. Update version in CLAUDE.md "Available Skills" section
+2. Update version in AGENTS.md "Available Skills" section
 3. Update version in README.md feature tables
 4. Update CHANGELOG.md — one summary paragraph per date (`## YYYY-MM-DD`), no duplicate dates
 5. Update Last Updated date below

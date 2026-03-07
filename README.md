@@ -499,6 +499,7 @@ Papers, docs, and methodologies studied and implemented in the skill architectur
 | [Sinks, Not Pipes](https://ianbull.com/posts/software-architecture) (Ian Bull, 2026) | "The architecture is the prompt" — AI agents can't reason about side-effect chains >2 levels deep; sinks (self-contained) > pipes (cascading) | [`ai_ready_architecture.md`](shared/references/ai_ready_architecture.md) — cascade depth, architectural honesty, flat orchestration checks across 12 skills |
 | [Test Desiderata](https://testdesiderata.com/) (Kent Beck, 2019) | 12 properties of valuable tests — behavioral, predictive, specific, inspiring, deterministic... No numerical targets, only usefulness | [`risk_based_testing_guide.md`](shared/references/risk_based_testing_guide.md) — 6 Test Usefulness Criteria (Risk Priority ≥15, Confidence ROI, Behavioral, Predictive, Specific, Non-Duplicative) |
 | Vertical Slicing ([Humanizing Work](https://www.humanizingwork.com/the-humanizing-work-guide-to-splitting-user-stories/)) | "Never split by architectural layer" | Foundation-First task ordering |
+| [Claude Code Picks](https://amplifying.ai/research/claude-code-picks) (Amplifying AI, 2026) | Claude's tool preferences are learned maturity signals, not bias — Drizzle/Vitest/Zustand chosen for objective quality. Build-not-buy in 12/20 categories. "Correcting" valid preferences = recommending worse tools | Research-to-Action Gate in CLAUDE.md — require concrete defect before turning research into skill changes |
 
 ---
 

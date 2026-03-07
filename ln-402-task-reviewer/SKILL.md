@@ -1,6 +1,6 @@
 ---
 name: ln-402-task-reviewer
-description: "Reviews task implementation for quality, code standards, test coverage. Creates [BUG] tasks for side-effect issues found outside task scope. Sets task Done or To Rework. Runs inline (Skill tool) from ln-400 main flow."
+description: "Reviews task implementation for quality, code standards, test coverage. Creates [BUG] tasks for side-effect issues. Sets task Done or To Rework. Runs inline from coordinator."
 license: MIT
 ---
 
@@ -10,7 +10,7 @@ license: MIT
 
 **MANDATORY after every task execution.** Reviews a single task in To Review and decides Done vs To Rework with immediate fixes or clear rework notes.
 
-> **This skill is NOT optional.** Every task executed by ln-401/ln-403/ln-404 MUST be reviewed by ln-402 immediately. No exceptions, no batching, no skipping.
+> **This skill is NOT optional.** Every executed task MUST be reviewed immediately. No exceptions, no batching, no skipping.
 
 ## Purpose & Scope
 - Resolve task ID (per Input Resolution Chain); load full task and parent Story independently (Linear: get_issue; File: Read task file).
@@ -24,14 +24,13 @@ license: MIT
 |-------|----------|--------|-------------|
 | `taskId` | Yes | args, parent Story, kanban, user | Task to review |
 
-**Resolution:** Per `shared/references/input_resolution_pattern.md` — Task Resolution Chain.
+**Resolution:** Task Resolution Chain.
 **Status filter:** To Review
 
 ## Phase 0: Tools Config
 
 **MANDATORY READ:** Load `shared/references/tools_config_guide.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
 
-Read `docs/tools_config.md` (bootstrap if missing per tools_config_guide.md).
 Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
 ## Task Storage Mode
@@ -170,7 +169,7 @@ Step 9: Update & Commit
    - Side-effect breadth: **leaf** service functions with 3+ side-effect categories → CONCERN: `ARCH-AI-SEB`. Exception: orchestrator/coordinator functions (imports 3+ services AND delegates sequentially) are EXPECTED to have multiple side-effect categories — do NOT flag. <!-- Defense-in-depth: also ln-511, ln-624 Rule 10 -->
    - Interface honesty: read-named functions (get_/find_/check_) with write side-effects → CONCERN: `ARCH-AI-AH` <!-- Defense-in-depth: also ln-511, ln-643 Rule 6 -->
    - Logging: errors at ERROR; auth/payment events at INFO; debug data at DEBUG. No sensitive data in logs.
-   - Comments: explain WHY not WHAT; no commented-out code; docstrings on public methods; Task ID present in new code blocks (`// See PROJ-123`).
+   - Comments: explain WHY not WHAT; no commented-out code; docstrings on public methods.
    - Naming: follows project's existing convention (check 3+ similar files). No abbreviations except domain terms. No single-letter variables (except loops).
    - Entity Leakage: ORM entities must NOT be returned directly from API endpoints. Use DTOs/response models. (BLOCKER for auth/payment, CONCERN for others) <!-- Defense-in-depth: also checked by ln-511 ARCH-DTO- -->
    - Method Signature: no boolean flag parameters in public methods (use enum/options object); no more than 5 parameters without DTO. (NIT) <!-- Defense-in-depth: also checked by ln-511 MNT-SIG- -->

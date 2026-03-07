@@ -1,6 +1,6 @@
 ---
 name: ln-653-runtime-performance-auditor
-description: "Checks blocking IO in async, unnecessary allocations, sync sleep in async, string concat in loops, missing to_thread for CPU-bound, redundant data copies. Returns findings with severity, location, effort, recommendations."
+description: "Checks blocking IO in async, unnecessary allocations, sync sleep, string concat in loops, missing to_thread, redundant copies. Returns findings with severity and effort."
 allowed-tools: Read, Grep, Glob, Bash
 license: MIT
 ---
