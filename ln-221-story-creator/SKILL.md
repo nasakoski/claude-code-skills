@@ -1,6 +1,6 @@
 ---
 name: ln-221-story-creator
-description: Creates Stories from IDEAL plan (CREATE) or appends user-requested Stories (ADD). Generates 8-section documents, validates INVEST, creates in Linear.
+description: Creates Stories from IDEAL plan (CREATE) or appends user-requested Stories (ADD). Generates 9-section documents, validates INVEST, creates in Linear.
 license: MIT
 ---
 
@@ -111,7 +111,7 @@ Extract: `task_provider` = Task Management → Provider
 
 **Step 1: Generate Documents**
 
-Load story template (see "Template Loading" section) and use 8 sections.
+Load story template (see "Template Loading" section) and use 9 sections.
 
 For EACH Story in IDEAL plan:
 
@@ -125,6 +125,7 @@ For EACH Story in IDEAL plan:
 | **6. Technical Notes** | **INSERT Orchestrator Brief** from `idealPlan[i].orchestratorBrief` (markers `<!-- ORCHESTRATOR_BRIEF_START/END -->`). **INSERT Standards Research** in Library Research subsection |
 | **7. Definition of Done** | Standard checklist from template |
 | **8. Dependencies** | Empty OR "Depends On: US00X" if ordering implies dependency |
+| **9. Assumptions** | Extract from Technical Notes + AC: FEASIBILITY (infra), DEPENDENCY (APIs), DATA (format), SCOPE (exclusions). Default confidence: MEDIUM |
 
 **Output:** Array of N complete Story documents (5-10) with Standards Research inserted.
 
@@ -257,7 +258,7 @@ NEXT STEPS:
 ## Definition of Done
 
 **✅ Phase 1:**
-- [ ] All N Stories have 8 sections
+- [ ] All N Stories have 9 sections
 - [ ] Standards Research inserted in Technical Notes → Library Research
 
 **✅ Phase 2:**
@@ -293,7 +294,7 @@ NEXT STEPS:
 
 **Location:** `shared/templates/story_template.md` (centralized)
 **Local Copy:** `docs/templates/story_template.md` (in target project)
-**Purpose:** Universal Story template (8 sections)
+**Purpose:** Universal Story template (9 sections)
 **Template Version:** 9.0.0
 
 ## Integration

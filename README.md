@@ -20,28 +20,15 @@
 ## What's Inside
 
 ```
-claude-code-skills/                      # MARKETPLACE: 2 plugins, 109 skills
+claude-code-skills/                      # MARKETPLACE: 4 plugins, 109 skills
 |
-|  ┌─ Plugin: full-development-workflow-skills (77 skills) ─┐
+|  ┌─ Plugin: agile-workflow (33 skills) ──────────┐
 |
 |-- ln-001-standards-researcher/       # Research standards via MCP Context7/Ref
 |-- ln-002-best-practices-researcher/  # Create ADRs, guides, manuals
 |-- ln-003-push-all/                   # Commit and push all changes in one command
 |-- ln-004-agent-sync/                 # Sync skills & MCP settings to Gemini/Codex
 |-- ln-005-multi-agent-context-review/  # Multi-agent context review (Codex + Gemini, debate protocol)
-|
-|-- ln-1XX-*/                          # DOCUMENTATION (11 skills)
-|   |-- ln-100-documents-pipeline/     # L1 Orchestrator: complete docs in one command
-|   |-- ln-110-project-docs-coordinator/  # Detects project type, delegates to workers
-|   |   |-- ln-111-root-docs-creator/     # CLAUDE.md, principles.md
-|   |   |-- ln-112-project-core-creator/  # requirements.md, architecture.md
-|   |   |-- ln-113-backend-docs-creator/  # api_spec.md, database_schema.md
-|   |   |-- ln-114-frontend-docs-creator/ # design_guidelines.md
-|   |   |-- ln-115-devops-docs-creator/   # runbook.md
-|   |-- ln-120-reference-docs-creator/    # ADRs, guides, manuals structure
-|   |-- ln-130-tasks-docs-creator/        # kanban_board.md, task provider setup
-|   |-- ln-140-test-docs-creator/         # testing-strategy.md
-|   |-- ln-150-presentation-creator/      # Interactive HTML presentation
 |
 |-- ln-2XX-*/                          # PLANNING (7 skills)
 |   |-- ln-200-scope-decomposer/       # TOP: scope -> Epics -> Stories (one command)
@@ -78,6 +65,28 @@ claude-code-skills/                      # MARKETPLACE: 2 plugins, 109 skills
 |   |   |-- ln-522-manual-tester/      # Manual functional testing
 |   |   |-- ln-523-auto-test-planner/  # Plan E2E/Integration/Unit tests
 |
+|-- ln-10XX-*/                           # ORCHESTRATION (1 skill)
+|   |-- ln-1000-pipeline-orchestrator/   # L0 Meta: kanban → 4-stage pipeline (300→310→400→500) via TeamCreate
+|
+|  └──────────────────────────────────────────────┘
+|  ┌─ Plugin: documentation-pipeline (11 skills) ─┐
+|
+|-- ln-1XX-*/                          # DOCUMENTATION (11 skills)
+|   |-- ln-100-documents-pipeline/     # L1 Orchestrator: complete docs in one command
+|   |-- ln-110-project-docs-coordinator/  # Detects project type, delegates to workers
+|   |   |-- ln-111-root-docs-creator/     # CLAUDE.md, principles.md
+|   |   |-- ln-112-project-core-creator/  # requirements.md, architecture.md
+|   |   |-- ln-113-backend-docs-creator/  # api_spec.md, database_schema.md
+|   |   |-- ln-114-frontend-docs-creator/ # design_guidelines.md
+|   |   |-- ln-115-devops-docs-creator/   # runbook.md
+|   |-- ln-120-reference-docs-creator/    # ADRs, guides, manuals structure
+|   |-- ln-130-tasks-docs-creator/        # kanban_board.md, task provider setup
+|   |-- ln-140-test-docs-creator/         # testing-strategy.md
+|   |-- ln-150-presentation-creator/      # Interactive HTML presentation
+|
+|  └──────────────────────────────────────────────┘
+|  ┌─ Plugin: codebase-audit-suite (33 skills) ───┐
+|
 |-- ln-6XX-*/                          # AUDIT (33 skills)
 |   |-- ln-610-docs-auditor/           # Documentation audit coordinator (4 workers)
 |   |   |-- ln-611-docs-structure-auditor/  # Hierarchy, SSOT, compression, freshness
@@ -113,11 +122,8 @@ claude-code-skills/                      # MARKETPLACE: 2 plugins, 109 skills
 |   |   |-- ln-653-runtime-performance-auditor/ # Blocking IO, allocations, sync sleep
 |   |   |-- ln-654-resource-lifecycle-auditor/  # Session scope mismatch, pool config, cleanup
 |
-|-- ln-10XX-*/                           # ORCHESTRATION (1 skill)
-|   |-- ln-1000-pipeline-orchestrator/   # L0 Meta: kanban → 4-stage pipeline (300→310→400→500) via TeamCreate
-|
 |  └──────────────────────────────────────────────┘
-|  ┌─ Plugin: claude-code-bootstrap (32 skills) ────┐
+|  ┌─ Plugin: project-bootstrap (32 skills) ──────┐
 |
 |-- ln-7XX-*/                          # BOOTSTRAP (32 skills)
 |   |-- ln-700-project-bootstrap/      # L1: CREATE or TRANSFORM project
@@ -151,21 +157,25 @@ claude-code-skills/                      # MARKETPLACE: 2 plugins, 109 skills
 
 ## Installation
 
-This marketplace contains **2 plugins** — install together or separately:
+This marketplace contains **4 plugins** — install together or separately:
 
 ```bash
-# Both plugins (full suite)
+# All plugins (full suite)
 /plugin add levnikolaevich/claude-code-skills
 
 # Or individually:
-/plugin add levnikolaevich/claude-code-skills --plugin full-development-workflow-skills
-/plugin add levnikolaevich/claude-code-skills --plugin claude-code-bootstrap
+/plugin add levnikolaevich/claude-code-skills --plugin agile-workflow
+/plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
+/plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
+/plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
 ```
 
 | Plugin | Skills | Description |
 |--------|--------|-------------|
-| **full-development-workflow-skills** | 76 | Agile workflow: Documentation, Planning, Execution, Quality, Audit |
-| **claude-code-bootstrap** | 32 | Project bootstrap: CREATE or TRANSFORM to Clean Architecture |
+| **agile-workflow** | 33 | Scope decomposition, Story/Task management, Execution, Quality gates, Orchestration |
+| **documentation-pipeline** | 11 | Full project docs pipeline with auto-detection (backend/frontend/devops) |
+| **codebase-audit-suite** | 33 | Documentation, Security, Build, Code quality, Tests, Architecture, Performance |
+| **project-bootstrap** | 32 | CREATE or TRANSFORM projects to production-ready Clean Architecture |
 
 ### Other AI Agents
 

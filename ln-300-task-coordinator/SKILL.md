@@ -61,7 +61,7 @@ After building IDEAL plan (Phase 2), score 7 criteria:
 | 1 | **Independence** | No forward dependencies between tasks (Task N uses only 1..N-1) |
 | 2 | **AC clarity** | Each task AC has measurable outcome AND verification method (test/command/inspect) |
 | 3 | **Tech confidence** | All referenced technologies/patterns are known or researched |
-| 4 | **Scope isolation** | Tasks don't overlap with other Stories' scope |
+| 4 | **Scope isolation** | Tasks don't overlap with sibling Stories' tasks. Load siblings (`list_issues project=Epic.id`), compare Affected Components and file paths for structural overlap |
 | 5 | **Architecture compliance** | Tasks reference correct layers (DB→Repo→Service→API), no planned cross-layer violations (e.g., API task doing direct DB calls) |
 | 6 | **Parallel groups valid** | Tasks in same group have no mutual dependencies; all deps point to earlier groups; numbers sequential |
 | 7 | **Destructive op safety** | Tasks with data deletion/migration/schema changes include safety plan (backup, rollback, blast radius) |

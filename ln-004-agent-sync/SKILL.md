@@ -78,7 +78,7 @@ Detect OS → Discover Configs → Sync Skills → Sync MCP → Report
    Current State:
    | Agent | Skills | MCP Servers | Config Exists |
    |-------|--------|-------------|---------------|
-   | Claude (source) | 2 plugins | 4 servers | yes |
+   | Claude (source) | 4 plugins | 4 servers | yes |
    | Gemini | no link | 2 servers | yes |
    | Codex | → ~/.claude/plugins | 4 servers | yes |
    ```

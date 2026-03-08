@@ -2,7 +2,7 @@
 
 Prevention checklist for content creators. Maps to story validation criteria — following these rules prevents penalty points at validation stage.
 
-For full validation rules and auto-fix logic, see story validator `references/` (7 validation files).
+For full validation rules and auto-fix logic, see story validator `references/` (10 validation files).
 
 ## Story Creation Checklist
 
@@ -10,7 +10,7 @@ For Story creation workflow.
 
 | # | Criterion | Penalty | Rule |
 |---|-----------|---------|------|
-| 1 | Story Structure | 1 | 8 sections per template (in order): Story, Context, Acceptance Criteria, Implementation Tasks, Test Strategy, Technical Notes, Definition of Done, Dependencies |
+| 1 | Story Structure | 1 | 9 sections per template (in order): Story, Context, Acceptance Criteria, Implementation Tasks, Test Strategy, Technical Notes, Definition of Done, Dependencies, Assumptions |
 | 3 | Story Statement | 1 | Format: "As a {persona}, I want {capability}, so that {value}" — all 3 parts required |
 | 4 | AC Quality | 3 | 3-5 Given/When/Then scenarios: happy path + error + edge case. Include HTTP codes, timing, exact messages |
 | 5 | Standards Compliance | 10 | Every technical decision references specific RFC/OWASP/REST standard by number in Technical Notes. Use standards research results |
@@ -22,8 +22,9 @@ For Story creation workflow.
 | 16 | Story-Task Alignment | 3 | Each Task title contains keyword from Story AC (grep-verifiable) |
 | 17 | AC-Task Coverage | 3 | Coverage matrix: every AC covered by >= 1 Task. No empty rows |
 | 18 | Story Dependencies | 10 | No forward dependencies on Stories not yet created. Only reference earlier Stories |
+| 24 | Assumption Registry | 3 | Assumptions section with >=1 typed entry per relevant category (FEASIBILITY/DEPENDENCY/DATA/SCOPE). Each entry has Confidence and Invalidation Impact |
 
-**Total exposure:** 50 penalty points if all violated.
+**Total exposure:** 53 penalty points if all violated.
 
 ## Task Creation Checklist
 
@@ -43,7 +44,7 @@ For Task creation workflow.
 
 ## Validation-Only Criteria
 
-These 4 criteria are handled during story validation, NOT by creators:
+These 7 criteria are handled during story validation, NOT by creators:
 
 | # | Criterion | Why validation-only |
 |---|-----------|---------------------|
@@ -51,6 +52,9 @@ These 4 criteria are handled during story validation, NOT by creators:
 | 10 | Test Task Cleanup | Cleanup action during validation; no premature test tasks expected |
 | 20 | Risk Analysis | Validator scans Story/Tasks for unmitigated risks (R1-R6) via keyword detection in Technical Notes and Implementation Plan |
 | 21 | Alternative Solutions | Validator searches MCP Ref + web for modern alternatives; adds "Alternative Considered" note if better option exists |
+| 25 | AC Cross-Story Overlap | Validator loads sibling Stories; checks structured traceability (AC IDs, Affected Components, file paths) for overlap and conflicts |
+| 26 | Task Cross-Story Duplication | Validator compares task Affected Components and file paths across sibling Stories |
+| 27 | Pre-mortem Analysis | Validator runs pre-mortem for complex Stories; Tigers → Risk #20, Elephants → Assumptions #24 |
 
 ---
 **Version:** 1.0.0

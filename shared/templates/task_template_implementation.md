@@ -21,6 +21,9 @@
 - What should exist after completion?
 - What benefits will this bring?
 
+### Inherited Assumptions
+- **A1 (FEASIBILITY):** {{relevant assumption from parent Story}}
+
 ---
 
 ## Implementation Plan

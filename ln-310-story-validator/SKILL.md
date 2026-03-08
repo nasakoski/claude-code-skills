@@ -46,7 +46,7 @@ Validate Stories/Tasks with explicit GO/NO-GO verdict, Readiness Score, and Anti
 | LOW | 1 | Structural/cosmetic issues |
 
 **Workflow:**
-1. Audit: Calculate penalty points for all 22 criteria (Before)
+1. Audit: Calculate penalty points for all 27 criteria (Before)
 2. Fix: Auto-fix fixable violations; FLAGGED items keep their penalty
 3. Report: Before → After (0 if all fixed; >0 if FLAGGED remain)
 
@@ -85,20 +85,24 @@ Phase 2: Research & Audit
   - Delegate documentation creation to ln-002
   - Research via MCP Ref (RFC, OWASP, library versions)
   - Verify technical claims (Anti-Hallucination)
-  - Calculate Penalty Points (22 criteria)
+  - Pre-mortem Analysis (complex Stories)
+  - Calculate Penalty Points (27 criteria)
 
 Phase 3: Audit Results & Fix Plan
   - Display Penalty Points table and fix plan
   - Wait for user approval (Plan Mode only)
 
-Phase 4: Auto-Fix (8 groups)
-  - Fix Structural violations (#1-#4)
+Phase 4: Auto-Fix (11 groups)
+  - Fix Structural violations (#1-#4, #24)
   - Fix Standards violations (#5)
   - Fix Solution violations (#6, #21)
   - Fix Workflow violations (#7-#13)
   - Fix Quality violations (#14-#15)
   - Fix Dependencies violations (#18-#19/#19b)
+  - Fix Cross-Reference violations (#25-#26)
   - Fix Risk violations (#20)
+  - Fix Pre-mortem violations (#27)
+  - Fix Verification violations (#22)
   - Fix Traceability violations (#16-#17)
 
 Phase 5: Agent Review (MANDATORY — delegated to ln-311)
@@ -145,7 +149,8 @@ All subsequent phases use `task_provider` to select operations per storage_mode_
 - Documentation delegation to ln-002 (guides/manuals/ADRs)
 - MCP research (RFC/OWASP/library versions via Ref + Context7)
 - Anti-Hallucination verification (evidence-based claims)
-- Penalty Points calculation (22 criteria, see Auto-Fix Actions Reference in same file)
+- Pre-mortem Analysis (Tigers → #20, Elephants → #24)
+- Penalty Points calculation (27 criteria, see Auto-Fix Actions Reference in same file)
 
 **Always execute for every Story - no exceptions.**
 
@@ -162,18 +167,20 @@ All subsequent phases use `task_provider` to select operations per storage_mode_
 
 ### Phase 4: Auto-Fix
 
-**Execute fixes for ALL 22 criteria on the spot.**
+**Execute fixes for ALL 27 criteria on the spot.**
 
-- Execution order (9 groups):
-  1. **Structural (#1-#4)** — Story/Tasks template compliance + AC completeness/specificity
+- Execution order (11 groups):
+  1. **Structural (#1-#4, #24)** — Story/Tasks template compliance + AC completeness/specificity + Assumption Registry
   2. **Standards (#5)** — RFC/OWASP compliance FIRST (before YAGNI/KISS!)
   3. **Solution (#6, #21)** — Library versions, alternative solutions
   4. **Workflow (#7-#13)** — Test strategy, docs integration, size, cleanup, YAGNI, KISS, task order
   5. **Quality (#14-#15)** — Documentation complete, hardcoded values
   6. **Dependencies (#18-#19/#19b)** — Story/Task independence (no forward deps), parallel group validity
-  7. **Risk (#20)** — Implementation risk analysis (after dependencies resolved, before traceability)
-  8. **Verification (#22)** — AC verify methods exist for all task ACs (test/command/inspect)
-  9. **Traceability (#16-#17)** — Story-Task alignment, AC coverage quality (LAST, after all fixes)
+  7. **Cross-Reference (#25-#26)** — AC overlap with siblings, task duplication across Stories
+  8. **Risk (#20)** — Implementation risk analysis (after dependencies resolved, before traceability)
+  9. **Pre-mortem (#27)** — Tiger/Paper Tiger/Elephant classification (complex Stories)
+  10. **Verification (#22)** — AC verify methods exist for all task ACs (test/command/inspect)
+  11. **Traceability (#16-#17)** — Story-Task alignment, AC coverage quality (LAST, after all fixes)
 - Use Auto-Fix Actions table below as authoritative checklist
 - Zero out penalty points as fixes applied
 - Test Strategy section must exist but remain empty (testing handled separately)
@@ -202,17 +209,19 @@ Invoke `Skill(skill="ln-311-agent-reviewer", args="{storyId}")`.
 
 ## Auto-Fix Actions Reference
 
-**MANDATORY READ:** Load `references/phase2_research_audit.md` for complete 22-criteria table with:
-- Structural (#1-#4): Story/Task template compliance
+**MANDATORY READ:** Load `references/phase2_research_audit.md` for complete 27-criteria table with:
+- Structural (#1-#4, #24): Story/Task template compliance, Assumption Registry
 - Standards (#5): RFC/OWASP compliance
 - Solution (#6, #21): Library versions, alternatives
 - Workflow (#7-#13): Test strategy, docs, size, YAGNI/KISS, task order
 - Quality (#14-#15): Documentation, hardcoded values
-- Traceability (#16-#17): Story-Task alignment, AC coverage
 - Dependencies (#18-#19/#19b): No forward dependencies
+- Cross-Reference (#25-#26): AC overlap, task duplication across sibling Stories
 - Risk (#20): Implementation risk analysis
+- Pre-mortem (#27): Tiger/Paper Tiger/Elephant classification
+- Traceability (#16-#17): Story-Task alignment, AC coverage
 
-**Maximum Penalty:** 88 points (sum of all 22 criteria; #20 capped at 15)
+**Maximum Penalty:** 110 points (sum of all 27 criteria; #20 capped at 15; #25 max 1 CRITICAL = 10)
 
 ## Final Assessment Model
 
@@ -264,11 +273,11 @@ Output explicit mapping:
 
 ## Self-Audit Protocol (Mandatory)
 
-Verify all 22 criteria (#1-#22) from Auto-Fix Actions pass with concrete evidence (doc path, MCP result, Linear update) before proceeding to Phase 6.
+Verify all 27 criteria (#1-#27) from Auto-Fix Actions pass with concrete evidence (doc path, MCP result, Linear update) before proceeding to Phase 6.
 
 ## Critical Rules
-- All 22 criteria MUST be verified with concrete evidence (doc path, MCP result, Linear update) before Phase 6 (Self-Audit Protocol)
-- Fix execution order is strict: Structural -> Standards -> Solution -> Workflow -> Quality -> Dependencies -> Risk -> Traceability (standards before YAGNI/KISS)
+- All 27 criteria MUST be verified with concrete evidence (doc path, MCP result, Linear update) before Phase 6 (Self-Audit Protocol)
+- Fix execution order is strict: Structural -> Standards -> Solution -> Workflow -> Quality -> Dependencies -> Cross-Reference -> Risk -> Pre-mortem -> Verification -> Traceability (standards before YAGNI/KISS)
 - If auto-fix succeeds, zero out that criterion's penalty. If auto-fix is impossible (e.g., MCP Ref unavailable, external dependency), mark as FLAGGED with reason — penalty stays, Gate = NO-GO, user must resolve manually
 - Test Strategy section must exist but remain empty (testing handled separately by other skills)
 - In Plan Mode, MUST stop after Phase 3 and wait for user approval before applying any fixes
@@ -276,7 +285,7 @@ Verify all 22 criteria (#1-#22) from Auto-Fix Actions pass with concrete evidenc
 ## Definition of Done
 
 - Phases 1-6 completed: metadata loaded, research done, penalties calculated, fixes applied, agent review done, Story approved.
-- Penalty Points After = 0 (all 22 criteria fixed or none FLAGGED). Readiness Score After = 10.
+- Penalty Points After = 0 (all 27 criteria fixed or none FLAGGED). Readiness Score After = 10.
 - Anti-Hallucination: VERIFIED (all claims sourced via MCP).
 - AC Coverage: 100% (each AC mapped to ≥1 Task).
 - Agent Review: ln-311 invoked; suggestions aggregated, validated, accepted applied (or SKIPPED if no agents).
@@ -341,10 +350,12 @@ Verify all 22 criteria (#1-#22) from Auto-Fix Actions pass with concrete evidenc
   - `references/quality_validation.md` (criteria #14-#15)
   - `references/dependency_validation.md` (criteria #18-#19/#19b)
   - `references/risk_validation.md` (criterion #20)
+  - `references/cross_reference_validation.md` (criteria #25-#26)
+  - `references/premortem_validation.md` (criterion #27)
   - `references/traceability_validation.md` (criteria #16-#17)
   - `references/domain_patterns.md` (pattern registry for ln-002 delegation)
   - `references/penalty_points.md` (penalty system details)
-- **Prevention checklist:** `shared/references/creation_quality_checklist.md` (creator-facing mapping of 22 criteria)
+- **Prevention checklist:** `shared/references/creation_quality_checklist.md` (creator-facing mapping of 27 criteria)
 - **Linear integration:** `../shared/templates/linear_integration.md`
 - **MANDATORY READ:** `shared/references/research_tool_fallback.md`
 

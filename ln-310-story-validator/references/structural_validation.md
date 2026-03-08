@@ -9,11 +9,11 @@ Detailed rules for Story/Tasks structure, Story statement, and Acceptance Criter
 
 ## Criterion #1: Story Structure (Template Compliance)
 
-**Check:** Story description follows template structure with 8 sections in order
+**Check:** Story description follows template structure with 9 sections in order
 
 **Penalty:** LOW (1 point)
 
-⚠️ **Important:** Request FULL Story description from Linear (not truncated) to validate all 8 sections.
+⚠️ **Important:** Request FULL Story description from Linear (not truncated) to validate all 9 sections.
 
 **Required Sections (in order):**
 1. **Story** (As a / I want / So that)
@@ -24,8 +24,9 @@ Detailed rules for Story/Tasks structure, Story statement, and Acceptance Criter
 6. **Technical Notes** (Architecture Considerations + Integration Points + Performance & Security)
 7. **Definition of Done** (Functionality + Testing + Code Quality)
 8. **Dependencies** (Depends On + Blocks)
+9. **Assumptions** (typed table with categories)
 
-✅ All 8 sections present in correct order
+✅ All 9 sections present in correct order
 ✅ Each section has non-empty content (except Test Strategy - must be empty)
 ✅ Required subsections present (Context: Current Situation/Desired Outcome)
 
@@ -43,7 +44,7 @@ Detailed rules for Story/Tasks structure, Story statement, and Acceptance Criter
 4. Update Linear issue via `mcp__linear-server__update_issue`
 5. Add comment to Linear explaining changes
 
-**Template Reference:** Story template (8 sections structure)
+**Template Reference:** Story template (9 sections structure)
 
 **Skip Fix When:**
 - Story in Done/Canceled status

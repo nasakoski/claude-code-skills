@@ -297,7 +297,7 @@ Skill(
 ```
 
 **Worker handles:**
-- Generate Story documents (8 sections, insert Standards Research)
+- Generate Story documents (9 sections, insert Standards Research)
 - Validate INVEST criteria
 - Show preview
 - User confirmation (if autoApprove=false)
@@ -368,7 +368,7 @@ Skill(
 
 **Worker handles:**
 - Research standards for NEW Story only
-- Generate Story document (8 sections)
+- Generate Story document (9 sections)
 - Validate INVEST criteria
 - Create in Linear (append to existing)
 - Update kanban_board.md

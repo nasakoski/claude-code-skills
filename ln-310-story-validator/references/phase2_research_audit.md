@@ -33,9 +33,30 @@ Receive file paths to created documentation (`docs/guides/`, `docs/manuals/`, `d
 - Flag unverified claims for correction
 - Status: VERIFIED (all sourced) or FLAGGED (list unverified)
 
-## Step 5: Penalty Points Calculation
+## Step 5: Pre-mortem Analysis
 
-- Evaluate all 23 criteria against Story/Tasks (see Auto-Fix Actions Reference below)
+**MANDATORY READ:** Load `references/premortem_validation.md`
+
+- Execute for Stories with complexity >= Medium (3+ tasks, external deps, or unfamiliar tech)
+- Skip for trivial Stories (1-2 tasks, no external deps, known tech)
+- Tigers (evidence-based risks) → feed Risk criterion #20 (add to risk table BEFORE penalty calc)
+- Elephants (unstated assumptions) → feed Assumptions criterion #24 (add with [pre-mortem] tag, Confidence=LOW)
+- Paper Tigers (fears without evidence) → document and dismiss
+- Include pre-mortem table in Phase 3 audit report
+
+## Step 6: Cross-Reference Analysis
+
+**MANDATORY READ:** Load `references/cross_reference_validation.md`
+
+- Skip if Epic has only 1 Story or all siblings Done/Canceled
+- Load sibling Stories via `list_issues(project=Epic.id)`
+- Check AC overlap (#25): structured traceability first (AC IDs, Affected Components, file paths), keyword fallback advisory-only
+- Check task duplication (#26): structured match (Affected Components, file paths) primary
+- Include cross-reference findings in Phase 3 audit report
+
+## Step 7: Penalty Points Calculation
+
+- Evaluate all 27 criteria against Story/Tasks (see Auto-Fix Actions Reference below)
 - Assign penalty points per violation (CRITICAL=10, HIGH=5, MEDIUM=3, LOW=1)
 - Calculate total penalty points
 - Build fix plan for each violation
@@ -44,14 +65,15 @@ Receive file paths to created documentation (`docs/guides/`, `docs/manuals/`, `d
 
 Detailed criteria table for Phase 4 auto-fix execution and Phase 2 penalty calculation.
 
-## Structural (#1-#4)
+## Structural (#1-#4, #24)
 
 | # | Criterion | What it checks | Penalty | Auto-fix actions |
 |---|-----------|----------------|---------|------------------|
-| 1 | Story Structure | 8 sections per template | LOW (1) | Add/reorder sections with TODO placeholders; update Linear |
+| 1 | Story Structure | 9 sections per template | LOW (1) | Add/reorder sections with TODO placeholders; update Linear |
 | 2 | Tasks Structure | Each Task has 7 sections | LOW (1) | Load each Task; add/reorder sections; update Linear |
 | 3 | Story Statement | As a/I want/So that clarity | LOW (1) | Rewrite using persona/capability/value; update Linear |
 | 4 | Acceptance Criteria | Given/When/Then, 3-5 items; each task AC has `verify:` method | MEDIUM (3) | Normalize to G/W/T; add edge cases; generate `verify:` methods for task ACs missing them (test/command/inspect based on AC content); update Linear |
+| 24 | Assumption Registry | Assumptions section with >=1 typed entry; each has Category, Confidence, Invalidation Impact; LOW confidence entries have validation plan in Tasks; Inherited Assumptions in child Tasks match parent Story registry (ID exists + text matches) | MEDIUM (3) | Scan Technical Notes for implicit assumptions (keywords: "assumes", "expects", "requires", "available"); populate table; verify assumption sync in Tasks |
 
 ## Standards (#5)
 
@@ -99,6 +121,13 @@ Detailed criteria table for Phase 4 auto-fix execution and Phase 2 penalty calcu
 | 18 | Story Dependencies | No forward Story dependencies | CRITICAL (10) | Flag forward dependencies; suggest reorder |
 | 19 | Task Dependencies | No forward Task dependencies | MEDIUM (3) | Flag forward dependencies; reorder Tasks |
 
+## Cross-Reference (#25-#26)
+
+| # | Criterion | What it checks | Penalty | Auto-fix actions |
+|---|-----------|----------------|---------|------------------|
+| 25 | AC Cross-Story Overlap | Story AC doesn't overlap/conflict with active sibling Stories in same Epic | MEDIUM (3) / CRITICAL (10), max 1 CRITICAL | Structured traceability first (AC IDs, Affected Components, file paths); keyword overlap as advisory fallback; conflict (same Given/When + different Then) → CRITICAL |
+| 26 | Task Cross-Story Duplication | Tasks don't duplicate sibling Stories' tasks | LOW (1), max 3 | Structured match (Affected Components, file paths) primary; title keyword overlap advisory; human decides |
+
 ## Risk (#20)
 
 | # | Criterion | What it checks | Penalty | Auto-fix actions |
@@ -117,7 +146,13 @@ Detailed criteria table for Phase 4 auto-fix execution and Phase 2 penalty calcu
 |---|-----------|----------------|---------|------------------|
 | 23 | Architecture Considerations Complete | Story has: layers affected, side-effect boundary, orchestration depth | MEDIUM (3) | Add Architecture Considerations section from story_template.md with placeholder fields; update Linear |
 
-**Maximum Penalty:** 91 points (sum of all 23 criteria; #20 capped at 15)
+## Pre-mortem (#27)
+
+| # | Criterion | What it checks | Penalty | Auto-fix actions |
+|---|-----------|----------------|---------|------------------|
+| 27 | Pre-mortem Analysis | Pre-mortem with Tiger/Paper Tiger/Elephant classification (complex Stories) | MEDIUM (3) | Execute algorithm from premortem_validation.md; Tigers → risk #20; Elephants → Assumptions #24 [pre-mortem] |
+
+**Maximum Penalty:** 110 points (sum of all 27 criteria; #20 capped at 15; #25 max 1 CRITICAL = 10)
 
 ---
 **Version:** 1.0.0

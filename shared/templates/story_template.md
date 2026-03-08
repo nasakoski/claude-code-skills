@@ -207,6 +207,22 @@ Tasks created separately (child tasks of this Story):
 
 ---
 
+## Assumptions
+
+Typed assumptions that must hold true. Validate during implementation; escalate if invalidated.
+
+| ID | Category | Assumption | Confidence | Validated | Invalidation Impact |
+|----|----------|------------|------------|-----------|---------------------|
+| A1 | FEASIBILITY | {{assumption}} | HIGH/MEDIUM/LOW | NO | {{what breaks}} |
+
+**Categories:**
+- **FEASIBILITY** — Can we build this? (infrastructure, tooling, runtime)
+- **DEPENDENCY** — External systems behave as expected (APIs, SLAs)
+- **DATA** — Data format, quality, volume constraints
+- **SCOPE** — What is explicitly excluded
+
+---
+
 ## Template Placeholders
 
 When copying this template to a project, replace these placeholders:
