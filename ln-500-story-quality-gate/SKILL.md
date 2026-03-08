@@ -108,7 +108,7 @@ ELSE:
 | Criteria Validation (3 checks) | RUN | RUN | Cheap, validates AC coverage |
 | ln-511 metrics + static analysis | RUN | **RUN** | **Catches complexity/DRY/dead code that per-task review misses** |
 | ln-511 MCP Ref (OPT-, BP-, PERF-) | RUN | **SKIP** | Expensive external calls |
-| ln-513 agent review | RUN | **SKIP** | Expensive external calls |
+| Inline agent review | RUN | **SKIP** | Expensive external calls |
 | ln-520 test planning | RUN | **SKIP** | Redundant for pre-validated |
 | NFR validation | All dims | **Security only** | Perf/Maintainability less critical |
 
@@ -117,7 +117,7 @@ ELSE:
 1) **Invoke ln-510-quality-coordinator** via Skill tool
    - Pass: Story ID (+ `--fast-track` flag if fast_track == true)
    - Full: ln-510 runs: code quality (ln-511) -> criteria validation -> linters -> regression (ln-514)
-   - Fast-track: ln-510 runs: code metrics + static (ln-511 `--skip-mcp-ref`) -> criteria -> linters -> regression (ln-514) — skips MCP Ref/ln-513
+   - Fast-track: ln-510 runs: code metrics + static (ln-511 `--skip-mcp-ref`) -> criteria -> linters -> regression (ln-514) — skips MCP Ref/agent review
 2) **If ln-510 returns FAIL:**
    - Create fix/refactor tasks via ln-301
    - Stop — return to ln-400
@@ -130,7 +130,7 @@ ELSE:
    - **Test task exists, not Done** -> report status, stop
    - **Test task Done** -> proceed to Phase 5
 
-2) **Invoke ln-520-test-planner** via Skill tool (if needed)
+3) **Invoke ln-520-test-planner** via Skill tool (if needed)
    - Pass: Story ID
    - ln-520 runs: research (ln-521) -> manual testing (ln-522) -> auto test planning (ln-523)
 
@@ -189,8 +189,8 @@ Runs only when verdict is PASS, CONCERNS, or WAIVED. Consumes verified results f
 
 | Phase | Worker | Purpose |
 |-------|--------|---------|
-| 2 | ln-510-quality-coordinator | Code quality + criteria + linters + regression |
-| 3 | ln-520-test-planner | Research + manual testing + auto test planning |
+| 3 | ln-510-quality-coordinator | Code quality + criteria + linters + regression |
+| 4 | ln-520-test-planner | Research + manual testing + auto test planning |
 
 **Invocation:**
 ```

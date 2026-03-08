@@ -140,7 +140,7 @@ ALL .pipeline/ file operations (checkpoint, done.flag) use PIPELINE_DIR.
 TASK: Execute Stage 1 — Story Validation.
 
 Step 1: Invoke validation:
-  Skill(skill: "ln-310-story-validator", args: "{storyId}")
+  Skill(skill: "ln-310-multi-agent-validator", args: "{storyId}")
 
 Step 2: After ln-310 completes, check result:
   - If GO (Readiness >= 5, Penalty = 0): Report success to lead

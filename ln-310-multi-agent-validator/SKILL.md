@@ -1,38 +1,37 @@
 ---
-name: ln-310-story-validator
-description: "Validates Stories/Tasks: GO/NO-GO verdict, Readiness Score (1-10), Penalty Points (Before/After), Anti-Hallucination. Auto-fixes fixable violations, FLAGs unfixable. Delegates to ln-002 for docs."
+name: ln-310-multi-agent-validator
+description: "Validates Stories/Tasks or context via parallel multi-agent review (Codex + Gemini). Merges findings, debates, applies fixes. GO/NO-GO verdict."
 license: MIT
 ---
 
 > **Paths:** File paths (`shared/`, `references/`, `../ln-*`) are relative to skills repo root. If not found at CWD, locate this SKILL.md directory and go up one level for repo root.
 
-# Story Verification Skill
+# Multi-Agent Validator
 
-Validate Stories/Tasks with explicit GO/NO-GO verdict, Readiness Score, and Anti-Hallucination verification.
+Validates Stories/Tasks (mode=story) or arbitrary context (mode=context) with parallel multi-agent review and critical verification.
 
 ## Inputs
 
 | Input | Required | Source | Description |
 |-------|----------|--------|-------------|
-| `storyId` | Yes | args, git branch, kanban, user | Story to process |
+| `storyId` | mode=story | args, git branch, kanban, user | Story to process |
+| `context {files}` | mode=context | args | File paths to review |
 
-**Resolution:** Story Resolution Chain.
-**Status filter:** Backlog
+**Mode detection:** `"context {file1} {file2}..."` → mode=context. Anything else → mode=story.
+**Resolution (mode=story):** Story Resolution Chain. **Status filter:** Backlog
 
 ## Purpose & Scope
 
-- Validate Story plus child Tasks against industry standards and project patterns
-- Calculate Penalty Points for violations, then auto-fix what can be fixed
-- Delegate to ln-002-best-practices-researcher for creating documentation (guides, manuals, ADRs, research)
+- **mode=story:** Validate Story plus child Tasks against industry standards and project patterns. Calculate Penalty Points, auto-fix violations, delegate to ln-002 for documentation. Approve Story (Backlog -> Todo).
+- **mode=context:** Review plans, documents, architecture proposals via multi-agent review + MCP Ref research. Advisory output only (no status changes).
+- **Both modes:** Launch external agents (Codex + Gemini) in parallel with own validation. Merge findings, critically verify, debate, apply accepted changes.
 - Support Plan Mode: show audit results, wait for approval, then fix
-- Approve Story after fixes (Backlog -> Todo) with tabular output summary
 
 ## When to Use
 
-- Reviewing Stories before approval (Backlog -> Todo)
-- Validating implementation path across Story and Tasks
-- Ensuring standards, architecture, and solution fit
-- Optimizing or correcting proposed approaches
+- **mode=story:** Reviewing Stories before approval (Backlog -> Todo), validating implementation path, ensuring standards fit
+- **mode=context:** Reviewing plans, decisions, documents, architecture proposals for independent second opinion
+- Optimizing or correcting proposed approaches with multi-agent verification
 
 ## Penalty Points System
 
@@ -105,11 +104,25 @@ Phase 4: Auto-Fix (11 groups)
   - Fix Verification violations (#22)
   - Fix Traceability violations (#16-#17)
 
-Phase 5: Agent Review (MANDATORY — delegated to ln-311)
-  - [MANDATORY] Invoke ln-311-agent-reviewer with story_ref + tasks_ref
-  - [MANDATORY] Process and apply accepted suggestions to Story/Tasks
+Agent Launch (between Phase 1 and Phase 2 — mode=story)
+  - Health check: agent availability
+  - Build prompt from review_base.md + modes/story.md (per shared workflow "Step: Build Prompt")
+  - Launch codex-review + gemini-review as background tasks
 
-Phase 6: Approve & Notify
+Agent Launch (between inputs and foreground research — mode=context)
+  - Health check: agent availability
+  - Build prompt from review_base.md + modes/context.md (per shared workflow "Step: Build Prompt")
+  - Launch codex-review + gemini-review as background tasks
+
+Phase 5: Merge + Critical Verification (MANDATORY)
+  - Wait for agent results (process-as-arrive)
+  - Re-read lines modified in Phase 4 auto-fix (agents saw pre-fix state)
+  - Dedup against Claude's findings + review history
+  - Critical Verification + Debate per shared workflow
+  - Apply accepted suggestions
+  - Save review summary to .agent-review/review_history.md
+
+Phase 6: Approve & Notify (mode=story only)
   - Set Story/Tasks to Todo status in Linear
   - Update kanban_board.md with APPROVED marker
   - Add Linear comment with validation summary
@@ -142,7 +155,47 @@ All subsequent phases use `task_provider` to select operations per storage_mode_
 - Expect 1-8 implementation tasks; record parentId for filtering
 - Rationale: keep loading light; full descriptions arrive in Phase 2
 
-### Phase 2: Research & Audit
+### Agent Launch (immediately after Phase 1 — before Phase 2)
+
+**MANDATORY READ:** Load `shared/references/agent_review_workflow.md`, `shared/references/agent_delegation_pattern.md`
+
+**mode=story:**
+
+1) **Health Check:** `python shared/agents/agent_runner.py --health-check`
+   - If 0 agents → skip agent review, proceed with Claude-only validation
+2) **Get references:**
+   - IF `task_provider` = `linear`: `get_issue(storyId)` → Story URL, `list_issues(parent=storyId)` → Task URLs
+   - IF `task_provider` = `file`: Read story.md, Glob tasks → paths
+3) **Build prompt:** Assemble from `shared/agents/prompt_templates/review_base.md` + `modes/story.md` (per shared workflow "Step: Build Prompt"), replace `{story_ref}`, `{task_refs}`. Save to `.agent-review/{identifier}_storyreview_prompt.md`
+4) **Launch BOTH agents** as background tasks (per shared workflow "Step: Run Agents")
+
+**mode=context:**
+
+1) **Health Check:** same as above
+2) **Resolve identifier:** If not provided, generate `review_YYYYMMDD_HHMMSS`
+3) **Materialize context (if needed):** If context is from chat → write to `.agent-review/context/{identifier}_context.md`
+4) **Build prompt:** Assemble from `shared/agents/prompt_templates/review_base.md` + `modes/context.md` (per shared workflow "Step: Build Prompt"), replace `{review_title}`, `{context_refs}`, `{focus_areas}`. Save to `.agent-review/{identifier}_contextreview_prompt.md`
+5) **Launch BOTH agents** as background tasks
+
+Agents now run in background. Claude proceeds to foreground work.
+
+### Foreground: mode=context (skip Phases 2-4, run MCP Ref research instead)
+
+**MANDATORY READ:** Load `shared/references/research_tool_fallback.md`
+
+While agents run in background, Claude performs foreground research:
+
+a) **Load Review Memory** — per shared workflow "Step: Load Review Memory"
+b) **Applicability Check** — scan context_files for technology decision signals (infrastructure, API/protocol, security, library/framework choices). No signals → skip MCP Ref, proceed to Phase 5.
+c) **Stack Detection** — detect `query_prefix` from: `tech_stack` input > `docs/tools_config.md` > indicator files (*.csproj, package.json, etc.)
+d) **Extract Topics (3-5)** — parse context_files for technology decisions, score by weight, take top 3-5
+e) **MCP Ref Research** — per `research_tool_fallback.md` chain (Ref → Context7 → WebSearch). Query: `"{query_prefix} {topic} RFC standard best practices {current_year}"`
+f) **Compare & Correct** — if MCP Ref contradicts plan statement (high confidence), apply surgical Edit with inline rationale `"(per {RFC/standard}: ...)"`. Max 5 corrections per run. In Plan Mode → output to chat, skip edits until approved.
+g) **Save Findings** — write to `.agent-review/context/{identifier}_mcp_ref_findings.md` (per `references/mcp_ref_findings_template.md`). Display: `"MCP Ref: {N} topics validated, {M} corrections, {K} confirmed"`
+
+Then proceed to Phase 5 (Merge).
+
+### Phase 2: Research & Audit (mode=story only)
 
 **MANDATORY READ:** Load `references/phase2_research_audit.md` for complete research and audit procedure:
 - Domain extraction from Story/Tasks
@@ -185,17 +238,32 @@ All subsequent phases use `task_provider` to select operations per storage_mode_
 - Zero out penalty points as fixes applied
 - Test Strategy section must exist but remain empty (testing handled separately)
 
-### Phase 5: Agent Review (MANDATORY — DO NOT SKIP)
+### Phase 5: Merge + Critical Verification (MANDATORY — DO NOT SKIP)
 
-> **MANDATORY STEP:** This phase MUST execute regardless of Phase 4 results. Skipping agent review is a workflow violation. If agents unavailable, ln-311 returns SKIPPED — acceptable. But invocation MUST happen.
+> **MANDATORY STEP:** This phase merges agent results (launched before Phase 2) with Claude's own findings. Agents were already running in background during Phases 2-4 (mode=story) or during foreground research (mode=context).
 
-Invoke `Skill(skill="ln-311-agent-reviewer", args="{storyId}")`.
-- ln-311 gets Story/Task references from Linear, builds prompt with references, runs agents in parallel, persists prompts and results in `.agent-review/{agent}/`.
-- If verdict = `SUGGESTIONS` → apply ACCEPTED suggestions to Story/Tasks text.
-- If verdict = `SKIPPED` (no agents or all failed) → proceed to Phase 6 unchanged.
-- **Display:** agent stats from ln-311 output: `"Agent Review: {agent_stats summary}"`
+**MANDATORY READ:** Load `shared/references/agent_review_workflow.md` (Critical Verification + Debate), `shared/references/agent_review_memory.md`
 
-### Phase 6: Approve & Notify
+1) **Wait for agent results** — read result files as they arrive (process-as-arrive pattern)
+2) **Parse agent suggestions** from both agents' result files
+3) **MERGE:** Claude's own findings (Phase 2-4 violations for mode=story, MCP Ref findings for mode=context) + Agent suggestions
+   - If agent suggestion targets lines modified in Phase 4 auto-fix, re-read affected lines before evaluation (agents saw pre-fix state, files are now post-fix)
+4) **For EACH agent suggestion:**
+   - Dedup against Claude's own findings (skip if already covered)
+   - Dedup against review history (skip if already addressed)
+   - Claude Evaluation: is it real? Actionable? Applies to our context?
+   - MCP Ref enhancement (mode=context): agent suggestion contradicts MCP Ref finding → DISAGREE with citation; aligns → AGREE; not covered → standard evaluation
+   - AGREE → accept. DISAGREE → debate (Challenge + Follow-Up per shared workflow)
+5) **Apply accepted suggestions:**
+   - mode=story → apply to Story/Tasks text
+   - mode=context → output to chat as advisory
+6) **Save review summary** to `.agent-review/review_history.md`
+- If verdict = `SKIPPED` (no agents at health check) → proceed to Phase 6 unchanged
+- **Display:** `"Agent Review: codex ({accepted}/{total}), gemini ({accepted}/{total}), {N} suggestions applied"`
+
+### Phase 6: Approve & Notify (mode=story only)
+
+**mode=context:** Skip Phase 6. Return suggestions as advisory output. Done.
 
 - Set Story + all Tasks to Todo; update `kanban_board.md` with APPROVED marker
   - IF `task_provider` = `linear`: `save_issue({id, state: "Todo"})` for Story + each Task
@@ -288,7 +356,7 @@ Verify all 27 criteria (#1-#27) from Auto-Fix Actions pass with concrete evidenc
 - Penalty Points After = 0 (all 27 criteria fixed or none FLAGGED). Readiness Score After = 10.
 - Anti-Hallucination: VERIFIED (all claims sourced via MCP).
 - AC Coverage: 100% (each AC mapped to ≥1 Task).
-- Agent Review: ln-311 invoked; suggestions aggregated, validated, accepted applied (or SKIPPED if no agents).
+- Agent Review: agents launched in background before Phase 2, results merged in Phase 5, suggestions verified + debated, accepted applied (or SKIPPED if no agents).
 - Story/Tasks set to Todo; kanban updated; Linear comment with Final Assessment posted.
 
 ## Example Workflow
@@ -311,7 +379,7 @@ Verify all 27 criteria (#1-#27) from Auto-Fix Actions pass with concrete evidenc
    - Fix #13: Add Guide-05, Guide-06 references
    - Fix #17: Docs already created by ln-002
    - All fixes applied, Penalty Points = 0
-5. **Phase 5:** Agent review (delegated to ln-311-agent-reviewer → apply accepted suggestions)
+5. **Phase 5:** Merge agent results (launched before Phase 2) + Claude's findings → verify, debate, apply
 6. **Phase 6:** Story -> Todo, tabular report
 
 ## Template Loading
@@ -356,8 +424,13 @@ Verify all 27 criteria (#1-#27) from Auto-Fix Actions pass with concrete evidenc
   - `references/domain_patterns.md` (pattern registry for ln-002 delegation)
   - `references/penalty_points.md` (penalty system details)
 - **Prevention checklist:** `shared/references/creation_quality_checklist.md` (creator-facing mapping of 27 criteria)
-- **Linear integration:** `../shared/templates/linear_integration.md`
-- **MANDATORY READ:** `shared/references/research_tool_fallback.md`
+- **MANDATORY READ:** `shared/templates/linear_integration.md`, `shared/references/research_tool_fallback.md`
+- **Agent review workflow:** `shared/references/agent_review_workflow.md`
+- **Agent delegation pattern:** `shared/references/agent_delegation_pattern.md`
+- **Agent review memory:** `shared/references/agent_review_memory.md`
+- **Review templates:** `shared/agents/prompt_templates/review_base.md` + `modes/story.md`, `modes/context.md`
+- **Challenge template:** `shared/agents/prompt_templates/challenge_review.md`
+- **MCP Ref findings template:** `references/mcp_ref_findings_template.md`
 
 ---
 **Version:** 7.0.0

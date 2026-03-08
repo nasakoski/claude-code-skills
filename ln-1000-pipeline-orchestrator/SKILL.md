@@ -80,7 +80,7 @@ Backlog       --> Stage 0 (ln-300) --> Backlog      --> Stage 1 (ln-310) --> Tod
 | Stage | Skill | Input Status | Output Status |
 |-------|-------|-------------|--------------|
 | 0 | ln-300-task-coordinator | Backlog (no tasks) | Backlog (tasks created) |
-| 1 | ln-310-story-validator | Backlog (tasks exist) | Todo |
+| 1 | ln-310-multi-agent-validator | Backlog (tasks exist) | Todo |
 | 2 | ln-400-story-executor | Todo / To Rework | To Review |
 | 3 | ln-500-story-quality-gate | To Review | Done / To Rework |
 
@@ -478,7 +478,7 @@ Delete .pipeline/ directory
 
 1. **Single Story processing.** One worker at a time. User selects which Story to process
 2. **Delegate mode.** Lead coordinates only — never invoke ln-300/ln-310/ln-400/ln-500 directly. Workers do all execution
-3. **Skills as-is.** Never modify or bypass existing skill logic. Workers call `Skill("ln-310-story-validator", args)` exactly as documented
+3. **Skills as-is.** Never modify or bypass existing skill logic. Workers call `Skill("ln-310-multi-agent-validator", args)` exactly as documented
 4. **Kanban verification.** Workers update Linear/kanban via skills. Lead re-reads and ASSERTs expected state after each stage. In file mode, lead resolves merge conflicts
 5. **Quality cycle limit.** Max 2 quality FAILs per Story (original + 1 rework cycle). After 2nd FAIL, escalate to user
 6. **No merge/worktree management.** ln-1000 does NOT create worktrees, merge branches, or cleanup. Worktree isolation owned by ln-400, branch finalization by ln-500
@@ -581,7 +581,7 @@ When invoked in Plan Mode, show available Stories and ask user which one to plan
 
 ### Delegated Skills
 - `../ln-300-task-coordinator/SKILL.md`
-- `../ln-310-story-validator/SKILL.md`
+- `../ln-310-multi-agent-validator/SKILL.md`
 - `../ln-400-story-executor/SKILL.md`
 - `../ln-500-story-quality-gate/SKILL.md`
 

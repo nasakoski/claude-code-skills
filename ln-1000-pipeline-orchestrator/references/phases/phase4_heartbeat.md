@@ -208,7 +208,7 @@ Maps stage number to skill name for activity display.
 ```
 stage_to_skill = {
   0: "ln-300-task-coordinator",
-  1: "ln-310-story-validator",
+  1: "ln-310-multi-agent-validator",
   2: "ln-400-story-executor",
   3: "ln-500-story-quality-gate"
 }

@@ -6,11 +6,10 @@ Common workflow for all agent review workers. Each skill provides parameters and
 
 | Parameter | Description | Examples |
 |-----------|-------------|---------|
+| `review_mode` | Mode file name (determines template) | `code`, `story`, `context` |
 | `review_type` | File naming suffix | `contextreview`, `storyreview`, `codereview` |
-| `skill_group` | Health check filter | `005` (universal), `311` (story), `513` (code) |
 | `identifier` | Unique label for file naming | `PROJ-123`, `review_20260227_143000` |
 | `verdict_acceptable` | Verdict for "no issues" | `CONTEXT_ACCEPTABLE`, `STORY_ACCEPTABLE`, `CODE_ACCEPTABLE` |
-| `prompt_file` | Built prompt path | `.agent-review/{identifier}_{review_type}_prompt.md` |
 
 ## Plan Mode Behavior
 
@@ -30,7 +29,6 @@ When running in Plan Mode (per `shared/references/plan_mode_pattern.md`, Workflo
 python shared/agents/agent_runner.py --health-check
 ```
 
-- Filter output by `skill_groups` containing `{skill_group}`
 - If 0 agents available -> return `{verdict: "SKIPPED", reason: "no agents available"}`
 - Display: `"Agent Health: codex-review OK, gemini-review OK"` (or similar)
 
@@ -46,8 +44,7 @@ python shared/agents/agent_runner.py --health-check
 **MANDATORY READ:** Load `shared/references/agent_review_memory.md`
 
 a) If `.agent-review/review_history.md` exists:
-   - Parse all entries (## blocks), take last 15
-   - Compute per-agent calibration: `accuracy = accepted_count / total_count` per agent across loaded entries
+   - Parse all entries (## blocks)
    - Build known-suggestions set: all accepted suggestions from history `(area, issue summary)`
    - Build rejected-suggestions set: rejected suggestions with rejection reasons
 
@@ -55,21 +52,45 @@ b) If not exists: proceed without memory (first review for this project)
 
 Claude uses this data during Critical Verification. It is NOT passed to agents.
 
+## Step: Build Prompt
+
+Assemble the review prompt from base template + mode-specific content:
+
+1. Read `shared/agents/prompt_templates/review_base.md` (shared sections)
+2. Read `shared/agents/prompt_templates/modes/{review_mode}.md` (mode = code/story/context)
+3. Parse mode file sections (split by `## section_name` headers):
+   - `## header` -> `{mode_header}`
+   - `## constraints` -> `{mode_constraints}`
+   - `## body` -> `{mode_body}`
+   - `## alt_title` -> `{mode_alt_title}`
+   - `## alt_extra` -> `{mode_alt_extra}`
+   - `## schema` -> parse key-value pairs for `{mode_verdict}`, `{mode_areas}`, `{mode_suggestion_desc}`, `{mode_reason_desc}`, `{mode_verdict_question}`
+4. Replace all `{mode_*}` placeholders in base with corresponding mode content
+5. Fill instance variables: `{story_ref}`, `{task_refs}` (code/story) or `{review_title}`, `{context_refs}`, `{focus_areas}` (context)
+6. Save assembled prompt to `.agent-review/{identifier}_{review_type}_prompt.md`
+
 ## Step: Run Agents (background, process-as-arrive)
 
 a) Launch BOTH agents as background Bash tasks (`run_in_background=true`):
 
 ```
 python shared/agents/agent_runner.py --agent codex-review \
-  --prompt-file {prompt_file} \
+  --prompt-file .agent-review/{identifier}_{review_type}_prompt.md \
   --output-file .agent-review/codex/{identifier}_{review_type}_result.md \
   --cwd {cwd}
 
 python shared/agents/agent_runner.py --agent gemini-review \
-  --prompt-file {prompt_file} \
+  --prompt-file .agent-review/{identifier}_{review_type}_prompt.md \
   --output-file .agent-review/gemini/{identifier}_{review_type}_result.md \
   --cwd {cwd}
 ```
+
+**Heartbeat monitoring (while agents work):**
+- After launching agents, output to chat: `"Agents launched: codex-review + gemini-review. Continuing with foreground work..."`
+- Between foreground phases, Read `.agent-review/{agent}/heartbeat.json` for each agent and output status: `"[Heartbeat] codex-review: analyzing — Checking security patterns in src/auth/"`
+- When foreground work completes and agents haven't returned yet, Read heartbeat files and output: `"Foreground complete. Waiting for agents... codex-review: {step}, gemini-review: {step}"`
+- Do NOT poll in a sleep-loop — the framework sends background task notifications automatically
+- When each agent completes, immediately output: `"Agent {name} completed ({duration}s). {N} suggestions found."` Then proceed to parse results.
 
 b) When first agent completes (background task notification):
    - Result file is already written by agent_runner.py -- do NOT write or rewrite it
@@ -94,13 +115,11 @@ Per Debate Protocol in `shared/references/agent_delegation_pattern.md`.
 
 For EACH suggestion from agent results:
 
-a) **Dedup Check (memory-informed):** If review memory was loaded, compare `(area, issue)` against known-suggestions from history. Match in accepted set -> skip as "already addressed" (not counted as rejection). Match in rejected set with same reasoning -> require 95%+ confidence to proceed. Per `shared/references/agent_review_memory.md` §Memory-Informed Verification (a).
+a) **Dedup Check (memory-informed):** If review memory was loaded, compare `(area, issue)` against known-suggestions from history. Match in accepted set -> skip as "already addressed" (not counted as rejection). Match in rejected set with same reasoning -> note prior rejection context, evaluate on merits. Per `shared/references/agent_review_memory.md` §Memory-Informed Verification (a).
 
 b) **Claude Evaluation:** Independently assess -- is the issue real? Actionable? Conflicts with project patterns? Read the agent's Analysis Process and Evidence sections from the report for deeper understanding of the suggestion's basis.
 
-c) **Calibration-Adjusted Trust (memory-informed):** If review memory was loaded, apply calibration thresholds per `shared/references/agent_review_memory.md` §Memory-Informed Verification (b). Agent accuracy < 70% -> DISAGREE at confidence < 95. Agent accuracy >= 70% -> standard threshold (90).
-
-d) **AGREE** -> accept as-is. **DISAGREE/UNCERTAIN** -> initiate challenge.
+c) **AGREE** -> accept as-is. **DISAGREE/UNCERTAIN** -> initiate challenge.
 
 e) **Challenge + Follow-Up (with session resume):** Follow Debate Protocol (Challenge Round 1 -> Follow-Up Round if not resolved). Resume agent's review session for full context continuity:
    - Read `session_id` from `.agent-review/{agent}/{identifier}_session.json`
@@ -115,7 +134,6 @@ f) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{a
 
 - Collect ACCEPTED suggestions only (after verification + debate)
 - Deduplicate by `(area, issue)` -- keep higher confidence
-- **Filter:** `confidence >= 90` AND `impact_percent > 10`
 - **Return** JSON with suggestions + agent_stats + debate_log. **NO cleanup/deletion.**
 
 ## Step: Save Review Summary
@@ -161,7 +179,6 @@ Entry format (per `shared/references/agent_review_memory.md`):
 - Each suggestion critically verified by Claude; challenges executed for disagreements
 - Follow-up rounds executed for suggestions rejected after Round 1 (DEFEND+weak / MODIFY+disagree)
 - Challenge and follow-up prompts/results persisted alongside review artifacts
-- Accepted suggestions filtered by confidence >= 90 AND impact_percent > 10
 - Deduplicated verified suggestions returned with verdict, agent_stats, and debate_log
 - `.agent-review/.gitignore` exists (created only if `.agent-review/` was new)
 - Session files persisted in `.agent-review/{agent}/{identifier}_session.json` for debate resume
@@ -201,6 +218,8 @@ debate_log:
 ## Shared Reference Files
 
 - **Agent delegation pattern:** `shared/references/agent_delegation_pattern.md`
+- **Review base template:** `shared/agents/prompt_templates/review_base.md`
+- **Review mode files:** `shared/agents/prompt_templates/modes/` (code.md, story.md, context.md)
 - **Prompt template (challenge):** `shared/agents/prompt_templates/challenge_review.md`
 - **Challenge schema:** `shared/agents/schemas/challenge_review_schema.json`
 - **Agent registry:** `shared/agents/agent_registry.json`

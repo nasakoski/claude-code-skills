@@ -239,7 +239,7 @@ WARNINGS: US005 (Todo) AC changed
 
 NEXT STEPS:
 1. Review warnings
-2. Run ln-310-story-validator on updated/created Stories
+2. Run ln-310-multi-agent-validator on updated/created Stories
 3. Use ln-300-task-coordinator to create/replan tasks
 ```
 

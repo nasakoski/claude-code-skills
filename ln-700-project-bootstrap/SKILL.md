@@ -478,7 +478,7 @@ SKIP_TESTS=false
 | ln-001-standards-researcher | Query for best practices during ln-720 |
 | ln-002-best-practices-researcher | Generate guides during ln-720 |
 | ln-100-documents-pipeline | Call after bootstrap for docs |
-| ln-310-story-validator | Validate generated tasks |
+| ln-310-multi-agent-validator | Validate generated tasks |
 
 ---
 

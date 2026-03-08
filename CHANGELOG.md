@@ -12,27 +12,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2026-03-08
+
+Plugin marketplace restructured: split into 5 plugins (agile-workflow, documentation-pipeline, codebase-audit-suite, project-bootstrap, optimization-suite). New 8XX Optimization category with 11 skills (810 Performance, 820 Dependencies, 830 Modernization). Worktree isolation moved from ln-1000 orchestrator to individual worker skills. Shared audit patterns extracted to `shared/references/`. Removed diagram.html from all skills. Assumptions system (#24) and cross-reference validation (#25-#26) added to ln-310. Skill coherence review: fixed stale ln-513 refs in ln-510, trimmed ln-310/ln-510 descriptions to ≤200 chars, removed consumer skill IDs from orchestrator_pattern.md, fixed MANDATORY READ paths in ln-100/ln-300/ln-310/orchestrator_pattern.md, resolved ln-220 orphan reference, fixed ln-500 phase numbering, quoted ln-210 description, removed volatile category counts from CLAUDE.md/AGENTS.md. Additional review fixes: removed ~54 lines of triple duplication in ln-200 (orchestrator pattern, sequential constraint, Epic 0), removed non-actionable benefits list in ln-100, fixed H1/H2 structural inversion in ln-510, merged Phase 2.5 into Phase 3 in ln-630, fixed Phase 5 label mismatch in ln-200. Review pass 2: added ln-005-environment-scanner to marketplace, fixed README badge count (113→114), renumbered ln-100 phases to remove Phase 3 gap (4→3, 5→4, 6→5).
+
+---
+
+## 2026-03-07
+
+Two-Layer Detection pattern (Layer 1: grep, Layer 2: context-aware analysis) added to all 33 audit skills via `shared/references/two_layer_detection.md`. Destructive Operation Safety checks added across 26 skills with severity classification and HITL gates. Context economy cleanup across 39 skills: removed verbose explanations, applied concise_terms.md substitutions.
+
+---
+
+## 2026-03-06
+
+New skill: ln-614-docs-fact-checker (extract verifiable claims from docs, verify paths/versions/counts/configs). ln-005 renamed to ln-005-multi-agent-context-review with applicability check + MCP Ref research pipeline. ln-510 quality coordinator expanded with normalization matrix and fast-fail override. ln-1000 pipeline orchestrator: sync develop with main before branching, Plan Mode fix with MANDATORY READ context for post-clearing execution.
+
+---
+
 ## 2026-02-13
 
-New skill: ln-1000-pipeline-orchestrator (L0 Meta-Orchestrator). Reads kanban board, user selects ONE Story, drives it through 4-stage pipeline (ln-300 task planning -> ln-310 validation -> ln-400 execution -> ln-500 quality gate) via Claude Code Agent Teams. Single Story per run, user-confirmed merge to develop on quality gate PASS. Includes 6 reference files: message_protocol.md (formal lead<->worker message contract with regex parsing), worker_health_contract.md (3-step crash detection + respawn), pipeline_states.md (state machine with guards), worker_prompts.md (4 stage templates), kanban_parser.md (task presence detection), and 4 Mermaid diagrams. New 10XX Orchestration category. Total skills: 100 -> 101.
+New skill: ln-1000-pipeline-orchestrator (L0 Meta-Orchestrator). Reads kanban board, user selects ONE Story, drives it through 4-stage pipeline (ln-300 task planning -> ln-310 validation -> ln-400 execution -> ln-500 quality gate) via Claude Code Agent Teams. Single Story per run, user-confirmed merge to develop on quality gate PASS. Includes 6 reference files: message_protocol.md (formal lead<->worker message contract with regex parsing), worker_health_contract.md (3-step crash detection + respawn), pipeline_states.md (state machine with guards), worker_prompts.md (4 stage templates), kanban_parser.md (task presence detection), and 4 Mermaid diagrams. New 10XX Orchestration category.
 
 ---
 
 ## 2026-02-12
 
-Session Resume for Agent Debate: ln-311 and ln-513 now resume Codex/Gemini sessions during challenge/follow-up rounds via `--resume-session` flag, preserving full agent context (file analysis, reasoning). New: agent_runner.py session capture + fallback to stateless, agent_registry.json v3.0 with resume_args/session_id_capture config. `.agent-review/` existence check before creation, removed auto-add to .gitignore. New skill: ln-003-push-all (commit+push all changes). Total skills: 99 → 100.
+Session Resume for Agent Debate: ln-311 and ln-513 now resume Codex/Gemini sessions during challenge/follow-up rounds via `--resume-session` flag, preserving full agent context (file analysis, reasoning). New: agent_runner.py session capture + fallback to stateless, agent_registry.json v3.0 with resume_args/session_id_capture config. `.agent-review/` existence check before creation, removed auto-add to .gitignore. New skill: ln-003-push-all (commit+push all changes).
 
 ---
 
 ## 2026-02-11
 
-Agent Review v2.0: ln-311 and ln-513 with Critical Verification + Debate Protocol (background tasks, process-as-arrive, challenge rounds via challenge_review.md). Risk Analysis: ln-310 criterion #20 with 6 risk categories and Impact x Probability scoring (20 criteria, 8 groups, max 75 penalty points). New shared infra: agent_registry.json v2.0 (no timeouts), agent_runner.py --output-file/placeholder support. New audit skills: ln-601, ln-631-635, ln-643-644, ln-650-653. Total skills: 85 → 99.
+Agent Review v2.0: ln-311 and ln-513 with Critical Verification + Debate Protocol (background tasks, process-as-arrive, challenge rounds via challenge_review.md). Risk Analysis: ln-310 criterion #20 with 6 risk categories and Impact x Probability scoring (20 criteria, 8 groups, max 75 penalty points). New shared infra: agent_registry.json v2.0 (no timeouts), agent_runner.py --output-file/placeholder support. New audit skills: ln-601, ln-631-635, ln-643-644, ln-650-653.
 
 ---
 
 ## 2026-01-10
 
-**NEW: Project Bootstrap System (7XX)** - Added 32 new skills for technology-agnostic project migration. L1 Top Orchestrator (ln-700-project-bootstrap) coordinates 8 L2 coordinators: dependency-upgrader (710), structure-migrator (720), devops-setup (730), quality-setup (740), commands-generator (750), security-setup (760), crosscutting-setup (770), bootstrap-verifier (780). Each coordinator delegates to specialized L3 workers. Supports React/Vue/Angular frontends, .NET/Node/Python backends. Total skills: 51 → 83.
+**NEW: Project Bootstrap System (7XX)** - Added 32 new skills for technology-agnostic project migration. L1 Top Orchestrator (ln-700-project-bootstrap) coordinates 8 L2 coordinators: dependency-upgrader (710), structure-migrator (720), devops-setup (730), quality-setup (740), commands-generator (750), security-setup (760), crosscutting-setup (770), bootstrap-verifier (780). Each coordinator delegates to specialized L3 workers. Supports React/Vue/Angular frontends, .NET/Node/Python backends.
 
 ---
 

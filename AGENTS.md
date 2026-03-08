@@ -29,7 +29,7 @@ See [Writing Guidelines](docs/SKILL_ARCHITECTURE_GUIDE.md#writing-guidelines-pro
 
 ## Available Skills
 
-**116 skills** in 10 categories (0XX Shared/Research, 1XX Documentation, 2XX Planning, 3XX Task Management, 4XX Execution, 5XX Quality, 6XX Audit, 7XX Bootstrap, 8XX Optimization, 10XX Orchestration). See [README.md](README.md#-features) for complete list.
+Skills organized by categories (0XX-10XX). See [README.md](README.md#-features) for complete list.
 
 **Key workflow:** ln-700-project-bootstrap -> ln-100-documents-pipeline -> ln-201-opportunity-discoverer (optional) -> ln-200-scope-decomposer -> **ln-1000-pipeline-orchestrator** (or manually: ln-400-story-executor -> ln-500-story-quality-gate)
 
@@ -47,11 +47,11 @@ Four levels: Scope -> Epics (ln-210) -> Stories (ln-220) -> RICE Prioritization 
 
 ## Skill Workflows
 
-All 116 skills documented in [README.md](README.md#-features) with workflows in each SKILL.md. Follow Orchestrator-Worker Pattern per [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md).
+All skills documented in [README.md](README.md#-features) with workflows in each SKILL.md. Follow Orchestrator-Worker Pattern per [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md).
 
 ## Important Details
 
-**Structural Validation:** ln-310-story-validator auto-fixes Stories/Tasks against template compliance.
+**Structural Validation:** ln-310-multi-agent-validator auto-fixes Stories/Tasks against template compliance.
 
 **Testing:** Risk-Based Testing (Priority ≥15, Usefulness Criteria). See [risk_based_testing_guide.md](shared/references/risk_based_testing_guide.md).
 

@@ -1,12 +1,12 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-3.2.0-blue)
-![Skills](https://img.shields.io/badge/skills-116-green)
+![Skills](https://img.shields.io/badge/skills-114-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
 > [!WARNING]
-> **Breaking Change: Plugin restructuring** — `full-development-workflow-skills` (77 skills) split into 3 focused plugins: **agile-workflow** (33), **documentation-pipeline** (11), **codebase-audit-suite** (33). `claude-code-bootstrap` renamed to **project-bootstrap** (28). New: **optimization-suite** (11).
+> **Breaking Change: Plugin restructuring** — `full-development-workflow-skills` split into 3 focused plugins: **agile-workflow**, **documentation-pipeline**, **codebase-audit-suite**. `claude-code-bootstrap` renamed to **project-bootstrap**. New: **optimization-suite**.
 >
 > Reinstall to pick up new plugin names:
 > ```
@@ -22,7 +22,7 @@
 > **✨ NEW: ln-1000 Pipeline Orchestrator** — Autonomous multi-agent system that manages full development lifecycle. Orchestrates a team of specialized agents to execute complete development cycles: from task planning (ln-300) → validation (ln-310) → implementation (ln-400) → quality gate (ln-500) → user-confirmed merge to `develop`. One command, single Story per run.
 
 > [!IMPORTANT]
-> **✨ NEW: Optimization Suite** — 11 skills for performance optimization, dependency upgrades, and code modernization. **ln-811-algorithm-optimizer** implements an autoresearch loop inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch): benchmark → hypothesize → keep/discard, with test coverage gate ensuring correctness before speed.
+> **✨ NEW: Optimization Suite** — Performance optimization, dependency upgrades, and code modernization. **ln-811-algorithm-optimizer** implements an autoresearch loop inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch): benchmark → hypothesize → keep/discard, with test coverage gate ensuring correctness before speed.
 
 > [!TIP]
 > **Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
@@ -36,17 +36,16 @@
 ## What's Inside
 
 ```
-claude-code-skills/                      # MARKETPLACE: 5 plugins, 116 skills
+claude-code-skills/                      # MARKETPLACE
 |
-|  ┌─ Plugin: agile-workflow (33 skills) ──────────┐
+|  ┌─ Plugin: agile-workflow ──────────────────────┐
 |
 |-- ln-001-standards-researcher/       # Research standards via MCP Context7/Ref
 |-- ln-002-best-practices-researcher/  # Create ADRs, guides, manuals
 |-- ln-003-push-all/                   # Commit and push all changes in one command
-|-- ln-004-agent-sync/                 # Sync skills & MCP settings to Gemini/Codex
-|-- ln-005-multi-agent-context-review/  # Multi-agent context review (Codex + Gemini, debate protocol)
+|-- ln-004-agent-config-sync/                 # Sync skills & MCP settings to Gemini/Codex
 |
-|-- ln-2XX-*/                          # PLANNING (7 skills)
+|-- ln-2XX-*/                          # PLANNING
 |   |-- ln-200-scope-decomposer/       # TOP: scope -> Epics -> Stories (one command)
 |   |-- ln-201-opportunity-discoverer/ # Traffic-First KILL funnel for growth direction
 |   |-- ln-210-epic-coordinator/       # CREATE/REPLAN 3-7 Epics
@@ -55,39 +54,37 @@ claude-code-skills/                      # MARKETPLACE: 5 plugins, 116 skills
 |   |   |-- ln-222-story-replanner/    # Replans when requirements change
 |   |-- ln-230-story-prioritizer/      # RICE prioritization + market research
 |
-|-- ln-3XX-*/                          # TASK MANAGEMENT (5 skills)
+|-- ln-3XX-*/                          # TASK MANAGEMENT
 |   |-- ln-300-task-coordinator/       # Decomposes Story into 1-6 tasks
 |   |   |-- ln-301-task-creator/       # Universal factory (impl/refactor/test)
 |   |   |-- ln-302-task-replanner/     # Updates when plan changes
-|   |-- ln-310-story-validator/        # 20 criteria (8 groups), penalty points system
-|   |-- ln-311-agent-reviewer/         # External agent review for Stories (Codex + Gemini)
+|   |-- ln-310-multi-agent-validator/   # 20 criteria (8 groups), penalty points system + inline agent review
 |
-|-- ln-4XX-*/                          # EXECUTION (5 skills)
+|-- ln-4XX-*/                          # EXECUTION
 |   |-- ln-400-story-executor/         # Full automation: tasks -> Done
 |   |-- ln-401-task-executor/          # Execute implementation tasks
 |   |-- ln-402-task-reviewer/          # Review completed tasks
 |   |-- ln-403-task-rework/            # Fix tasks marked To Rework
 |   |-- ln-404-test-executor/          # Execute test tasks (E2E-first)
 |
-|-- ln-5XX-*/                          # QUALITY (10 skills)
+|-- ln-5XX-*/                          # QUALITY
 |   |-- ln-500-story-quality-gate/     # Thin orchestrator: verdict + Quality Score
 |   |-- ln-510-quality-coordinator/    # Code quality checks coordinator
 |   |   |-- ln-511-code-quality-checker/  # DRY/KISS/YAGNI violations
 |   |   |-- ln-512-tech-debt-cleaner/    # Automated safe tech debt cleanup
-|   |   |-- ln-513-agent-reviewer/        # External agent review (Codex + Gemini)
 |   |   |-- ln-514-regression-checker/    # Run existing test suite
 |   |-- ln-520-test-planner/           # Test planning coordinator
 |   |   |-- ln-521-test-researcher/    # Research real-world problems
 |   |   |-- ln-522-manual-tester/      # Manual functional testing
 |   |   |-- ln-523-auto-test-planner/  # Plan E2E/Integration/Unit tests
 |
-|-- ln-10XX-*/                           # ORCHESTRATION (1 skill)
+|-- ln-10XX-*/                           # ORCHESTRATION
 |   |-- ln-1000-pipeline-orchestrator/   # L0 Meta: kanban → 4-stage pipeline (300→310→400→500) via TeamCreate
 |
 |  └──────────────────────────────────────────────┘
-|  ┌─ Plugin: documentation-pipeline (11 skills) ─┐
+|  ┌─ Plugin: documentation-pipeline ──────────────┐
 |
-|-- ln-1XX-*/                          # DOCUMENTATION (11 skills)
+|-- ln-1XX-*/                          # DOCUMENTATION
 |   |-- ln-100-documents-pipeline/     # L1 Orchestrator: complete docs in one command
 |   |-- ln-110-project-docs-coordinator/  # Detects project type, delegates to workers
 |   |   |-- ln-111-root-docs-creator/     # CLAUDE.md, principles.md
@@ -101,9 +98,9 @@ claude-code-skills/                      # MARKETPLACE: 5 plugins, 116 skills
 |   |-- ln-150-presentation-creator/      # Interactive HTML presentation
 |
 |  └──────────────────────────────────────────────┘
-|  ┌─ Plugin: codebase-audit-suite (33 skills) ───┐
+|  ┌─ Plugin: codebase-audit-suite ────────────────┐
 |
-|-- ln-6XX-*/                          # AUDIT (33 skills)
+|-- ln-6XX-*/                          # AUDIT
 |   |-- ln-610-docs-auditor/           # Documentation audit coordinator (4 workers)
 |   |   |-- ln-611-docs-structure-auditor/  # Hierarchy, SSOT, compression, freshness
 |   |   |-- ln-612-semantic-content-auditor/ # Scope alignment
@@ -139,9 +136,9 @@ claude-code-skills/                      # MARKETPLACE: 5 plugins, 116 skills
 |   |   |-- ln-654-resource-lifecycle-auditor/  # Session scope mismatch, pool config, cleanup
 |
 |  └──────────────────────────────────────────────┘
-|  ┌─ Plugin: project-bootstrap (28 skills) ──────┐
+|  ┌─ Plugin: project-bootstrap ───────────────────┐
 |
-|-- ln-7XX-*/                          # BOOTSTRAP (28 skills)
+|-- ln-7XX-*/                          # BOOTSTRAP
 |   |-- ln-700-project-bootstrap/      # L1: CREATE or TRANSFORM project
 |   |-- ln-720-structure-migrator/     # SCAFFOLD or RESTRUCTURE to Clean Architecture
 |   |-- ln-730-devops-setup/           # Docker, CI/CD, env
@@ -155,9 +152,9 @@ claude-code-skills/                      # MARKETPLACE: 5 plugins, 116 skills
 |   |-- ln-780-bootstrap-verifier/     # Build, test, Docker verification
 |
 |  └──────────────────────────────────────────────┘
-|  ┌─ Plugin: optimization-suite (11 skills) ─────┐
+|  ┌─ Plugin: optimization-suite ──────────────────┐
 |
-|-- ln-8XX-*/                          # OPTIMIZATION (11 skills)
+|-- ln-8XX-*/                          # OPTIMIZATION
 |   |-- ln-810-performance-optimization-coordinator/ # Performance optimization:
 |   |   |-- ln-811-algorithm-optimizer/      # Autoresearch loop: benchmark → hypothesize → keep/discard
 |   |   |-- ln-812-query-optimizer/          # Fix N+1, redundant fetches (companion to ln-651)
@@ -201,13 +198,13 @@ This marketplace contains **5 plugins** — install together or separately:
 /plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
 ```
 
-| Plugin | Skills | Description |
-|--------|--------|-------------|
-| **agile-workflow** | 33 | Scope decomposition, Story/Task management, Execution, Quality gates, Orchestration |
-| **documentation-pipeline** | 11 | Full project docs pipeline with auto-detection (backend/frontend/devops) |
-| **codebase-audit-suite** | 33 | Documentation, Security, Build, Code quality, Tests, Architecture, Performance |
-| **project-bootstrap** | 28 | CREATE or TRANSFORM projects to production-ready Clean Architecture |
-| **optimization-suite** | 11 | Performance optimization, Dependency upgrades, Code modernization |
+| Plugin | Description |
+|--------|-------------|
+| **agile-workflow** | Scope decomposition, Story/Task management, Execution, Quality gates, Orchestration |
+| **documentation-pipeline** | Full project docs pipeline with auto-detection (backend/frontend/devops) |
+| **codebase-audit-suite** | Documentation, Security, Build, Code quality, Tests, Architecture, Performance |
+| **project-bootstrap** | CREATE or TRANSFORM projects to production-ready Clean Architecture |
+| **optimization-suite** | Performance optimization, Dependency upgrades, Code modernization |
 
 ### Other AI Agents
 
@@ -310,8 +307,8 @@ Multi-model review uses external AI agents (Codex + Gemini) for parallel code/st
 
 | Model | CLI | Version | Used by | Settings |
 |-------|-----|---------|---------|----------|
-| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-311, ln-513 | `--json --full-auto` (read-only, internet access) |
-| **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-311, ln-513 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
+| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-310, ln-510 | `--json --full-auto` (read-only, internet access) |
+| **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-310, ln-510 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
 
 **Review Workflow:**
 1. **Parallel Execution** — Both agents run simultaneously (background tasks)
@@ -349,8 +346,8 @@ All prompts/results saved to `.agent-review/{agent}/` for transparency:
 <details>
 <summary><b>Skills using external AI review</b></summary>
 
-- **ln-311-agent-reviewer** — Story/Tasks validation (called by ln-310-story-validator Phase 5)
-- **ln-513-agent-reviewer** — Code implementation review (called by ln-510-quality-coordinator Phase 4)
+- **ln-310-multi-agent-validator** — Story/Tasks validation with inline agent review (Codex + Gemini)
+- **ln-510-quality-coordinator** — Code implementation review with inline agent review (Codex + Gemini)
 
 Both skills support:
 - Session Resume for multi-round debates
@@ -371,7 +368,7 @@ Both skills support:
 | Windows (CMD) | `mklink /J "C:\Users\<USER>\.gemini\skills" "<PLUGIN_DIR>"` |
 | macOS / Linux | `ln -s ~/.claude/plugins/<PLUGIN_DIR> ~/.gemini/skills` |
 
-Same for `.codex/skills`. Or use **ln-004-agent-sync** to automate symlinks + MCP sync.
+Same for `.codex/skills`. Or use **ln-004-agent-config-sync** to automate symlinks + MCP sync.
 
 **MCP settings locations** (for manual sharing):
 
@@ -406,7 +403,7 @@ ln-400-story-executor      # 3. Tasks -> Review -> Quality -> Done
 <details>
 <summary><b>What is Claude Code Skills?</b></summary>
 
-A plugin for [Claude Code](https://claude.ai/code) that provides 116 production-ready skills automating the full Agile development lifecycle — from project bootstrap and documentation through scope decomposition, task execution, quality gates, and comprehensive code audits.
+A plugin for [Claude Code](https://claude.ai/code) that provides production-ready skills automating the full Agile development lifecycle — from project bootstrap and documentation through scope decomposition, task execution, quality gates, and comprehensive code audits.
 
 </details>
 
@@ -505,14 +502,14 @@ Through the Orchestrator-Worker pattern. Instead of feeding the entire codebase 
 <details>
 <summary><b>What can the audit skills detect?</b></summary>
 
-33 audit skills in 5 groups: documentation quality (structure, semantics, fact-checking, code comments), codebase health (security, build, DRY/KISS/YAGNI, complexity, dependencies, dead code, observability, concurrency, lifecycle), test suites (business logic, E2E coverage, value scoring, coverage gaps, isolation), architecture (patterns, layer boundaries, API contracts, dependency graphs, OSS replacements, project structure), and persistence performance (query efficiency, transactions, runtime, resource lifecycle).
+Audit skills in 5 groups: documentation quality (structure, semantics, fact-checking, code comments), codebase health (security, build, DRY/KISS/YAGNI, complexity, dependencies, dead code, observability, concurrency, lifecycle), test suites (business logic, E2E coverage, value scoring, coverage gaps, isolation), architecture (patterns, layer boundaries, API contracts, dependency graphs, OSS replacements, project structure), and persistence performance (query efficiency, transactions, runtime, resource lifecycle).
 
 </details>
 
 <details>
 <summary><b>How is it different from custom prompts or slash commands?</b></summary>
 
-Custom prompts are ad-hoc and context-free. Claude Code Skills provides 116 coordinated skills with an [Orchestrator-Worker architecture](docs/SKILL_ARCHITECTURE_GUIDE.md) — L0 meta-orchestrator (Agent Teams) coordinates L1 orchestrators, which delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
+Custom prompts are ad-hoc and context-free. Claude Code Skills provides coordinated skills with an [Orchestrator-Worker architecture](docs/SKILL_ARCHITECTURE_GUIDE.md) — L0 meta-orchestrator (Agent Teams) coordinates L1 orchestrators, which delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
 
 </details>
 
@@ -540,7 +537,7 @@ Bootstrap skills (`ln-7XX`) support React, .NET, and Python project structures. 
 <details>
 <summary><b>Can I share these skills with Gemini CLI or OpenAI Codex?</b></summary>
 
-Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-sync` to automate it. See [AI Review Models > Sharing skills & MCP between agents](#ai-review-models-optional) for commands and MCP config paths.
+Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-config-sync` to automate it. See [AI Review Models > Sharing skills & MCP between agents](#ai-review-models-optional) for commands and MCP config paths.
 
 </details>
 
@@ -564,7 +561,7 @@ Papers, docs, and methodologies studied and implemented in the skill architectur
 |--------|---------|---------|
 | [STAR Framework](https://arxiv.org/abs/2602.21814) (2025) | Forced goal articulation: +85pp accuracy; structured reasoning > context injection 2.83x | [`goal_articulation_gate.md`](shared/references/goal_articulation_gate.md) — 4-question gate in 6 skills + 6 templates |
 | [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) (Anthropic, 2024) | Orchestrator-Worker, prompt chaining, evaluator-optimizer patterns | Core 4-level hierarchy (L0→L3), single responsibility per skill |
-| [Multi-Agent Research System](https://www.anthropic.com/engineering/multi-agent-research-system) (Anthropic, 2025) | Production orchestration: 90.2% perf improvement with specialized agents | `ln-1000` pipeline orchestrator, parallel agent reviews (`ln-005`) |
+| [Multi-Agent Research System](https://www.anthropic.com/engineering/multi-agent-research-system) (Anthropic, 2025) | Production orchestration: 90.2% perf improvement with specialized agents | `ln-1000` pipeline orchestrator, parallel agent reviews (`ln-310`, `ln-510`) |
 | [Scheduler Agent Supervisor](https://learn.microsoft.com/azure/architecture/patterns/scheduler-agent-supervisor) (Microsoft) | Separation of scheduling, execution, and supervision | `ln-400`/`ln-402`/`ln-500` executor-reviewer-gate split |
 | [DIATAXIS](https://diataxis.fr) | 4-type docs: Tutorial / How-to / Reference / Explanation | Documentation levels in CLAUDE.md, progressive disclosure |
 | [Sinks, Not Pipes](https://ianbull.com/posts/software-architecture) (Ian Bull, 2026) | "The architecture is the prompt" — AI agents can't reason about side-effect chains >2 levels deep; sinks (self-contained) > pipes (cascading) | [`ai_ready_architecture.md`](shared/references/ai_ready_architecture.md) — cascade depth, architectural honesty, flat orchestration checks across 12 skills |

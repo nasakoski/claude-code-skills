@@ -8,21 +8,21 @@
   },
 
   "metadata": {
-    "description": "5 plugins, 116 skills: Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization).",
+    "description": "Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization).",
     "version": "3.2.0"
   },
   "plugins": [
     {
       "name": "agile-workflow",
-      "description": "33 Agile workflow skills: Scope decomposition, Story/Task management, Execution, Quality gates, Test planning, Pipeline orchestration. Integrates with Linear, Context7, Ref MCP servers.",
+      "description": "Agile workflow: Scope decomposition, Story/Task management, Execution, Quality gates, Test planning, Pipeline orchestration. Integrates with Linear, Context7, Ref MCP servers.",
       "source": "./",
       "strict": false,
       "skills": [
         "./ln-001-standards-researcher",
         "./ln-002-best-practices-researcher",
         "./ln-003-push-all",
-        "./ln-004-agent-sync",
-        "./ln-005-multi-agent-context-review",
+        "./ln-004-agent-config-sync",
+        "./ln-005-environment-scanner",
         "./ln-200-scope-decomposer",
         "./ln-201-opportunity-discoverer",
         "./ln-210-epic-coordinator",
@@ -33,8 +33,7 @@
         "./ln-300-task-coordinator",
         "./ln-301-task-creator",
         "./ln-302-task-replanner",
-        "./ln-310-story-validator",
-        "./ln-311-agent-reviewer",
+        "./ln-310-multi-agent-validator",
         "./ln-400-story-executor",
         "./ln-401-task-executor",
         "./ln-402-task-reviewer",
@@ -44,7 +43,6 @@
         "./ln-510-quality-coordinator",
         "./ln-511-code-quality-checker",
         "./ln-512-tech-debt-cleaner",
-        "./ln-513-agent-reviewer",
         "./ln-514-regression-checker",
         "./ln-520-test-planner",
         "./ln-521-test-researcher",
@@ -55,7 +53,7 @@
     },
     {
       "name": "documentation-pipeline",
-      "description": "11 documentation skills: Full project docs pipeline with auto-detection (backend/frontend/devops). Creates CLAUDE.md, README, architecture, requirements, API spec, runbook, references, kanban, test strategy, presentations.",
+      "description": "Documentation pipeline: Full project docs with auto-detection (backend/frontend/devops). Creates CLAUDE.md, README, architecture, requirements, API spec, runbook, references, kanban, test strategy, presentations.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -74,7 +72,7 @@
     },
     {
       "name": "codebase-audit-suite",
-      "description": "33 codebase audit skills: Documentation, Security, Build, Code principles, Code quality, Dependencies, Dead code, Observability, Concurrency, Lifecycle, Test suites, Architecture patterns, Layer boundaries, API contracts, Persistence performance.",
+      "description": "Codebase audit: Documentation, Security, Build, Code principles, Code quality, Dependencies, Dead code, Observability, Concurrency, Lifecycle, Test suites, Architecture patterns, Layer boundaries, API contracts, Persistence performance.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -115,7 +113,7 @@
     },
     {
       "name": "project-bootstrap",
-      "description": "28 project bootstrap skills: CREATE new or TRANSFORM existing projects to production-ready Clean Architecture with Docker, CI/CD, linters, security scanning, verification. Works without Linear.",
+      "description": "Project bootstrap: CREATE new or TRANSFORM existing projects to production-ready Clean Architecture with Docker, CI/CD, linters, security scanning, verification. Works without Linear.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -151,7 +149,7 @@
     },
     {
       "name": "optimization-suite",
-      "description": "11 optimization skills: Performance optimization (algorithm, query, runtime), Dependency upgrades (npm, NuGet, pip), Code modernization (OSS replacement, bundle optimization). Keep/discard verification pattern.",
+      "description": "Optimization: Performance (algorithm, query, runtime), Dependency upgrades (npm, NuGet, pip), Code modernization (OSS replacement, bundle optimization). Keep/discard verification pattern.",
       "source": "./",
       "strict": false,
       "skills": [

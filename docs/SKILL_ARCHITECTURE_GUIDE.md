@@ -323,7 +323,7 @@ This architecture follows industry-proven pattern where:
 |-------|------|------------------|--------------|------------|----------|
 | **Level 0** | Meta-Orchestrator | Coordinate multiple Stories via Agent Teams (TeamCreate) | Metadata only | Agent Teams (TeamCreate + SendMessage) | `ln-1000-pipeline-orchestrator` |
 | **Level 1** | Top Orchestrator | Coordinate full lifecycle workflows | Metadata only | Skill tool (shared context) | `ln-400-story-executor` |
-| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | Skill tool or Task tool | `ln-310-story-validator`, `ln-510-quality-coordinator`, `ln-300-task-coordinator`, `ln-520-test-planner` |
+| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | Skill tool or Task tool | `ln-310-multi-agent-validator`, `ln-510-quality-coordinator`, `ln-300-task-coordinator`, `ln-520-test-planner` |
 | **Level 3** | Worker | Execute atomic work | FULL descriptions when needed | None (leaf) | `ln-401-task-executor`, `ln-404-test-executor`, `ln-402-task-reviewer`, `ln-301-task-creator`, etc. |
 
 **Critical Rules:**
@@ -371,13 +371,13 @@ This architecture follows industry-proven pattern where:
 |------------------|-----------------|-------------------|-----------|
 | ln-400-story-executor | ln-510-quality-coordinator Pass 1 | Task execution → Story quality validation | After all tasks Done, delegate quality verification |
 | ln-400-story-executor | ln-510-quality-coordinator Pass 2 | Task execution → Final approval | After test task Done, delegate final Story approval |
-| ln-310-story-validator | ln-400-story-executor | Story validation (3XX) → Story execution (4XX) | After Story approved (Todo), delegate execution |
+| ln-310-multi-agent-validator | ln-400-story-executor | Story validation (3XX) → Story execution (4XX) | After Story approved (Todo), delegate execution |
 
 **Invalid L2→L2 Examples (Violations):**
 
 | Delegating Skill | Delegated Skill | Violation | Why Invalid |
 |------------------|-----------------|-----------|-------------|
-| ln-400-story-executor | ln-310-story-validator | Rule 6: Backward flow | 4XX → 3XX violates forward-only rule (execution cannot delegate back to validation) |
+| ln-400-story-executor | ln-310-multi-agent-validator | Rule 6: Backward flow | 4XX → 3XX violates forward-only rule (execution cannot delegate back to validation) |
 | ln-300-task-coordinator | ln-400-story-executor | Rule 4: Cycle risk | Creates potential loop (coordinator → coordinator) |
 
 **Key Insight:** L2→L2 delegation enables workflow composition while maintaining separation of concerns. Use sparingly - prefer L2→L3 delegation when possible.
@@ -419,7 +419,7 @@ Orchestrator automatically creates fix tasks when quality checks fail, then rest
 | **ln-620-codebase-auditor** | 9 | **Separate** | Workers audit DIFFERENT aspects (security/build/arch) — isolation = focus |
 | **ln-630-test-auditor** | 5 | **Separate** | Workers audit DIFFERENT test categories — isolation = focus |
 | **ln-640-pattern-evolution-auditor** | 3 | **Separate** | Workers analyze DIFFERENT patterns — isolation = focus |
-| **ln-510-quality-coordinator** | 4 | **Mixed** | ln-511 Separate (independent analysis), ln-513 Separate (agent review), ln-514/ln-510 Shared (need Gate context) |
+| **ln-510-quality-coordinator** | 3 | **Mixed** | ln-511 Separate (independent analysis), inline agent review (background), ln-514/ln-510 Shared (need Gate context) |
 | **ln-520-test-planner** | 3 | **Separate** | Pipeline orchestration, workers read from Linear comments |
 | **ln-820-dependency-optimization-coordinator** | 3 | **Separate** | Independent package managers (npm/nuget/pip) |
 | **ln-760-security-setup** | 2 | **Separate** | Independent scans (secrets/dependencies) |

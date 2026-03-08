@@ -96,6 +96,31 @@ for f in {scoped SKILL.md files}; do
 done
 ```
 
+**Marketplace skill path check** (D8):
+```bash
+grep -oP '"\.\/ln-[^"]+' .claude-plugin/marketplace.json | tr -d '"' | while read path; do
+  [ ! -d "$path" ] && echo "FAIL: marketplace.json references missing dir: $path"
+done
+```
+
+**Root docs stale skill name check** (D6):
+```bash
+for doc in README.md AGENTS.md .claude-plugin/marketplace.json; do
+  grep -oP 'ln-\d+-[a-z-]+' "$doc" | sort -u | while read skill; do
+    ls -d ${skill}*/ >/dev/null 2>&1 || echo "FAIL: $doc references missing skill: $skill"
+  done
+done
+```
+
+**Skill count accuracy check** (D8):
+```bash
+actual=$(ls -d ln-*/SKILL.md 2>/dev/null | wc -l)
+badge=$(grep -oP 'skills-\K\d+' README.md)
+[ "$badge" != "$actual" ] && echo "FAIL: README badge says $badge, actual $actual"
+market=$(grep -oP '"\.\/ln-[^"]+' .claude-plugin/marketplace.json | wc -l)
+[ "$market" != "$actual" ] && echo "FAIL: marketplace.json has $market entries, actual $actual"
+```
+
 ## Phase 3: Nine-Dimension Review
 
 **MANDATORY READ:** Load `docs/SKILL_ARCHITECTURE_GUIDE.md` (Skill Directory Structure, Red Flags tables, SRP Decision Tree, all Checklists).
@@ -243,6 +268,9 @@ For each finding:
 | MANDATORY READ paths (D2) | {PASS/FAIL} | {list or —} |
 | Orphan references (D7) | {PASS/FAIL} | {list or —} |
 | Passive file refs (D2) | {PASS/FAIL} | {list or —} |
+| Marketplace paths (D8) | {PASS/FAIL} | {list or —} |
+| Root docs stale names (D6) | {PASS/FAIL} | {list or —} |
+| Skill count accuracy (D8) | {PASS/FAIL} | {list or —} |
 
 ### Fixed ({count})
 | # | Skill | Dim | Issue | Fix Applied |
@@ -263,6 +291,26 @@ Dimensions with no findings: {list}
 ```
 
 If zero findings: `All 9 structural dimensions + 5 intent checks clean. PASS.`
+
+## Phase 7: CHANGELOG Update
+
+After Phase 6 report, update `CHANGELOG.md` if any fixes were applied or structural changes made:
+
+1. Check if today's date already has an entry in CHANGELOG.md
+2. If yes — append to existing paragraph
+3. If no — add new `## YYYY-MM-DD` entry (newest first) with ONE concise paragraph (3-5 sentences)
+4. Summarize what was fixed/changed in this review run
+5. Do NOT include "Total skills: N" counts — these change too frequently
+
+## Phase 8: Volatile Numbers Cleanup
+
+Skill/plugin/category counts go stale after every add/remove. One rule: **counts ONLY in README.md badge** (`skills-NNN`). Everywhere else — no hardcoded counts.
+
+**Remove from any file** (including marketplace.json descriptions, CLAUDE.md, AGENTS.md, CHANGELOG.md, SKILL.md):
+- Total skill counts, per-plugin counts, per-category counts
+- Worker/coordinator counts referencing OTHER skills (a skill's OWN internals are fine)
+
+Phase 2 automated check verifies README badge matches actual skill count on disk — fix if FAIL.
 
 ## Rules
 - Automated checks (Phase 2) are NON-NEGOTIABLE — every FAIL must appear in the report

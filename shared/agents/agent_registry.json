@@ -31,7 +31,7 @@
       },
       "env_override": {},
       "timeout_seconds": 0,
-      "skill_groups": ["005", "311", "513"],
+      "skill_groups": ["310", "510"],
       "health_check": "codex --version"
     },
     "gemini-review": {
@@ -47,7 +47,7 @@
       },
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
       "timeout_seconds": 0,
-      "skill_groups": ["005", "311", "513"],
+      "skill_groups": ["310", "510"],
       "health_check": "gemini --version"
     }
   }

@@ -15,23 +15,24 @@ Standard pattern for skills delegating work to external CLI AI agents (Codex, Ge
 | 200 (Decomposition) | Gemini | gemini-3-flash-preview | Opus | Scope analysis, epic planning |
 | 300 (Task Mgmt) | Codex | gpt-5.3-codex | Opus | Task decomposition, plan review |
 | 400 (Execution) | Opus (native) | claude-opus-4-6 | -- | Direct code writing |
-| 005 (Universal Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Universal context review |
-| 311 (Story Agent Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Story/Tasks review |
-| 513 (Code Agent Review) | codex-review + gemini-review | parallel | Self-review (if both fail) | Code review |
+| 310 (Validator) | codex-review + gemini-review | parallel | Self-review (if both fail) | Story/Tasks + context validation |
+| 510 (Quality) | codex-review + gemini-review | parallel | Self-review (if both fail) | Code review |
 
-## Dedicated Agent Review Skills
+## Inline Agent Review
 
-Agent review is encapsulated in dedicated worker skills, not inline in parent skills:
+Agent review is inline in parent skills (ln-310 and ln-510), not in separate worker skills:
 
-| Role | Invocation | Purpose | Prompt Templates |
-|------|------------|---------|-----------------|
-| Universal review worker | Any skill / manual | Universal context review | `context_review.md`, `challenge_review.md` |
-| Story review worker | Story validation phase | Story/Tasks review | `story_review.md`, `challenge_review.md` |
-| Code review worker | Code quality phase | Code implementation review | `code_review.md`, `challenge_review.md` |
+| Parent Skill | Review Type | Mode File | Challenge Template |
+|-------------|-------------|-----------|-------------------|
+| ln-310-multi-agent-validator | Story/Tasks | `modes/story.md` | `challenge_review.md` |
+| ln-310-multi-agent-validator | Context | `modes/context.md` | `challenge_review.md` |
+| ln-510-quality-coordinator | Code | `modes/code.md` | `challenge_review.md` |
+
+All modes assembled with `review_base.md` + mode file per "Step: Build Prompt" in shared workflow.
 
 **Benefits:**
-- Health check + prompt execution in single invocation (minimal timing gap)
-- SRP: parent skills focus on their domain logic, agent communication is isolated
+- No indirection: parent skill launches agents directly, no Skill() delegation overhead
+- Parallel architecture: agents run in background while parent does its own validation
 - Reference passing: Story/Tasks provided as Linear URLs or local file paths
 - Critical verification: Claude independently verifies each suggestion
 - Debate protocol: Claude challenges agent when disagreeing, accepts only convincing evidence
@@ -156,7 +157,7 @@ Phase 1: DISCOVERY
 Phase 2: PLAN ← external agent for analysis/decomposition
 Phase 3: MODE DETECTION
 Phase 4: AUTO-FIX ← 20 criteria, Penalty Points = 0 (story validation)
-Phase 5: AGENT REVIEW (MANDATORY) ← delegated to agent review worker
+Phase 5: MERGE ← inline agent review results + Claude's own findings
 Phase 6: DELEGATE
 Phase 7: AGGREGATE
 Phase 8: REPORT
@@ -164,7 +165,7 @@ Phase 8: REPORT
 
 ## Startup: Agent Availability Check
 
-**Health check is performed inside the agent review workers, NOT in parent skills.**
+**Health check is performed inline at the start of agent review, inside ln-310 and ln-510.**
 
 ```bash
 python shared/agents/agent_runner.py --health-check
@@ -176,7 +177,7 @@ python shared/agents/agent_runner.py --health-check
 3. **Only command output determines availability.** Do NOT reason about file existence, environment, or installation — run the command and read its output.
 4. **If command fails** (file not found, import error, any exception) → treat as "all agents unavailable" → return SKIPPED verdict.
 
-Filter output by `skill_groups` matching current skill (e.g., "005" for universal review, "311" for story review, "513" for code review).
+Check that at least 1 review agent is available (no skill_group filtering).
 
 | Command Output | Impact |
 |----------------|--------|
@@ -212,13 +213,13 @@ Claude MUST independently verify each agent suggestion. Do NOT trust blindly.
 Agent Suggestion --> Claude Evaluation --> AGREE? --> Accept as-is
                                       --> DISAGREE/UNCERTAIN? --> Challenge Round 1
                                                                     |
-                                              Agent DEFEND (convincing, conf >= 85) --> Accept
+                                              Agent DEFEND (convincing, convincing) --> Accept
                                               Agent WITHDRAW -----------------------> Reject (final)
                                               Agent DEFEND (weak) ------------------> Follow-Up Round
                                               Agent MODIFY (acceptable) ------------> Accept modified
                                               Agent MODIFY (disagree) --------------> Follow-Up Round
                                                                                          |
-                                              Agent DEFEND (new evidence, conf >= 85) -> Accept
+                                              Agent DEFEND (new evidence, convincing) -> Accept
                                               Agent DEFEND (same/weaker) -------------> Reject (final)
                                               Agent WITHDRAW -------------------------> Reject (final)
                                               Agent MODIFY (acceptable) --------------> Accept modified
@@ -242,7 +243,7 @@ Per `shared/references/agent_review_workflow.md` Step: Critical Verification + D
 
 | Agent Response | Action |
 |----------------|--------|
-| DEFEND + convincing evidence (confidence >= 85) | Accept agent's suggestion |
+| DEFEND + convincing evidence (convincing) | Accept agent's suggestion |
 | WITHDRAW | Reject (final) |
 | DEFEND + weak evidence | Proceed to Follow-Up Round |
 | MODIFY + acceptable revision | Accept modified version |
@@ -261,7 +262,7 @@ Per `shared/references/agent_review_workflow.md` Step: Critical Verification + D
 
 | Agent Response | Action |
 |----------------|--------|
-| DEFEND + new evidence not seen in Round 1 (confidence >= 85) | Accept agent's suggestion |
+| DEFEND + new evidence not seen in Round 1 (convincing) | Accept agent's suggestion |
 | DEFEND + same/weaker evidence | Reject (final) |
 | WITHDRAW | Reject (final) |
 | MODIFY + acceptable revision | Accept modified version |
@@ -271,7 +272,6 @@ Per `shared/references/agent_review_workflow.md` Step: Critical Verification + D
 
 - Agent cites specific standard/RFC/benchmark Claude hadn't considered
 - Agent shows concrete code path Claude missed
-- Agent's `confidence_after_challenge` >= 85
 - Claude cannot refute the new evidence
 
 ### Debate Limits
@@ -350,9 +350,9 @@ Standard steps before launching agents (performed inside agent review workers):
 | Use agents for project file writes | Agents write only to `-o` output file; analysis-only |
 | Chain multiple agent calls | One call per task; challenge/follow-up use `--resume-session` for context continuity |
 | Hard-depend on agent availability | Always have Opus fallback |
-| Run health check in parent skill | Health check inside agent review workers |
+| Run health check separately from agent launch | Health check is first step of inline agent review |
 | Kill agent tasks with TaskStop | Let agents complete; no artificial timeouts |
-| Skip agent review phase | Agent review is MANDATORY in story validation Phase 5 and code quality Phase 4 |
+| Skip agent review phase | Agent review is MANDATORY in ln-310 (after Phase 1) and ln-510 (Phase 4) |
 | Start each review verification from scratch | Load review history for dedup + calibration |
 | Re-summarize agent findings in review log | Reference agent result files (self-documented reports) |
 | Inject project memory into agent prompts | Keep agent context clean; memory on Claude's side only |

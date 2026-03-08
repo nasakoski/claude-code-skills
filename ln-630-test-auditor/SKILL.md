@@ -75,13 +75,11 @@ Coordinates comprehensive test suite audit across 6 quality categories using 5 s
 
 **Key Benefit:** Context gathered ONCE → passed to all workers → token-efficient
 
-### Phase 2.5: Prepare Output Directory
+### Phase 3: Domain Discovery
 
 ```bash
 mkdir -p {output_dir}   # No deletion — date folders preserve history
 ```
-
-### Phase 3: Domain Discovery (NEW)
 
 **MANDATORY READ:** Load `shared/references/audit_coordinator_domain_mode.md`.
 

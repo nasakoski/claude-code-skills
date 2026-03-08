@@ -1,7 +1,7 @@
 # Domain Patterns Registry
 
 <!-- SCOPE: Domain pattern → doc type mapping for ln-002 delegation ONLY. Contains trigger keywords, doc_type output. -->
-<!-- DO NOT add here: Validation logic → ln-310-story-validator SKILL.md, ln-002 workflow → ln-002-best-practices-researcher SKILL.md -->
+<!-- DO NOT add here: Validation logic → ln-310-multi-agent-validator SKILL.md, ln-002 workflow → ln-002-best-practices-researcher SKILL.md -->
 
 Mapping Story patterns to documentation types for ln-002 delegation during ln-310 validation.
 

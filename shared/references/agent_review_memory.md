@@ -20,8 +20,7 @@ Append-only file `.agent-review/review_history.md` in target project.
 ## Loading Rules
 
 - Read `.agent-review/review_history.md` if exists
-- Parse last 15 entries (## blocks)
-- Compute per-agent calibration: `accuracy = accepted / total` across all loaded entries
+- Parse all entries (## blocks)
 - Build known-suggestions set from accepted entries (area + issue summary)
 - Build rejected-suggestions set from rejected entries (area + issue + rejection reason)
 - If file doesn't exist — proceed without memory (first review for this project)
@@ -37,28 +36,15 @@ Compare each suggestion's `(area, issue)` against known-suggestions from history
 | Match | Action |
 |-------|--------|
 | Found in accepted set | Skip: "already addressed in {identifier}" (not counted as rejection) |
-| Found in rejected set with same reasoning | Higher bar: require 95%+ confidence to proceed to evaluation |
+| Found in rejected set with same reasoning | Note prior rejection context, evaluate on merits |
 | No match | Proceed to standard evaluation |
-
-### b) Calibration-Adjusted Trust
-
-| Agent Historical Accuracy | Confidence Threshold |
-|--------------------------|---------------------|
-| < 70% | DISAGREE at confidence < 95 (stricter) |
-| 70-85% | Standard threshold (90) |
-| > 85% | Standard threshold (90) |
-
-### c) Skip Debate Shortcut
-
-If suggestion was rejected in a past review with same `(area, issue, reasoning)` and agent has not provided new evidence in current review → reject without challenge round.
 
 ## Budget
 
 | Component | Max Lines |
 |-----------|-----------|
-| Last 15 history entries | ~75 |
-| Calibration data | ~2 (1 per agent) |
-| **Total overhead** | **~77 lines** (Claude-internal, not in agent prompt) |
+| History entries | scales with reviews |
+| **Total overhead** | Claude-internal, not in agent prompt |
 
 ## Fallback
 

@@ -325,10 +325,10 @@ Phase 4 Groups 1-6 complete:
 - #20.R5 checks external integrations
 - Rule: Hardcoded API keys found by #15 are NOT re-flagged by #20.R5
 
-**ln-311 risk_analysis area:**
+**Agent review risk_analysis area:**
 - #20 enforces "did you document risks?" (structural/compliance check)
-- ln-311 risk_analysis asks "what risks did agents find independently?" (analytical review)
-- Complementary: #20 runs in Phase 4, ln-311 in Phase 5
+- Agent review risk_analysis asks "what risks did agents find independently?" (analytical review)
+- Complementary: #20 runs in Phase 4, agent review merges in Phase 5
 
 ---
 

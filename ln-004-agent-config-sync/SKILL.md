@@ -1,5 +1,5 @@
 ---
-name: ln-004-agent-sync
+name: ln-004-agent-config-sync
 description: "Sync skills (symlinks) and MCP settings from Claude to Gemini CLI and Codex CLI"
 license: MIT
 ---

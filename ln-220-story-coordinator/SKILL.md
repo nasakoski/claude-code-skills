@@ -310,6 +310,8 @@ Skill(
 
 ### Phase 5b: Delegate REPLAN (Existing Stories Found)
 
+**MANDATORY READ:** Load `references/replan_algorithm.md`
+
 **Trigger:** Epic already has Stories (requirements changed)
 
 **Delegation:**
@@ -402,8 +404,6 @@ Mark each as in_progress when starting, completed when done.
 
 ---
 
----
-
 ## Critical Rules
 
 - **Decompose-First:** Build IDEAL Story plan before checking existing Stories (prevents anchoring to suboptimal structure)
@@ -430,7 +430,7 @@ Mark each as in_progress when starting, completed when done.
 
 **Downstream:**
 - **ln-300-task-coordinator** - creates implementation tasks for each Story
-- **ln-310-story-validator** - validates Story structure/content
+- **ln-310-multi-agent-validator** - validates Story structure/content
 - **ln-400-story-executor** - orchestrates task execution for Story
 
 ---
@@ -509,8 +509,6 @@ Mark each as in_progress when starting, completed when done.
 - **Auto-discovery patterns:** `shared/references/auto_discovery_pattern.md`
 - **Decompose-first pattern:** `shared/references/decompose_first_pattern.md`
 - **Numbering conventions:** `shared/references/numbering_conventions.md` (Story sequential across Epics)
-
----
 
 ---
 

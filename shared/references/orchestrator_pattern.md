@@ -38,7 +38,7 @@ Phase 6: REPORT
 | Parse user request | Extract entity ID, keywords |
 | Detect storage mode | Linear (default) vs File Mode |
 
-**See:** `auto_discovery_pattern.md`
+**MANDATORY READ:** Load `shared/references/auto_discovery_pattern.md`
 
 ### Phase 2: PLAN
 
@@ -49,7 +49,7 @@ Phase 6: REPORT
 | Build IDEAL plan | Optimal decomposition |
 | Apply guidelines | Size limits, ordering rules |
 
-**See:** `decompose_first_pattern.md`
+**MANDATORY READ:** Load `shared/references/decompose_first_pattern.md`
 
 ### Phase 3: MODE DETECTION
 
@@ -68,7 +68,7 @@ Phase 6: REPORT
 | REPLAN | Replanner (ln-X02) | IDEAL plan, existing IDs |
 | ADD | Creator (appendMode) | Single item description |
 
-**See:** `task_delegation_pattern.md`
+**MANDATORY READ:** Load `shared/references/task_delegation_pattern.md`
 
 ### Phase 5: AGGREGATE
 
@@ -130,20 +130,6 @@ Next Steps:
 3. Delegate to Creator (appendMode=true)
 4. Worker creates single item
 ```
-
-## Skills Using This Pattern
-
-| Level | Orchestrator | Workers |
-|-------|--------------|---------|
-| Epic | ln-210 | (inline) |
-| Story | ln-220 | ln-221, ln-222 |
-| Task | ln-300 | ln-301, ln-302 |
-| Execution | ln-400 | ln-401, ln-402, ln-403, ln-404 |
-| Quality Gate | ln-500 | ln-510, ln-520 |
-| Quality Checks | ln-510 | ln-511, ln-513, ln-514 |
-| Test Planning | ln-520 | ln-521, ln-522, ln-523 |
-| Codebase Audit | ln-620 | ln-621 through ln-629 |
-| Test Audit | ln-630 | ln-631 through ln-635 |
 
 ## Usage in SKILL.md
 

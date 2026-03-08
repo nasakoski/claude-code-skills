@@ -8,7 +8,7 @@ Transition rules and guards for the 4-stage pipeline. Single Story mode — one 
 |-------|------------|----------------|
 | **QUEUED** | Story selected by user, worker not yet spawned | User selected story from available list |
 | **STAGE_0** | ln-300-task-coordinator running | Story status = Backlog, NO tasks |
-| **STAGE_1** | ln-310-story-validator running | Story status = Backlog, tasks exist |
+| **STAGE_1** | ln-310-multi-agent-validator running | Story status = Backlog, tasks exist |
 | **STAGE_2** | ln-400-story-executor running | Story status = Todo or To Rework |
 | **STAGE_3** | ln-500-story-quality-gate running | Story status = To Review |
 | **DONE** | Story processing complete (branch pushed by ln-500) | Quality gate PASS/CONCERNS/WAIVED |
