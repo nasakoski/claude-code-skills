@@ -5,6 +5,18 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
+> [!WARNING]
+> **Breaking Change: Plugin restructuring** — `full-development-workflow-skills` (77 skills) split into 3 focused plugins: **agile-workflow** (33), **documentation-pipeline** (11), **codebase-audit-suite** (33). `claude-code-bootstrap` renamed to **project-bootstrap**.
+>
+> Reinstall to pick up new plugin names:
+> ```
+> /plugin add levnikolaevich/claude-code-skills                                    # all 4 plugins
+> /plugin add levnikolaevich/claude-code-skills --plugin agile-workflow            # or individually
+> /plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
+> /plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
+> /plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
+> ```
+
 > [!IMPORTANT]
 > **✨ NEW: ln-1000 Pipeline Orchestrator** — Autonomous multi-agent system that manages full development lifecycle. Orchestrates a team of specialized agents to execute complete development cycles: from task planning (ln-300) → validation (ln-310) → implementation (ln-400) → quality gate (ln-500) → user-confirmed merge to `develop`. One command, single Story per run.
 
