@@ -10,12 +10,15 @@
       "Skill",
       "Bash",
       "Bash(node build-presentation.js:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:claudefa.st)",
+      "WebFetch(domain:addyosmani.com)",
+      "WebFetch(domain:ronie.medium.com)"
     ],
     "deny": [],
     "ask": [],
     "defaultMode": "bypassPermissions"
   },
-  "outputStyle": "Explanatory",
-  "disableAllHooks": true
+  "disableAllHooks": true,
+  "outputStyle": "Explanatory"
 }

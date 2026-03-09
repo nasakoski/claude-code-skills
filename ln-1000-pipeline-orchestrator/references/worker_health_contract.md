@@ -10,7 +10,25 @@ SPAWNED ──→ EXECUTING ──→ REPORTING ──→ SHUTDOWN
                 └──→ CRASHED (no completion message, idle without report)
 ```
 
-Each worker handles exactly ONE stage. No IDLE→EXECUTING transition between stages.
+Each worker handles exactly ONE stage (or one plan). No IDLE→EXECUTING transition between stages.
+
+### Plan Workers (Plan Gate)
+
+A read-only plan worker runs before the execute worker for each stage:
+
+```
+SPAWNED ──→ ANALYZING ──→ PLAN_RESULT ──→ [APPROVE] ──→ SHUTDOWN
+                                │
+                                └──→ [REVISE] ──→ ANALYZING (max 2 revisions)
+                                │
+                                └──→ [LIMIT] ──→ Lead PAUSES + ESCALATES
+```
+
+Plan workers follow the same health contract as execute workers (crash detection, keepalive hooks, done.flag), with differences:
+- **Read-only:** DO NOT invoke Skill(), modify files, or update Linear/kanban
+- **Communication:** Send `PLAN_RESULT` instead of `Stage N COMPLETE/ERROR`
+- **Shutdown trigger:** `PLAN_APPROVE` from Lead (not ACK after completion)
+- **Naming:** `story-{id}-s{N}-plan` (suffix `-plan`)
 
 | State | Description | Duration |
 |-------|------------|----------|
@@ -280,31 +298,14 @@ When ln-1000 restarts on clean context (crash, context overflow, user interrupt)
 
 Lead writes ALL state variables to `.pipeline/state.json` on **every heartbeat cycle** (not just `last_check`). This ensures recovery loses at most one heartbeat cycle of state.
 
-| Variable | Persisted in state.json | Recovery Notes |
-|----------|------------------------|----------------|
-| `complete` | Yes | Core pipeline flag |
-| `selected_story_id` | Yes | User-selected story for this run |
-| `stories_remaining` | Yes | 1 or 0 (single story mode) |
-| `last_check` | Yes | Timestamp of last heartbeat |
-| `story_state` | Yes | Story stage mapping (single entry) |
-| `worker_map` | Yes | Worker name — validate against team config |
-| `quality_cycles` | Yes | FAIL->retry counter |
-| `validation_retries` | Yes | NO-GO retry counter |
-| `crash_count` | Yes | Respawn counter |
-| `story_results` | Yes | Per-stage results for report |
-| `infra_issues` | Yes | Infrastructure problems list |
-| `stage_timestamps` | Yes | Per-stage start/end times for duration tracking |
-| `git_stats` | Yes | Lines added/deleted/files changed |
-| `pipeline_start_time` | Yes | Pipeline start for wall-clock duration |
-| `readiness_scores` | Yes | From Stage 1 GO, for Stage 3 fast-track |
-| `team_name` | Yes | Team name for Task() spawns |
-| `business_answers` | Yes | Phase 2 answers passed to worker prompts |
-| `storage_mode` | Yes | "file" or "linear" task backend |
-| `status_cache` | Yes | Linear status name→UUID mapping |
-| `skill_repo_path` | Yes | Skills repository path for recovery |
-| `project_brief` | Yes | Project context (name, tech, type, key_rules) from CLAUDE.md |
-| `story_briefs` | Yes | Per-story orchestrator briefs from Linear ORCHESTRATOR_BRIEF markers |
-| `suspicious_idle` | No (ephemeral) | Reset to false on recovery |
+**Schema:** See `checkpoint_format.md` → Pipeline State Schema for complete field list.
+
+Ephemeral variables (NOT persisted, reset on recovery):
+
+| Variable | Reset Value | Notes |
+|----------|-------------|-------|
+| `suspicious_idle` | `false` | Crash detection flag |
+| `heartbeat_count` | `0` | Display counter only |
 
 ### Recovery Sequence
 
@@ -338,5 +339,5 @@ Workers and lead MUST NOT use any of these patterns:
 | Process message without sender check | Stale messages from old workers cause incorrect state transitions | Verify `message.sender == worker_map[id]` before any ON handler |
 
 ---
-**Version:** 1.0.0
-**Last Updated:** 2026-02-13
+**Version:** 2.0.0
+**Last Updated:** 2026-03-09

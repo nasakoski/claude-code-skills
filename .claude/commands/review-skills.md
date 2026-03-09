@@ -1,6 +1,6 @@
 ---
 description: "Review changed skills: automated bash checks + 9 structural dimensions (D1-D9) + 5 intent checks (M1-M5). PASS/FAIL verdict. Fix in-place."
-allowed-tools: Read, Grep, Glob, Bash, Edit
+allowed-tools: Read, Grep, Glob, Bash, Edit, AskUserQuestion
 ---
 
 # Skill Coherence Review
@@ -224,12 +224,37 @@ For each primary skill, read the git diff (`git diff HEAD -- {skill_dir}/`).
 - Tree does NOT suggest different structure (split/combine/re-level)
 - If delta HIGH (>30% different from clean-slate design) → 1-3 sentence structural recommendation (RETHINK)
 
-### M5: Necessity
-- Every changed hunk maps to M1's REAL GOAL
-- No speculative features, "future use" code, premature abstraction (YAGNI)
-- No new backward-compat shims or unused artifacts per `shared/references/clean_code_checklist.md`
-- Research-to-Action Gate: if change is inspired by external research/article/benchmark — what specific defect in current output does it fix? No concrete defect → REVERT (research is informational, not actionable; changes that don't fix a real problem must be rolled back)
-- Unnecessary hunks → specific what-to-remove (SIMPLIFY)
+### M5: Necessity (YAGNI Classification)
+
+Classify each diff hunk against M1's REAL GOAL:
+
+| Label | Definition | Action |
+|-------|-----------|--------|
+| REQUESTED | Directly implements REAL GOAL | KEEP |
+| DERIVED | Necessary side-effect of REAL GOAL | KEEP |
+| SPECULATIVE | Not requested, model-generated addition | ASK user |
+
+**SPECULATIVE detection signals:**
+- Content keywords: `future-proof`, `might need`, `prepare for`, `extensible`, `scalable for`, `in case`, `optional`, `configurable`, `placeholder`, `eventually`
+- Structural: new files/phases/sections absent from request; error handling outside stated scope; config with single consumer; abstractions with single implementation; fallback paths for non-existent conditions
+
+**Additional checks (all hunks):**
+- No backward-compat shims or unused artifacts per `shared/references/clean_code_checklist.md`
+- Research-to-Action Gate: change inspired by external research — what specific defect does it fix? No defect → REVERT
+
+**Output** — build classification table:
+
+| # | File:Lines | Label | Rationale |
+|---|-----------|-------|-----------|
+
+**Speculative Change Gate:** if SPECULATIVE items exist, present ALL via single AskUserQuestion:
+```
+M5 found {N} speculative additions not traced to REAL GOAL:
+1. {file:lines} — {rationale}
+2. {file:lines} — {rationale}
+Reply KEEP or REVERT per item (e.g., '1:KEEP 2:REVERT'). Default: REVERT all.
+```
+User KEEP → reclassify as REQUESTED. Remaining SPECULATIVE → REVERT finding for Phase 5.
 
 **Finding categories:**
 - **SIMPLIFY** — concrete reduction possible, may be auto-fixed
@@ -277,6 +302,8 @@ For each finding:
 |---|-------|-----|-------|-------------|
 
 ### Intent Findings ({count})
+**M5 Classification:** {R} requested, {D} derived, {S} speculative ({K} kept, {V} reverted)
+
 | # | Skill | Dim | Finding | Category |
 |---|-------|-----|---------|----------|
 
@@ -323,3 +350,4 @@ Phase 2 automated check verifies README badge matches actual skill count on disk
 - Intent review (M1-M5) evaluates DESIGN, not correctness — findings are judgment-based, not binary
 - RETHINK findings are advisory — explain WHY, author decides WHETHER to act
 - REVERT findings are executed immediately — changes without concrete defect are rolled back, listed in Fixed table
+- SPECULATIVE items (M5) without user response default to REVERT — no silent acceptance of model-generated additions

@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2026-03-09
+
+ln-1000 pipeline orchestrator: Plan Gate coherence review. Fixed stage completion handlers bypassing Plan Gate (all 5 handlers now spawn plan workers before execute workers). Persisted plan_approved in state.json (was ephemeral with false reconstruction claim via planPhase). Removed planPhase from checkpoint schema. Fixed Stage 0 plan template revision limit mismatch (worker said 1, lead allowed 2). Added MANDATORY READ for plan_gate_criteria.md. Removed duplicate plan lifecycle narrative from message_protocol.md and duplicate JSON schema from plan_gate_criteria.md. Parameterized 4 plan-only worker templates into single template with per-stage variable table (saved ~120 lines).
+
+---
+
 ## 2026-03-08
 
 Plugin marketplace restructured: split into 5 plugins (agile-workflow, documentation-pipeline, codebase-audit-suite, project-bootstrap, optimization-suite). New 8XX Optimization category with 11 skills (810 Performance, 820 Dependencies, 830 Modernization). Worktree isolation moved from ln-1000 orchestrator to individual worker skills. Shared audit patterns extracted to `shared/references/`. Removed diagram.html from all skills. Assumptions system (#24) and cross-reference validation (#25-#26) added to ln-310. Skill coherence review: fixed stale ln-513 refs in ln-510, trimmed ln-310/ln-510 descriptions to ≤200 chars, removed consumer skill IDs from orchestrator_pattern.md, fixed MANDATORY READ paths in ln-100/ln-300/ln-310/orchestrator_pattern.md, resolved ln-220 orphan reference, fixed ln-500 phase numbering, quoted ln-210 description, removed volatile category counts from CLAUDE.md/AGENTS.md. Additional review fixes: removed ~54 lines of triple duplication in ln-200 (orchestrator pattern, sequential constraint, Epic 0), removed non-actionable benefits list in ln-100, fixed H1/H2 structural inversion in ln-510, merged Phase 2.5 into Phase 3 in ln-630, fixed Phase 5 label mismatch in ln-200. Review pass 2: added ln-005-environment-scanner to marketplace, fixed README badge count (113→114), renumbered ln-100 phases to remove Phase 3 gap (4→3, 5→4, 6→5).

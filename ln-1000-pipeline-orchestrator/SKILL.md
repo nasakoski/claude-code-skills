@@ -22,7 +22,8 @@ Meta-orchestrator that reads the kanban board, shows available Stories, lets the
 
 ```
 L0: ln-1000-pipeline-orchestrator (TeamCreate lead, delegate mode, single story)
-  +-- Worker (fresh per stage, shutdown after completion, one at a time)
+  +-- Plan Worker (read-only, per stage, shutdown after APPROVE)
+  +-- Execute Worker (fresh per stage, shutdown after completion, one at a time)
        |   All stages: Opus 4.6  |  Effort: Stage 0 = low | Stage 1,2 = medium | Stage 3 = medium
        +-- L1: ln-300 / ln-310 / ln-400 / ln-500 (invoked via Skill tool, as-is)
             +-- L2/L3: existing hierarchy unchanged
@@ -229,20 +230,11 @@ Bash: cp {skill_repo}/ln-1000-pipeline-orchestrator/references/hooks/worker-keep
 #### 3.2 Initialize Pipeline State
 
 ```
-Write .pipeline/state.json (full schema — see checkpoint_format.md):
-  { "complete": false, "selected_story_id": "<selected story ID>",
-    "stories_remaining": 1, "last_check": <now>,
-    "story_state": {}, "worker_map": {}, "quality_cycles": {}, "validation_retries": {},
-    "crash_count": {},
-    "story_results": {}, "infra_issues": [],    # story_results includes stage{N}_agents for Stage 1/3
-    "status_cache": {<status_name: status_uuid>},    # Empty object if file mode
-    "stage_timestamps": {}, "git_stats": {}, "pipeline_start_time": <now>, "readiness_scores": {},
-    "skill_repo_path": <absolute path to skills repository root>,
-    "team_name": "pipeline-{YYYY-MM-DD}",
-    "business_answers": {<question: answer pairs from Phase 2, or {} if skipped>},
-    "storage_mode": "file"|"linear",
-    "project_brief": {<name, tech, type, key_rules from Phase 1 step 2>},
-    "story_briefs": {<storyId: {tech, keyFiles, approach, complexity} from Phase 1 step 9>} }   # Recovery-critical
+Write .pipeline/state.json (schema: checkpoint_format.md → Pipeline State Schema):
+  Initialize: complete=false, selected_story_id, stories_remaining=1,
+  all counters=0, empty collections, team_name="pipeline-{YYYY-MM-DD}",
+  business_answers from Phase 2, storage_mode, project_brief, story_briefs,
+  status_cache (Linear) or {} (file), plan_revision_count={"0":0,"1":0,"2":0,"3":0}
 Write .pipeline/lead-session.id with current session_id   # Stop hook uses this to only keep lead alive
 ```
 
@@ -323,63 +315,47 @@ stage_timestamps = {}                        # {storyId: {stage_N_start: ISO, st
 git_stats = {}                               # {storyId: {lines_added, lines_deleted, files_changed}}
 pipeline_start_time = now()                  # ISO 8601 — wall-clock start for duration metrics
 readiness_scores = {}                        # {storyId: readiness_score} — from Stage 1 GO
+plan_revision_count = {"0": 0, "1": 0, "2": 0, "3": 0}  # Plan gate revision counter per stage
+plan_approved = {}                           # {storyId: true} — set by ON PLAN_RESULT handler
 
 # Helper functions — defined in phase4_heartbeat.md (loaded above)
 # skill_name_from_stage(stage), predict_next_step(stage), stage_duration(id, N)
 
-# --- SPAWN SINGLE WORKER ---
+# --- SPAWN PLAN WORKER (Plan Gate) ---
+# Always spawn read-only plan worker first. Lead evaluates plan via criteria,
+# then spawns execute worker after approval (see phase4_handlers.md Plan Gate Handler).
 id = selected_story.id
 target_stage = determine_stage(selected_story)    # pipeline_states.md guards
-worker_name = "story-{id}-s{target_stage}"
+plan_worker_name = "story-{id}-s{target_stage}-plan"
 
-Task(name: worker_name, team_name: "pipeline-{date}",
+Task(name: plan_worker_name, team_name: "pipeline-{date}",
      model: "opus", mode: "bypassPermissions",
      subagent_type: "general-purpose",
-     prompt: worker_prompt(selected_story, target_stage, business_answers))
-worker_map[id] = worker_name
+     prompt: plan_only_template(selected_story, target_stage, business_answers))
+worker_map[id] = plan_worker_name
 story_state[id] = "STAGE_{target_stage}"
 stage_timestamps[id] = {}
 stage_timestamps[id]["stage_{target_stage}_start"] = now()
-Write .pipeline/worker-{worker_name}-active.flag     # For TeammateIdle hook
+Write .pipeline/worker-{plan_worker_name}-active.flag     # For TeammateIdle hook
 Update .pipeline/state.json
-SendMessage(recipient: worker_name,
-            content: "Execute Stage {target_stage} for {id}",
-            summary: "Stage {target_stage} assignment")
+SendMessage(recipient: plan_worker_name,
+            content: "Create plan for Stage {target_stage} of Story {id}",
+            summary: "Stage {target_stage} plan request")
+# Heartbeat loop handles PLAN_RESULT → APPROVE/REVISE → execute worker spawn
+# (see phase4_handlers.md: Plan Gate Handler + Plan Worker Done-Flag Detection)
 
-# --- EVENT LOOP (driven by Stop hook heartbeat, single story) ---
-# HOW THIS WORKS:
-# 1. Lead's turn ends → Stop event fires
-# 2. pipeline-keepalive.sh reads .pipeline/state.json → complete=false → exit 2
-# 3. stderr "HEARTBEAT: ..." → new agentic loop iteration
-# 4. Any queued worker messages (SendMessage) delivered in this cycle
-# 5. Lead processes messages via ON handlers (reactive) + verifies done-flags (proactive)
-# 6. Lead's turn ends → Go to step 1
-#
-# The Stop hook IS the event loop driver. Each heartbeat = one iteration.
-# Lead MUST NOT say "waiting for messages" and stop — the heartbeat keeps it alive.
-# If no worker messages arrived: output brief status, let turn end → next heartbeat.
-#
-# --- CONTEXT RECOVERY PROTOCOL ---
-# Claude Code may compress conversation history during long pipelines.
-# When this happens, you lose SKILL.md instructions and state variables.
-# The Stop hook includes "---PIPELINE RECOVERY CONTEXT---" in EVERY heartbeat stderr.
-#
-# IF you see this block and don't recall the pipeline protocol:
-#   Follow CONTEXT RECOVERY PROTOCOL in references/phases/phase4_heartbeat.md (7 steps).
-#   Quick summary: state.json → SKILL.md(FULL) → handlers → heartbeat → known_issues → ToolSearch → resume
-#
-# FRESH WORKER PER STAGE: Each stage transition = shutdown old worker + spawn new one.
-#
-# BIDIRECTIONAL HEALTH MONITORING:
-# - Reactive: ON handlers process worker completion messages
-# - Proactive: Verify done-flags without messages (lost message recovery)
-# - Defense-in-depth: Handles network issues, context overflow, worker crashes
+# --- EVENT LOOP (heartbeat-driven, single story) ---
+# Stop hook → exit 2 → new agentic loop → worker messages delivered → ON handlers → turn ends → repeat
+# See: phase4_handlers.md (message processing), phase4_heartbeat.md (health monitoring + recovery)
+# Anti-pattern: NEVER say "waiting for messages" — heartbeat keeps lead alive automatically.
+# Context loss after compression? Follow recovery protocol in phase4_heartbeat.md.
 
 WHILE story_state[id] NOT IN ("DONE", "PAUSED"):
 
   # 1. Process worker messages (reactive message handling)
   #
   **MANDATORY READ:** Load `references/phases/phase4_handlers.md` for all ON message handlers:
+  - Plan Gate (PLAN_RESULT → APPROVE/REVISE, plan worker → execute worker transition)
   - Stage 0 COMPLETE / ERROR (task planning outcomes)
   - Stage 1 COMPLETE (GO / NO-GO validation outcomes with retry logic)
   - Stage 2 COMPLETE / ERROR (execution outcomes)
@@ -537,7 +513,12 @@ Delete .pipeline/ directory
 
 ## Known Issues
 
-**MANDATORY READ:** Load `references/known_issues.md` for production-discovered problems and self-recovery patterns.
+| Symptom | Likely Cause | Self-Recovery |
+|---------|-------------|---------------|
+| Lead outputs generic text after long run | Context compression destroyed SKILL.md + state | Follow CONTEXT RECOVERY PROTOCOL in phase4_heartbeat.md |
+| Worker checkpoint/done.flag not found | Worker in worktree wrote to `.worktrees/` not project root | Verify PIPELINE_DIR in worker prompt = absolute path |
+| hashline-edit tools unavailable | MCP tool references lost after compression | `ToolSearch("+hashline-edit")` to reload |
+| Lead can't spawn workers after compression | team_name/business_answers lost | Read from `.pipeline/state.json` (persisted since Phase 3.2) |
 
 ## Anti-Patterns
 - Running ln-300/ln-310/ln-400/ln-500 directly from lead instead of delegating to workers
@@ -609,8 +590,9 @@ When invoked in Plan Mode, show available Stories and ask user which one to plan
 ## Reference Files
 
 ### Phase 4 Procedures (Progressive Disclosure)
-- **Message handlers:** `references/phases/phase4_handlers.md` (Stage 0-3 ON handlers, crash detection)
+- **Message handlers:** `references/phases/phase4_handlers.md` (Plan Gate, Stage 0-3 ON handlers, crash detection)
 - **Heartbeat & verification:** `references/phases/phase4_heartbeat.md` (Active done-flag checking, structured heartbeat output)
+- **Plan gate criteria:** `references/plan_gate_criteria.md` (auto-approval criteria per stage)
 
 ### Core Infrastructure
 - **MANDATORY READ:** `shared/references/git_worktree_fallback.md`
@@ -620,7 +602,6 @@ When invoked in Plan Mode, show available Stories and ask user which one to plan
 - **Worker health:** `references/worker_health_contract.md`
 - **Checkpoint format:** `references/checkpoint_format.md`
 - **Message protocol:** `references/message_protocol.md`
-- **Known issues:** `references/known_issues.md` (production-discovered problems and self-recovery)
 - **Kanban parsing:** `references/kanban_parser.md`
 - **Kanban update algorithm:** `shared/references/kanban_update_algorithm.md`
 - **Settings template:** `references/settings_template.json`
