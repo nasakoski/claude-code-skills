@@ -7,13 +7,17 @@
 {mode_constraints}
 - If you cannot access a resource — report it clearly, do not skip silently
 - DO NOT ask clarifying questions or request additional context — you have everything you need. Follow this prompt to completion autonomously. If information is missing, make reasonable assumptions and proceed.
-- You MUST complete your analysis and produce the JSON output within 10 minutes. Prioritize depth over breadth — focus on highest-impact findings first, then expand if time permits.
+- Target completing your analysis within 10 minutes. Prioritize depth over breadth — focus on highest-impact findings first, then expand if time permits.
+
+## Project Context
+{project_context}
 
 ## Progress Reporting
 Before each major step, update a heartbeat file (`heartbeat.json` in the same directory as your `-o` output file):
 `{"step": "analyzing", "detail": "Checking security patterns in src/auth/"}`
 Steps: starting -> reading_files -> analyzing -> writing_report -> done
 This file is in `.agent-review/` (git-ignored) — writing it does NOT violate the read-only constraint.
+Note: The runner also writes process-level heartbeat (`pid`, `alive`, `elapsed_seconds`, `log_size_bytes`) independently every 30s. Your heartbeat updates add step-level detail on top of the runner's liveness signal.
 
 {mode_body}
 

@@ -14,8 +14,12 @@ You are reviewing an implementation plan against the actual codebase, feasibilit
 ## Codebase Context
 {codebase_context}
 
-## Goal Articulation
-Before reviewing, state in one sentence: What could make this plan FAIL in practice? What gap would a surface-level "looks good" miss? State your REAL GOAL before analysis.
+## Review Goal
+{review_goal}
+
+{focus_hint}
+
+Given these goals, articulate in your report's Goal section what specific feasibility risk YOU will prioritize and why — this is your refinement of the caller's goals, not a replacement. Focus your analysis on the areas most relevant to your primary focus while still covering the review goal.
 
 ## Instructions
 1. Read the plan file — it contains the full implementation proposal

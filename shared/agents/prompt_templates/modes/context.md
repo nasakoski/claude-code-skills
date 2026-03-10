@@ -14,8 +14,12 @@ You are reviewing the provided context against feasibility, internal consistency
 ## Context Files
 {context_refs}
 
-## Goal Articulation
-Before reviewing, state in one sentence: What is the REAL question this context must answer? What would a surface-level "looks good" review miss? State your REAL GOAL at the start of your output before analysis.
+## Review Goal
+{review_goal}
+
+{focus_hint}
+
+Given these goals, articulate in your report's Goal section what is the REAL risk YOU will prioritize and why — this is your refinement of the caller's goals, not a replacement. Focus your analysis on the areas most relevant to your primary focus while still covering the review goal.
 
 ## Instructions
 1. Read ALL referenced files from the working directory — they contain the full context for review

@@ -8,23 +8,26 @@ license: MIT
 
 # Multi-Agent Validator
 
-Validates Stories/Tasks (mode=story), implementation plans (mode=plan), or arbitrary context (mode=context) with parallel multi-agent review and critical verification.
+Validates Stories/Tasks (mode=story), implementation plans (mode=plan_review), or arbitrary context (mode=context) with parallel multi-agent review and critical verification.
 
 ## Inputs
 
 | Input | Required | Source | Description |
 |-------|----------|--------|-------------|
 | `storyId` | mode=story | args, git branch, kanban, user | Story to process |
-| `plan {file}` | mode=plan | args or auto | Plan file to review. Auto-detected from `.claude/plans/` if Plan Mode active and no args |
+| `plan {file}` | mode=plan_review | args or auto | Plan file to review. Auto-detected from `.claude/plans/` if Read-Only Mode active and no args |
 | `context` | mode=context | conversation history, git diff | Review current discussion context + changed files |
 
-**Mode detection:** `"plan"` or `"plan {file}"` or Plan Mode active with no args → mode=plan. `"context"` → mode=context. Anything else → mode=story.
+**Mode detection:** `"plan"` or `"plan {file}"` or Read-Only Mode active with no args → mode=plan_review. `"context"` → mode=context. Anything else → mode=story.
+
+> **Terminology:** `mode=plan_review` = review mode (evaluating a plan document). "Plan Mode" / "Read-Only Mode" = execution flag (framework-level, applies to ALL modes). These are independent concepts.
+
 **Resolution (mode=story):** Story Resolution Chain. **Status filter:** Backlog
 
 ## Purpose
 
 - **mode=story:** Validate Story + Tasks (27 criteria), auto-fix, agent review, approve (Backlog→Todo)
-- **mode=plan:** Review plans against codebase. Auto-detects in Plan Mode. Review with corrections
+- **mode=plan_review:** Review plans against codebase. Auto-detects in Read-Only Mode. Review with corrections
 - **mode=context:** Review documents/architecture via agents + MCP Ref. Review with corrections
 - **All modes:** Parallel agents (Codex + Gemini), merge, verify, debate, apply
 
@@ -62,11 +65,11 @@ Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 2) **Prepare references:**
    - mode=story: Story/Task URLs (linear) or file paths (file)
    - mode=context: resolve identifier (default: `review_YYYYMMDD_HHMMSS`), materialize context if from chat → `.agent-review/context/{id}_context.md`
-   - mode=plan: auto-detect plan (Glob `.claude/plans/*.md`, most recent by mtime). No plan → error
+   - mode=plan_review: auto-detect plan (Glob `.claude/plans/*.md`, most recent by mtime). No plan → error
 3) **Build prompt:** Assemble from `shared/agents/prompt_templates/review_base.md` + `modes/{mode}.md` (per shared workflow "Step: Build Prompt"). Replace mode-specific placeholders. Save to `.agent-review/{id}_{mode}review_prompt.md`
 4) **Launch BOTH agents** as background tasks. `agents_launched = true`
 
-**Prompt persistence:** Normal Mode → save to `.agent-review/`. Plan Mode → pass inline to Agent tool `prompt` parameter.
+**Prompt persistence:** Normal Mode → save to `.agent-review/`. Read-Only Mode → pass inline to Agent tool `prompt` parameter.
 
 > **Parallelism:** Agents run in background through Phases 3-4. Results merged in Phase 5.
 
@@ -83,7 +86,7 @@ Save audit to `.agent-review/{storyId}_phase3_audit.md` (penalty table + pre-mor
 - **Plan Mode:** Show results → WAIT for approval
 - **Normal Mode:** Proceed to Phase 4
 
-**mode=plan / mode=context:**
+**mode=plan_review / mode=context:**
 
 **MANDATORY READ:** Load `references/context_review_pipeline.md`, `shared/references/research_tool_fallback.md`
 
@@ -93,7 +96,7 @@ While agents run in background:
 3. **Stack Detection** — `query_prefix` from: conversation context > `docs/tools_config.md` > indicator files
 4. **Extract Topics (3-5)** — technology decisions, score by weight
 5. **MCP Ref Research** — per `research_tool_fallback.md` chain. Query: `"{query_prefix} {topic} RFC standard best practices {year}"`
-6. **Compare & Correct** — max 5 corrections, cite RFC/standard. Apply directly: mode=plan → edit plan file, mode=context → edit reviewed documents. Inline rationale `"(per {RFC}: ...)"`
+6. **Compare & Correct** — max 5 corrections, cite RFC/standard. Apply directly: mode=plan_review → edit plan file, mode=context → edit reviewed documents. Inline rationale `"(per {RFC}: ...)"`
 7. **Save Findings** → `.agent-review/context/{id}_mcp_ref_findings.md` (per `references/mcp_ref_findings_template.md`)
 
 Then proceed to Phase 5.
@@ -128,14 +131,14 @@ Zero out penalty points as structural fixes applied (section added, format corre
 2) **Parse agent suggestions** from both result files
 3) **MERGE** Claude's findings + Agent suggestions. Re-read lines modified in Phase 4 (agents saw pre-fix state)
 4) **For EACH suggestion:** dedup (own findings + history) → evaluate → AGREE (accept) or DISAGREE (debate per shared workflow)
-5) **Apply accepted** — mode=story: Story/Tasks, mode=plan: plan file, mode=context: documents
+5) **Apply accepted** — mode=story: Story/Tasks, mode=plan_review: plan file, mode=context: documents
 6) **Save review summary** → `.agent-review/review_history.md`
 - SKIPPED verdict (0 agents) → proceed unchanged
 - **Display:** `"Agent Review: codex ({accepted}/{total}), gemini ({accepted}/{total}), {N} applied"`
 
 ### Phase 6: Approve & Notify (mode=story only)
 
-**mode=context/plan:** Skip. Return advisory output. Done.
+**mode=context/plan_review:** Skip. Return advisory output. Done.
 
 - **Step 1 (critical):** Set Story + Tasks to Todo; update `kanban_board.md` APPROVED
   - linear: `save_issue({id, state: "Todo"})` for each
@@ -184,7 +187,7 @@ Mark each `[x]` when verified. ALL must be checked. If ANY unchecked → go back
 - [ ] AC Coverage: 100% (Phase 4)
 - [ ] Story + Tasks → Todo, kanban updated, comment posted (Phase 6)
 
-**mode=context / mode=plan additional:**
+**mode=context / mode=plan_review additional:**
 - [ ] MCP Ref research executed OR N/A (Phase 3)
 - [ ] Corrections applied to artifacts OR none needed (Phase 3)
 
@@ -202,7 +205,7 @@ Mark each `[x]` when verified. ALL must be checked. If ANY unchecked → go back
 - **Validation criteria:** `references/phase2_research_audit.md` (27 criteria + auto-fix), `references/penalty_points.md`
 - **Validation checklists:** `references/structural_validation.md` (#1-4, #23-24), `standards_validation.md` (#5), `solution_validation.md` (#6, #21), `workflow_validation.md` (#7-13), `quality_validation.md` (#14-15), `dependency_validation.md` (#18-19), `risk_validation.md` (#20), `cross_reference_validation.md` (#25-26), `premortem_validation.md` (#27), `traceability_validation.md` (#16-17, #22)
 - **Templates:** `shared/templates/story_template.md`, `task_template_implementation.md`; local: `docs/templates/`
-- **Agent review:** `shared/references/agent_review_workflow.md`, `agent_delegation_pattern.md`, `agent_review_memory.md`; prompts: `shared/agents/prompt_templates/review_base.md` + `modes/{story,context,plan}.md`; challenge: `challenge_review.md`
+- **Agent review:** `shared/references/agent_review_workflow.md`, `agent_delegation_pattern.md`, `agent_review_memory.md`; prompts: `shared/agents/prompt_templates/review_base.md` + `modes/{story,context,plan_review}.md`; challenge: `challenge_review.md`
 - **Research:** `shared/references/research_tool_fallback.md`, `references/context_review_pipeline.md`, `domain_patterns.md`, `mcp_ref_findings_template.md`
 - **Other:** `shared/templates/linear_integration.md`, `shared/references/ac_validation_rules.md`
 

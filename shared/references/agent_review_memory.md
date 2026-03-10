@@ -1,6 +1,6 @@
 # Agent Review Memory (Shared)
 
-Standard algorithm for review memory during Critical Verification. Memory is NEVER passed to agents — they operate on clean context for independent perspective.
+Standard algorithm for review memory during Critical Verification and compact project context injection into agent prompts.
 
 ## Review History Format
 
@@ -55,6 +55,18 @@ Compare each suggestion's `(area, issue)` against known-suggestions from history
 | 0 entries parsed | Same as no file |
 
 Never error, never ask user. Memory is best-effort enrichment of Claude's verification.
+
+## Rejection Pattern Extraction (for `{project_context}`)
+
+When loading review history, also extract rejection patterns for prompt injection:
+
+1. Count rejected suggestions by `(area, issue_keyword)`
+2. Group into categories (e.g., `"backward compat" = 5 rejections`)
+3. Take top-5 by count
+4. Format as: `"Past rejections: backward compat (5x), scope creep (4x), below 95% threshold (3x), missing error handling (2x), unused abstraction (2x)"`
+5. Include in `{project_context}` assembly (see `agent_review_workflow.md` "Step: Build Prompt" step 7)
+
+This helps agents avoid suggesting patterns known to be rejected in this project.
 
 ---
 **Version:** 1.0.0

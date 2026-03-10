@@ -20,13 +20,14 @@ Standard pattern for skills delegating work to external CLI AI agents (Codex, Ge
 
 ## Inline Agent Review
 
-Agent review is inline in parent skills (ln-310 and ln-510), not in separate worker skills:
+Agent review is inline in parent skills, not in separate worker skills:
 
-| Parent Skill | Review Type | Mode File | Challenge Template |
+| Parent Role | Review Type | Mode File | Challenge Template |
 |-------------|-------------|-----------|-------------------|
-| ln-310-multi-agent-validator | Story/Tasks | `modes/story.md` | `challenge_review.md` |
-| ln-310-multi-agent-validator | Context | `modes/context.md` | `challenge_review.md` |
-| ln-510-quality-coordinator | Code | `modes/code.md` | `challenge_review.md` |
+| Story/context validator | Story/Tasks | `modes/story.md` | `challenge_review.md` |
+| Story/context validator | Context | `modes/context.md` | `challenge_review.md` |
+| Story/context validator | Plan review | `modes/plan_review.md` | `challenge_review.md` |
+| Quality coordinator | Code | `modes/code.md` | `challenge_review.md` |
 
 All modes assembled with `review_base.md` + mode file per "Step: Build Prompt" in shared workflow.
 
@@ -113,22 +114,22 @@ External agents run in non-interactive mode (`exec` / `-p`) with tool access for
 | Level | Codex | Gemini |
 |-------|-------|--------|
 | **CLI flags** | `--full-auto` (full tool access for analysis: read files, run commands, internet) | `--yolo` (auto-approve + sandbox, `permissive-open` profile — network allowed) |
-| **Output** | `--json` (JSONL stream) + `-o {file}` (final result to file) + `-C {cwd}` (working dir) | `--output-format json` (JSON envelope) + `-m gemini-3-flash-preview` |
+| **Output** | `--color never` (clean log) + `-o {file}` (final result to file) + `-C {cwd}` (working dir) | `-m gemini-3-flash-preview` |
 | **Prompt** | CRITICAL CONSTRAINTS: read-only for PROJECT files, may write to -o output | CRITICAL CONSTRAINTS: read-only for PROJECT files |
 
 ## Agent Timeout Policy
 
-**NO artificial timeouts — WAIT for response.** Review agents (`codex-review`, `gemini-review`) run until completion or crash. Registry `timeout_seconds: 0` means no hard process kill. Agents are instructed via prompt constraint to complete within 10 minutes. The caller MUST wait for the agent to finish — do NOT proceed without the response, do NOT use TaskStop.
+**Hard timeout (15 min default).** `agent_runner.py` kills the agent process after `hard_timeout_seconds` (configurable per agent in registry, override via `--timeout` CLI flag). Agents are prompted to finish within 10 minutes; 15 min provides 50% headroom for long analyses. The runner writes process-level `heartbeat.json` every 30s and streams stdout to a log file for real-time visibility.
 
 | Condition | Action |
 |-----------|--------|
-| Agent running, producing output | WAIT — do not interrupt |
-| Agent running, no output for 10+ min | WAIT — agent was instructed to finish in 10 min but may take longer. Do NOT kill. |
+| Agent running, log file growing | Healthy — heartbeat shows `alive: true` with increasing `log_size_bytes` |
+| Agent running, log static for 5+ min | Possibly stuck — heartbeat still shows `alive: true`. Runner will kill at hard timeout. |
+| Agent exceeds hard timeout | Runner kills process, returns `success: false, error: "Hard timeout"` |
 | Agent exited with error (non-zero) | Mark as FAILED, use other agent's results |
 | Agent process crashed/disappeared | Mark as FAILED |
-| User explicitly requests cancellation | Only then use TaskStop |
 
-**FORBIDDEN:** Using TaskStop to kill agent tasks. Using timeout to prematurely end analysis. Agents have no time limit as long as they have not crashed with an error.
+**FORBIDDEN:** Using TaskStop to kill agent background tasks. The runner handles timeout internally.
 
 ## MCP Failure Resilience
 
@@ -199,7 +200,7 @@ Prompt ------+                                                                  
 2. Both agents receive identical prompt, run simultaneously with `--output-file`
 3. When first agent completes (background task notification): read result file, proceed to Critical Verification
 4. When second agent completes: read result file, verify, merge with first batch
-5. Agents have **NO time limit** — do NOT kill background tasks (see Agent Timeout Policy)
+5. Agents have a **hard timeout** (15 min default) — runner kills process at limit (see Agent Timeout Policy)
 6. If an agent fails: log failure, continue with available results
 7. Log all attempts for user visibility (agent name, duration, suggestion count)
 
@@ -282,9 +283,9 @@ Standard steps before launching agents (performed inside agent review workers):
 
 1. **Get references:** Call Linear MCP `get_issue(storyId)` for Story URL + `list_issues(parent)` for Task URLs. If project stores tasks locally → use file paths.
 2. **Ensure .agent-review/:** If `.agent-review/` exists, reuse as-is. If not, create it with `.gitignore` (content: `*` + `!.gitignore`). Create `.agent-review/{agent}/` subdirs only if they don't exist. Do NOT add `.agent-review/` to project root `.gitignore`.
-3. **Build prompt:** Load template, replace `{story_ref}` and `{task_refs}` with actual references (Linear URLs or file paths).
-4. **Save prompt:** To `.agent-review/{identifier}_{review_type}_prompt.md` (single shared file — all agents read the same prompt)
-5. **Run agents:** `--prompt-file .agent-review/{identifier}_{review_type}_prompt.md --output-file .agent-review/{agent_name}/{identifier}_{review_type}_result.md --cwd {project_dir}` — agents access Story/Tasks via references, runner writes result file per agent
+3. **Build prompt:** Load template, fill placeholders including `{review_goal}`, `{project_context}`, `{focus_hint}` (per-agent). See `agent_review_workflow.md` "Step: Build Prompt" steps 1-9.
+4. **Save prompt:** To `.agent-review/{agent}/{identifier}_{review_type}_prompt.md` (per-agent — differ by `{focus_hint}`)
+5. **Run agents:** `--prompt-file .agent-review/{agent}/{identifier}_{review_type}_prompt.md --output-file .agent-review/{agent}/{identifier}_{review_type}_result.md --cwd {project_dir}` — agents access Story/Tasks via references, runner writes result file per agent
 6. **No cleanup** — `.agent-review/` persists as audit trail
 
 **Why reference passing instead of content materialization:**
@@ -299,14 +300,13 @@ Standard steps before launching agents (performed inside agent review workers):
 .agent-review/
 ├── .gitignore                                      # * + !.gitignore
 ├── review_history.md                               # Append-only review log (all reviews)
-├── arch-proposal_contextreview_prompt.md            # universal review: shared prompt (both agents)
-├── PROJ-123_storyreview_prompt.md                   # story review: shared prompt (both agents)
-├── PROJ-123_codereview_prompt.md                    # code review: shared prompt (both agents)
 ├── context/                                         # Materialized context files (universal review)
 │   └── arch-proposal_context.md
 ├── codex/
+│   ├── arch-proposal_contextreview_prompt.md        # Per-agent prompt (differs by {focus_hint})
 │   ├── arch-proposal_session.json                   # Session tracking for debate resume
 │   ├── arch-proposal_contextreview_result.md        # Result (written by agent_runner.py)
+│   ├── PROJ-123_storyreview_prompt.md
 │   ├── PROJ-123_session.json
 │   ├── PROJ-123_storyreview_result.md
 │   ├── PROJ-123_storyreview_challenge_1_prompt.md   # Round 1 debate (per-agent)
@@ -315,8 +315,10 @@ Standard steps before launching agents (performed inside agent review workers):
 │   ├── PROJ-123_storyreview_followup_1_result.md
 │   └── PROJ-123_codereview_result.md
 └── gemini/
+    ├── arch-proposal_contextreview_prompt.md        # Per-agent prompt (differs by {focus_hint})
     ├── arch-proposal_session.json
     ├── arch-proposal_contextreview_result.md
+    ├── PROJ-123_storyreview_prompt.md
     ├── PROJ-123_session.json
     ├── PROJ-123_storyreview_result.md
     └── PROJ-123_codereview_result.md
@@ -342,18 +344,18 @@ Standard steps before launching agents (performed inside agent review workers):
 |-------|-----|
 | Auto-retry in runner | Let skill decide fallback |
 | Embed full story/task content in prompt | Pass references (Linear URLs / file paths) |
-| Delete review artifacts after agents complete | Persist shared prompt in `.agent-review/`, results and challenges in `.agent-review/{agent}/` |
+| Delete review artifacts after agents complete | Persist per-agent prompts and results in `.agent-review/{agent}/` |
 | Write/rewrite result files from skill | Result files are runner's responsibility; skill only reads them and writes `_session.json` |
 | Trust agent output blindly | Claude critically verifies each suggestion + debates if disagreeing |
 | Use agents for project file writes | Agents write only to `-o` output file; analysis-only |
 | Chain multiple agent calls | One call per task; challenge/follow-up use `--resume-session` for context continuity |
 | Hard-depend on agent availability | Always have Opus fallback |
 | Run health check separately from agent launch | Health check is first step of inline agent review |
-| Kill agent tasks with TaskStop | Let agents complete; no artificial timeouts |
-| Skip agent review phase | Agent review is MANDATORY in ln-310 (after Phase 1) and ln-510 (Phase 4) |
+| Kill agent tasks with TaskStop | Runner handles hard timeout internally; TaskStop is forbidden |
+| Skip agent review phase | Agent review is MANDATORY in validator (after discovery) and quality coordinator (after cleanup) |
 | Start each review verification from scratch | Load review history for dedup + calibration |
 | Re-summarize agent findings in review log | Reference agent result files (self-documented reports) |
-| Inject project memory into agent prompts | Keep agent context clean; memory on Claude's side only |
+| Dump full project context into agent prompts | Inject compact project context (~300 tokens): architecture, principles, tech stack, past rejections. NO full dumps. |
 
 ---
 **Version:** 3.0.0

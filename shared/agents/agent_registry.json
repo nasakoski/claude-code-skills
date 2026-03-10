@@ -1,12 +1,13 @@
 {
-  "version": "3.0.0",
+  "version": "4.0.0",
   "agents": {
     "gemini": {
       "name": "Gemini CLI",
       "command": "gemini",
       "args": ["-p", ""],
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
-      "timeout_seconds": 300,
+      "hard_timeout_seconds": 300,
+      "heartbeat_interval_seconds": 30,
       "skill_groups": ["200"],
       "health_check": "gemini --version"
     },
@@ -15,30 +16,32 @@
       "command": "codex",
       "args": ["exec"],
       "env_override": {},
-      "timeout_seconds": 600,
+      "hard_timeout_seconds": 600,
+      "heartbeat_interval_seconds": 30,
       "skill_groups": ["300"],
       "health_check": "codex --version"
     },
     "codex-review": {
       "name": "Codex CLI (Review Mode)",
       "command": "codex",
-      "args": ["exec", "--json", "--full-auto", "-C", "{cwd}", "-o", "{output_file}"],
-      "resume_args": ["exec", "resume", "{session_id}", "--json", "--full-auto", "-o", "{output_file}"],
+      "args": ["exec", "--full-auto", "--color", "never", "-C", "{cwd}", "-o", "{output_file}"],
+      "resume_args": ["exec", "resume", "{session_id}", "--full-auto", "--color", "never", "-o", "{output_file}"],
       "resume_prompt_delivery": "positional",
       "session_id_capture": {
-        "strategy": "from_jsonl_field",
-        "field_path": "session_id"
+        "strategy": "from_log",
+        "pattern": "session.id:\\s*([0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+)"
       },
       "env_override": {},
-      "timeout_seconds": 0,
+      "hard_timeout_seconds": 900,
+      "heartbeat_interval_seconds": 30,
       "skill_groups": ["310", "510"],
       "health_check": "codex --version"
     },
     "gemini-review": {
       "name": "Gemini 3 Flash (Review Mode)",
       "command": "gemini",
-      "args": ["--yolo", "-m", "gemini-3-flash-preview", "--output-format", "json", "-p", ""],
-      "resume_args": ["--resume", "{session_id}", "--yolo", "-m", "gemini-3-flash-preview", "--output-format", "json", "-p", ""],
+      "args": ["--yolo", "-m", "gemini-3-flash-preview", "-p", ""],
+      "resume_args": ["--resume", "{session_id}", "--yolo", "-m", "gemini-3-flash-preview", "-p", ""],
       "resume_prompt_delivery": "flag",
       "session_id_capture": {
         "strategy": "from_list_command",
@@ -46,7 +49,8 @@
         "parse": "first_uuid"
       },
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
-      "timeout_seconds": 0,
+      "hard_timeout_seconds": 900,
+      "heartbeat_interval_seconds": 30,
       "skill_groups": ["310", "510"],
       "health_check": "gemini --version"
     }

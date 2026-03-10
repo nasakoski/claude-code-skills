@@ -4,14 +4,14 @@ Quick-reference for understanding how the validator works at runtime. For implem
 
 ## Modes
 
-| | mode=story | mode=plan | mode=context |
+| | mode=story | mode=plan_review | mode=context |
 |---|-----------|-----------|-------------|
 | **Input** | Story ID (Backlog) | Plan file (auto-detect) | Conversation + git diff |
 | **Phases** | 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 | 0 → 1 → 2 → 3 → 5 → 7 | 0 → 1 → 2 → 3 → 5 → 7 |
 | **Phase 3 work** | 27-criteria audit + display | MCP Ref research | MCP Ref research |
 | **Agents** | Codex + Gemini (background) | Codex + Gemini (background) | Codex + Gemini (background) |
 | **Output** | GO/NO-GO, Story → Todo | Advisory corrections | Advisory corrections |
-| **Prompt template** | `modes/story.md` | `modes/plan.md` | `modes/context.md` |
+| **Prompt template** | `modes/story.md` | `modes/plan_review.md` | `modes/context.md` |
 
 ## Phase Flow
 
@@ -34,7 +34,7 @@ Phase 4          Phase 5                    Phase 6            │Phase 7
 └──────────────┘ └────────────────────────┘ └──────────────┘ └─────────────┘
 ```
 
-### mode=plan / mode=context
+### mode=plan_review / mode=context
 
 ```
 Phase 0         Phase 1          Phase 2                Phase 3            Phase 5
@@ -66,7 +66,7 @@ Phase 2                           Phases 3-4 (foreground)           Phase 5
 │ Build prompt from  │  │    Display penalty points         │  │ 1st agent → │
 │ review_base.md +   │  │    Auto-fix 11 groups             │  │  verify     │
 │ modes/{mode}.md    │  │                                   │  │             │
-│                    │  │  mode=plan/context:                │  │ 2nd agent → │
+│                    │  │  mode=plan_review/context:                │  │ 2nd agent → │
 │ Launch:            │  │    MCP Ref research (3-5 topics)  │  │  merge      │
 │  ├─ Codex CLI ─────┼──┼──── runs in background ──────────┼──┼→ parse      │
 │  └─ Gemini CLI ────┼──┼──── runs in background ──────────┼──┼→ parse      │

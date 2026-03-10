@@ -13,8 +13,12 @@ You are reviewing a code implementation against its task requirements, existing 
 ## Tasks
 {task_refs}
 
-## Goal Articulation
-Before reviewing, state in one sentence: What specific quality question must this review answer? What would a surface-level rubber-stamp miss? State your REAL GOAL at the start of your output before analysis.
+## Review Goal
+{review_goal}
+
+{focus_hint}
+
+Given these goals, articulate in your report's Goal section what specific quality risk YOU will prioritize and why — this is your refinement of the caller's goals, not a replacement. Focus your analysis on the areas most relevant to your primary focus while still covering the review goal.
 
 ## Instructions
 1. Access the Story and Tasks using the references above (Linear URLs or local file paths)

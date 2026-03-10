@@ -13,8 +13,12 @@ You are reviewing a validated Story and its implementation Tasks against the act
 ## Tasks
 {task_refs}
 
-## Goal Articulation
-Before reviewing, state in one sentence: What specific risk must this review catch? What would a surface-level review miss about this Story? State your REAL GOAL at the start of your output before analysis.
+## Review Goal
+{review_goal}
+
+{focus_hint}
+
+Given these goals, articulate in your report's Goal section what specific risk YOU will prioritize and why — this is your refinement of the caller's goals, not a replacement. Focus your analysis on the areas most relevant to your primary focus while still covering the review goal.
 
 ## Instructions
 1. Access the Story and Tasks using the references above (Linear URLs or local file paths)

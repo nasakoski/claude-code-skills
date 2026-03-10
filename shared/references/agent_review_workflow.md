@@ -6,12 +6,14 @@ Common workflow for all agent review workers. Each skill provides parameters and
 
 | Parameter | Description | Examples |
 |-----------|-------------|---------|
-| `review_mode` | Mode file name (determines template) | `code`, `story`, `context` |
+| `review_mode` | Mode file name (determines template) | `code`, `story`, `context`, `plan_review` |
 | `review_type` | File naming suffix | `contextreview`, `storyreview`, `codereview` |
 | `identifier` | Unique label for file naming | `PROJ-123`, `review_20260227_143000` |
 | `verdict_acceptable` | Verdict for "no issues" | `CONTEXT_ACCEPTABLE`, `STORY_ACCEPTABLE`, `CODE_ACCEPTABLE` |
 
 ## Plan Mode Behavior
+
+> **Note:** "Plan Mode" is a framework execution flag (read-only). Unrelated to `mode=plan_review` (review type that evaluates plan documents).
 
 When running in Plan Mode (per `shared/references/plan_mode_pattern.md`, Workflow B):
 
@@ -60,7 +62,7 @@ a) If `.agent-review/review_history.md` exists:
 
 b) If not exists: proceed without memory (first review for this project)
 
-Claude uses this data during Critical Verification. It is NOT passed to agents.
+Claude uses this data during Critical Verification and assembles compact `{project_context}` for agent prompts (see "Step: Build Prompt" step 7).
 
 ## Step: Build Prompt
 
@@ -77,7 +79,24 @@ Assemble the review prompt from base template + mode-specific content:
    - `## schema` -> parse key-value pairs for `{mode_verdict}`, `{mode_areas}`, `{mode_suggestion_desc}`, `{mode_reason_desc}`, `{mode_verdict_question}`
 4. Replace all `{mode_*}` placeholders in base with corresponding mode content
 5. Fill instance variables: `{story_ref}`, `{task_refs}` (code/story) or `{review_title}`, `{context_refs}`, `{focus_areas}` (context)
-6. Save assembled prompt to `.agent-review/{identifier}_{review_type}_prompt.md`
+6. Assemble `{review_goal}` — Claude formulates 1-2 sentence review goal based on:
+   - Story/Tasks analysis from validation phases
+   - Known project risks and patterns
+   - What a surface-level review would miss
+   Example: `"Catch correctness bugs in 5-level TM/cache lookup: schema constraints impossible in PostgreSQL, cache key collisions, batch bottlenecks."`
+7. Assemble `{project_context}` — Claude builds compact context (~300 tokens):
+   - Architecture: from CLAUDE.md or docs/architecture.md (1 line)
+   - Principles: from CLAUDE.md (1 line, key constraints)
+   - Tech stack: from docs/tech_stack.md or CLAUDE.md (1 line)
+   - Past rejections: top-5 rejection categories from `.agent-review/review_history.md` (extracted during "Step: Load Review Memory")
+   If no review history exists: omit "Past rejections" line.
+8. Assemble `{focus_hint}` — optional, per-agent differentiation:
+   - For codex-review: `"Primary focus: correctness bugs, schema feasibility, data integrity, error handling, code-level edge cases"`
+   - For gemini-review: `"Primary focus: performance at scale, security/isolation, resource management, architectural patterns"`
+   - If only 1 agent available: leave empty (agent covers everything)
+   Note: `{focus_hint}` is a HINT, not a restriction. Agent may report findings outside focus.
+9. Save assembled prompt to `.agent-review/{agent}/{identifier}_{review_type}_prompt.md`
+   Note: prompt is now agent-specific (different `{focus_hint}` per agent), so save per-agent, not shared.
 
 ## Step: Run Agents (background, process-as-arrive)
 
@@ -85,20 +104,23 @@ a) Launch BOTH agents as background Bash tasks (`run_in_background=true`):
 
 ```
 python shared/agents/agent_runner.py --agent codex-review \
-  --prompt-file .agent-review/{identifier}_{review_type}_prompt.md \
+  --prompt-file .agent-review/codex/{identifier}_{review_type}_prompt.md \
   --output-file .agent-review/codex/{identifier}_{review_type}_result.md \
   --cwd {cwd}
 
 python shared/agents/agent_runner.py --agent gemini-review \
-  --prompt-file .agent-review/{identifier}_{review_type}_prompt.md \
+  --prompt-file .agent-review/gemini/{identifier}_{review_type}_prompt.md \
   --output-file .agent-review/gemini/{identifier}_{review_type}_result.md \
   --cwd {cwd}
 ```
 
 **Heartbeat monitoring (while agents work):**
 - After launching agents, output to chat: `"Agents launched: codex-review + gemini-review. Continuing with foreground work..."`
-- Between foreground phases, Read `.agent-review/{agent}/heartbeat.json` for each agent and output status: `"[Heartbeat] codex-review: analyzing — Checking security patterns in src/auth/"`
-- When foreground work completes and agents haven't returned yet, Read heartbeat files and output: `"Foreground complete. Waiting for agents... codex-review: {step}, gemini-review: {step}"`
+- `agent_runner.py` writes process-level heartbeat to `.agent-review/{agent}/heartbeat.json` every 30s (independent of agent behavior). Fields: `pid`, `alive`, `elapsed_seconds`, `log_size_bytes`, `updated_at`.
+- Agent stdout streams to `.agent-review/{agent}/{identifier}_{review_type}.log` in real time. Read log tail for detailed progress.
+- Between foreground phases, Read `heartbeat.json` for each agent and output status: `"[Heartbeat] codex-review: alive, 63s, log 489KB"`
+- Agents may also write their own `heartbeat.json` with `step`/`detail` fields (per prompt instruction) — this supplements the runner's process-level heartbeat.
+- When foreground work completes and agents haven't returned yet, Read heartbeat files and output: `"Foreground complete. Waiting for agents... codex-review: {alive/elapsed}, gemini-review: {alive/elapsed}"`
 - Do NOT poll in a sleep-loop — the framework sends background task notifications automatically
 - When each agent completes, immediately output: `"Agent {name} completed ({duration}s). {N} suggestions found."` Then proceed to parse results.
 
@@ -173,18 +195,18 @@ Entry format (per `shared/references/agent_review_memory.md`):
 ## Critical Rules
 
 - Read-only review -- agents must NOT modify project files (enforced by prompt CRITICAL CONSTRAINTS)
-- Same prompt to all agents (identical input for fair comparison)
-- Agents produce structured review report (markdown analysis + `## Structured Data` with JSON block). CLI flags (`--json` / `--output-format json`) control stream format, not content
+- Same base prompt to all agents. Only `{focus_hint}` differs per agent.
+- Agents produce structured review report (markdown analysis + `## Structured Data` with JSON block). Agent stdout streams to log file for real-time visibility.
 - Log all attempts for user visibility (agent name, duration, suggestion count)
-- **Persist** shared prompt in `.agent-review/`, results and challenge artifacts in `.agent-review/{agent}/` -- do NOT delete
+- **Persist** per-agent prompts in `.agent-review/{agent}/`, results and challenge artifacts in `.agent-review/{agent}/` -- do NOT delete
 - Ensure `.agent-review/.gitignore` exists before creating files (only create if `.agent-review/` is new)
-- **NO TIMEOUT KILL -- WAIT FOR RESPONSE:** Do NOT kill agent background tasks. WAIT until agent completes and delivers its response -- do NOT proceed without it, do NOT use TaskStop. Only a hard crash (non-zero exit code, connection error) is treated as failure. TaskStop is FORBIDDEN for agent tasks.
+- **HARD TIMEOUT (15 min default):** `agent_runner.py` kills the agent process after `hard_timeout_seconds` (configurable in registry, override via `--timeout`). Agents are prompted to finish within 10 minutes; 15 min provides headroom. On timeout, runner writes `timeout` heartbeat and returns `success: false`. **TaskStop is still FORBIDDEN** for agent background tasks — the runner handles timeout internally.
 - **CRITICAL VERIFICATION:** Do NOT trust agent suggestions blindly. Claude MUST independently verify each suggestion and debate if disagreeing. Accept only after verification.
 
 ## Definition of Done
 
 - All available agents launched as background tasks (or gracefully failed with logged reason)
-- Shared prompt persisted in `.agent-review/` (single file, read by all agents)
+- Per-agent prompts persisted in `.agent-review/{agent}/` (differ only by `{focus_hint}`)
 - Raw results persisted in `.agent-review/{agent}/` (no cleanup)
 - Each suggestion critically verified by Claude; challenges executed for disagreements
 - Follow-up rounds executed for suggestions rejected after Round 1 (DEFEND+weak / MODIFY+disagree)
@@ -193,6 +215,12 @@ Entry format (per `shared/references/agent_review_memory.md`):
 - `.agent-review/.gitignore` exists (created only if `.agent-review/` was new)
 - Session files persisted in `.agent-review/{agent}/{identifier}_session.json` for debate resume
 - Review summary appended to `.agent-review/review_history.md`
+
+## Step: Meta-Analysis
+
+**MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
+
+After returning results, run meta-analysis on agent delegation effectiveness: coverage, efficiency, prompt quality. Output summary table to chat with improvement suggestions. If pattern is actionable and reproducible (across 3+ runs), suggest creating issue.
 
 ## Output Schema (common structure)
 
@@ -235,3 +263,4 @@ debate_log:
 - **Agent registry:** `shared/agents/agent_registry.json`
 - **Agent runner:** `shared/agents/agent_runner.py`
 - **Agent review memory:** `shared/references/agent_review_memory.md`
+- **Meta-analysis protocol:** `shared/references/meta_analysis_protocol.md`
