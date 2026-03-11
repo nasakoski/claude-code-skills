@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2026-03-11
+
+Renamed ln-514-regression-checker to ln-513-regression-checker; all cross-references updated (ln-510, ln-500, marketplace.json, README.md). Overhauled ln-1000 pipeline orchestrator reference files: updated checkpoint_format, message_protocol, pipeline_states, worker_health_contract, worker_prompts, phase4_handlers/heartbeat; deleted plan_gate_criteria.md. Updated ln-401, ln-500, ln-510, ln-520 SKILL.md and ln-510 criteria_validation.md. Coherence review fix: corrected H1/H2 structural inversion in ln-520-test-planner (## Inputs was before # Test Planning Orchestrator).
+
+---
+
 ## 2026-03-09
 
 ln-1000 pipeline orchestrator: Plan Gate coherence review. Fixed stage completion handlers bypassing Plan Gate (all 5 handlers now spawn plan workers before execute workers). Persisted plan_approved in state.json (was ephemeral with false reconstruction claim via planPhase). Removed planPhase from checkpoint schema. Fixed Stage 0 plan template revision limit mismatch (worker said 1, lead allowed 2). Added MANDATORY READ for plan_gate_criteria.md. Removed duplicate plan lifecycle narrative from message_protocol.md and duplicate JSON schema from plan_gate_criteria.md. Parameterized 4 plan-only worker templates into single template with per-stage variable table (saved ~120 lines).

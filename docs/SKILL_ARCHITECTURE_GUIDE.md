@@ -419,7 +419,7 @@ Orchestrator automatically creates fix tasks when quality checks fail, then rest
 | **ln-620-codebase-auditor** | 9 | **Separate** | Workers audit DIFFERENT aspects (security/build/arch) — isolation = focus |
 | **ln-630-test-auditor** | 5 | **Separate** | Workers audit DIFFERENT test categories — isolation = focus |
 | **ln-640-pattern-evolution-auditor** | 3 | **Separate** | Workers analyze DIFFERENT patterns — isolation = focus |
-| **ln-510-quality-coordinator** | 3 | **Mixed** | ln-511 Separate (independent analysis), inline agent review (background), ln-514/ln-510 Shared (need Gate context) |
+| **ln-510-quality-coordinator** | 3 | **Mixed** | ln-511 Separate (independent analysis), inline agent review (background), ln-513/ln-510 Shared (need Gate context) |
 | **ln-520-test-planner** | 3 | **Separate** | Pipeline orchestration, workers read from Linear comments |
 | **ln-820-dependency-optimization-coordinator** | 3 | **Separate** | Independent package managers (npm/nuget/pip) |
 | **ln-760-security-setup** | 2 | **Separate** | Independent scans (secrets/dependencies) |

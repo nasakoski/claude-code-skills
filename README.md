@@ -72,7 +72,7 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-510-quality-coordinator/    # Code quality checks coordinator
 |   |   |-- ln-511-code-quality-checker/  # DRY/KISS/YAGNI violations
 |   |   |-- ln-512-tech-debt-cleaner/    # Automated safe tech debt cleanup
-|   |   |-- ln-514-regression-checker/    # Run existing test suite
+|   |   |-- ln-513-regression-checker/    # Run existing test suite
 |   |-- ln-520-test-planner/           # Test planning coordinator
 |   |   |-- ln-521-test-researcher/    # Research real-world problems
 |   |   |-- ln-522-manual-tester/      # Manual functional testing

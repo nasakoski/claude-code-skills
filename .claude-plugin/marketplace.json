@@ -43,7 +43,7 @@
         "./ln-510-quality-coordinator",
         "./ln-511-code-quality-checker",
         "./ln-512-tech-debt-cleaner",
-        "./ln-514-regression-checker",
+        "./ln-513-regression-checker",
         "./ln-520-test-planner",
         "./ln-521-test-researcher",
         "./ln-522-manual-tester",

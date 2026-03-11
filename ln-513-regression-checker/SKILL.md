@@ -1,5 +1,5 @@
 ---
-name: ln-514-regression-checker
+name: ln-513-regression-checker
 description: Worker that runs existing tests to catch regressions. Auto-detects framework, reports pass/fail. No status changes or task creation.
 license: MIT
 ---
