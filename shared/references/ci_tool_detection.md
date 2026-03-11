@@ -9,12 +9,13 @@ Resolve commands in this order (stop at first match per category):
 | Priority | Source | Example |
 |----------|--------|---------|
 | 1 (highest) | `docs/project/tech_stack.md` | Explicit lint/test/build commands |
-| 2 | `docs/project/runbook.md` | Operational commands with flags |
-| 3 | Config file detection (see Command Registry) | `.eslintrc*`, `pyproject.toml`, `Makefile` |
-| 4 | `package.json` scripts | `scripts.lint`, `scripts.test`, `scripts.build` |
-| 5 (fallback) | SKIP with info message | No tooling detected |
+| 2 | `docs/project/infrastructure.md` | Service endpoints, ports, base URLs |
+| 3 | `docs/project/runbook.md` | Operational commands with flags |
+| 4 | Config file detection (see Command Registry) | `.eslintrc*`, `pyproject.toml`, `Makefile` |
+| 5 | `package.json` scripts | `scripts.lint`, `scripts.test`, `scripts.build` |
+| 6 (fallback) | SKIP with info message | No tooling detected |
 
-**Rule:** Priority 1-2 commands override auto-detection. If `tech_stack.md` says `ruff check --config custom.toml`, use that exact command.
+**Rule:** Priority 1-3 commands override auto-detection. If `tech_stack.md` says `ruff check --config custom.toml`, use that exact command.
 
 ## Command Registry
 
@@ -98,7 +99,7 @@ Each skill adds its own logic ON TOP of this guide:
 | Task reviewer | Run only when verdict=Done; FAIL overrides to To Rework |
 | Quality coordinator | Delegates tests to regression checker; aggregates results |
 | Tech debt cleaner | Revert ALL changes on any FAIL (`git checkout .`) |
-| Regression checker | Tests only; prefer runbook.md commands over auto-detect |
+| Regression checker | Tests only; prefer infrastructure.md + runbook.md commands over auto-detect |
 | Build auditor | Full audit with severity scoring (CRITICAL/HIGH/MEDIUM/LOW) |
 | Algorithm optimizer | Benchmark only; 5 runs median; generated bench cleanup |
 | Query optimizer | Tests only; metric = query count reduction |

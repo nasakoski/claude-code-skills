@@ -91,7 +91,7 @@ claude-code-skills/                      # MARKETPLACE
 |   |   |-- ln-112-project-core-creator/  # requirements.md, architecture.md
 |   |   |-- ln-113-backend-docs-creator/  # api_spec.md, database_schema.md
 |   |   |-- ln-114-frontend-docs-creator/ # design_guidelines.md
-|   |   |-- ln-115-devops-docs-creator/   # runbook.md
+|   |   |-- ln-115-devops-docs-creator/   # infrastructure.md, runbook.md
 |   |-- ln-120-reference-docs-creator/    # ADRs, guides, manuals structure
 |   |-- ln-130-tasks-docs-creator/        # kanban_board.md, task provider setup
 |   |-- ln-140-test-docs-creator/         # testing-strategy.md
@@ -550,6 +550,7 @@ Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-
 | **Documentation** | [CLAUDE.md](CLAUDE.md) |
 | **Architecture** | [SKILL_ARCHITECTURE_GUIDE.md](docs/SKILL_ARCHITECTURE_GUIDE.md) |
 | **Agent Teams** | [AGENT_TEAMS_PLATFORM_GUIDE.md](docs/AGENT_TEAMS_PLATFORM_GUIDE.md) |
+| **Discussions** | [GitHub Discussions](https://github.com/levnikolaevich/claude-code-skills/discussions) |
 | **Issues** | [GitHub Issues](https://github.com/levnikolaevich/claude-code-skills/issues) |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
 

@@ -36,6 +36,7 @@ Given these goals, articulate in your report's Goal section what specific risk Y
 - Do Tasks reference correct files/modules/patterns from the code?
 - Are alternative approaches considered? (see Alternative Solutions section below)
 - Missing considerations (security, performance, edge cases)?
+- **Library utilization:** Do Tasks plan to build something the project's existing dependencies already provide? Check manifest files (package.json, requirements.txt, etc.) against Task Implementation Plans.
 - **Clean code:** Do Tasks include cleanup of replaced code? No backward-compat shims, no legacy wrappers left behind. See `shared/references/clean_code_checklist.md` Replacement Rule.
 
 ## Risk Analysis
