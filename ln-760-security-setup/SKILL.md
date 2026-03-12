@@ -109,11 +109,24 @@ L2 Domain Coordinator that orchestrates security scanning and configuration for 
 **Prompt template:**
 ```
 Agent(description: "Secret scanning via ln-761",
-     prompt: "Execute ln-761-secret-scanner. Read skill from ln-761-secret-scanner/SKILL.md. Project: {projectPath}",
+     prompt: "Execute security scanner.
+
+Step 1: Invoke worker:
+  Skill(skill: \"ln-761-secret-scanner\")
+
+CONTEXT:
+Project: {projectPath}",
      subagent_type: "general-purpose")
 
 Agent(description: "Dependency vulnerability scan via ln-625",
-     prompt: "Execute ln-625-dependencies-auditor with mode=vulnerabilities_only. Read skill from ln-625-dependencies-auditor/SKILL.md. Project: {projectPath}. Mode: vulnerabilities_only (only CVE scan, skip outdated/unused checks).",
+     prompt: "Execute vulnerability scanner.
+
+Step 1: Invoke worker:
+  Skill(skill: \"ln-625-dependencies-auditor\")
+
+CONTEXT:
+Project: {projectPath}
+Mode: vulnerabilities_only (only CVE scan, skip outdated/unused checks)",
      subagent_type: "general-purpose")
 ```
 

@@ -55,7 +55,7 @@ All skills documented in [README.md](README.md#-features) with workflows in each
 
 **Testing:** Risk-Based Testing (Priority ≥15, Usefulness Criteria). See [risk_based_testing_guide.md](shared/references/risk_based_testing_guide.md).
 
-**Code Comments:** 15-20% ratio. Explain WHY, not WHAT. NO Epic/Task IDs, NO historical notes, NO code examples.
+**Code Comments:** 15-20% ratio. Explain WHY, not WHAT. NO historical notes, NO code examples. Task/ADR IDs allowed as spec references, forbidden as development history.
 
 **Documentation Language:** All docs in English except Stories/Tasks (can be English/Russian regardless of provider).
 

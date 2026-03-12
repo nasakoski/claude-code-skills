@@ -7,7 +7,13 @@ Standard pattern for coordinators delegating work through the Agent tool with co
 ```javascript
 Agent(
   description: "[Action] [item] via [skill-name]",
-  prompt: "Execute [skill-name]. Read skill from [skill-name]/SKILL.md. [Context]",
+  prompt: "Execute worker.
+
+Step 1: Invoke worker:
+  Skill(skill: \"[skill-name]\")
+
+CONTEXT:
+[contextStore as JSON]",
   subagent_type: "general-purpose"
 )
 ```
@@ -34,7 +40,8 @@ For file-based audit workflows, use:
 
 | DON'T | DO |
 |------|----|
-| Direct Skill tool without Agent wrapper | Use Agent with `subagent_type` |
+| Direct Skill tool without Agent wrapper | Use Agent wrapping Skill tool invocation |
+| Manual "Read skill from SKILL.md" in prompt | Use Skill tool for framework-managed loading |
 | Pass full coordinator reasoning trace | Pass IDs or a compact contextStore |
 | Assume the worker succeeded | Validate returned summary or written artifact |
 | Mix output modes inside one workflow | Pick one output contract per workflow |

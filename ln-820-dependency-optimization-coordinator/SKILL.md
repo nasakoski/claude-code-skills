@@ -90,7 +90,13 @@ Verify project state before starting upgrade.
 **Prompt template:**
 ```
 Agent(description: "Upgrade deps via ln-82X",
-     prompt: "Execute ln-82X-{worker}. Read skill from ln-82X-{worker}/SKILL.md. Context: {delegationContext}",
+     prompt: "Execute dependency upgrade worker.
+
+Step 1: Invoke worker:
+  Skill(skill: \"ln-82X-{worker}\")
+
+CONTEXT:
+{delegationContext}",
      subagent_type: "general-purpose",
      isolation: "worktree")
 ```

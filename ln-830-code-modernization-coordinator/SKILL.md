@@ -74,7 +74,13 @@ Coordinates code modernization by delegating to L3 workers: ln-831 (OSS replacer
 ```
 FOR each selected worker:
   Agent(description: "Modernize via ln-83X",
-       prompt: "Execute ln-83X-{worker}. Read skill from ln-83X-{worker}/SKILL.md. Context: {delegationContext}",
+       prompt: "Execute modernization worker.
+
+Step 1: Invoke worker:
+  Skill(skill: \"ln-83X-{worker}\")
+
+CONTEXT:
+{delegationContext}",
        subagent_type: "general-purpose",
        isolation: "worktree")
 ```

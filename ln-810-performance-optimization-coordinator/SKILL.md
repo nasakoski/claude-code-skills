@@ -75,7 +75,13 @@ Coordinates performance optimization by delegating to L3 workers: ln-811 (algori
 ```
 FOR each selected worker:
   Agent(description: "Optimize via ln-81X",
-       prompt: "Execute ln-81X-{worker}. Read skill from ln-81X-{worker}/SKILL.md. Context: {delegationContext}",
+       prompt: "Execute optimization worker.
+
+Step 1: Invoke worker:
+  Skill(skill: \"ln-81X-{worker}\")
+
+CONTEXT:
+{delegationContext}",
        subagent_type: "general-purpose",
        isolation: "worktree")
 ```

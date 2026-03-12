@@ -110,7 +110,13 @@ When all tasks Done:
 Executors (ln-401/ln-403/ln-404) — Agent tool (isolated context):
 ```
 Agent(description: "[Action] task {ID}",
-     prompt: "Execute {skill-name} for task {ID}. Read skill from {skill-name}/SKILL.md.",
+     prompt: "Execute task {ID}.
+
+Step 1: Invoke worker:
+  Skill(skill: \"{skill-name}\")
+
+CONTEXT:
+Task ID: {ID}",
      subagent_type: "general-purpose")
 ```
 

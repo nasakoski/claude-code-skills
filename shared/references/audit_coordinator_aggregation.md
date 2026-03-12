@@ -12,8 +12,7 @@ docs/project/.audit/{audit-id}/{YYYY-MM-DD}/
 
 Rules:
 - Create the directory before delegating.
-- Do not delete previous date folders.
-- Keep coordinator report output outside the dated worker folder unless the workflow explicitly stores snapshots there.
+- Delete the dated output directory after the consolidated report and results-log row are written (see Worker File Cleanup below).
 
 ## Parse Worker Summaries First
 
@@ -42,7 +41,8 @@ Use file reads later for detailed findings, not for numbers you already have.
 4. Read worker report files for findings tables and optional machine-readable blocks.
 5. Apply worker-specific or coordinator-specific post-filters.
 6. Assemble the final consolidated report.
-7. Optionally append a results-log row if the workflow tracks trends.
+7. Append a results-log row (mandatory for all coordinators).
+8. Delete the dated output directory (`rm -rf {output_dir}`).
 
 ## Score Handling
 
@@ -71,6 +71,18 @@ If a worker fails:
 
 ## Results Log
 
-If the workflow keeps trend history, append one row after the final score is known.
+Append one row after the final score is known.
 
 **MANDATORY READ:** Load `shared/references/results_log_pattern.md` when the coordinator writes results history.
+
+## Worker File Cleanup
+
+After the results-log row is appended, delete the current run's dated output directory:
+
+```bash
+rm -rf {output_dir}
+```
+
+This removes `docs/project/.audit/{audit-id}/{YYYY-MM-DD}/` and all worker report files within it. Worker files are intermediate artifacts; the consolidated report and results log preserve all needed history.
+
+Do NOT delete `docs/project/.audit/results_log.md` — it lives outside the dated directory.

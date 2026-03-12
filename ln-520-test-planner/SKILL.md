@@ -124,7 +124,13 @@ ln-520-test-planner (Orchestrator)
 **Prompt template:**
 ```
 Agent(description: "[Phase N] test planning via ln-52X",
-     prompt: "Execute ln-52X-{worker}. Read skill from ln-52X-{worker}/SKILL.md. Story: {storyId}",
+     prompt: "Execute test planning worker.
+
+Step 1: Invoke worker:
+  Skill(skill: \"ln-52X-{worker}\")
+
+CONTEXT:
+Story: {storyId}",
      subagent_type: "general-purpose")
 ```
 
