@@ -106,7 +106,7 @@ mkdir -p {output_dir}   # No deletion — date folders preserve history
 **Invocation (4 workers in PARALLEL):**
 ```javascript
 FOR EACH worker IN [ln-651, ln-652, ln-653, ln-654]:
-  Task(description: "Audit via " + worker,
+  Agent(description: "Audit via " + worker,
        prompt: "Execute " + worker + ". Read skill. Context: " + JSON.stringify(contextStore),
        subagent_type: "general-purpose")
 ```
@@ -261,7 +261,7 @@ Append one row to `docs/project/.audit/results_log.md` with: Skill=`ln-650`, Met
 - [ln-653-runtime-performance-auditor](../ln-653-runtime-performance-auditor/SKILL.md)
 - [ln-654-resource-lifecycle-auditor](../ln-654-resource-lifecycle-auditor/SKILL.md)
 
-## Meta-Analysis
+## Phase 8: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

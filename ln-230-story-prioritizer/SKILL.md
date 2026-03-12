@@ -457,7 +457,7 @@ ln-230-story-prioritizer epic="Epic 7" stories="US001,US002,US003"
 
 ---
 
-## Meta-Analysis
+## Phase 6: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

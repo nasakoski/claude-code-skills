@@ -323,7 +323,7 @@ This architecture follows industry-proven pattern where:
 |-------|------|------------------|--------------|------------|----------|
 | **Level 0** | Meta-Orchestrator | Coordinate multiple Stories via Agent Teams (TeamCreate) | Metadata only | Agent Teams (TeamCreate + SendMessage) | `ln-1000-pipeline-orchestrator` |
 | **Level 1** | Top Orchestrator | Coordinate full lifecycle workflows | Metadata only | Skill tool (shared context) | `ln-400-story-executor` |
-| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | Skill tool or Task tool | `ln-310-multi-agent-validator`, `ln-510-quality-coordinator`, `ln-300-task-coordinator`, `ln-520-test-planner` |
+| **Level 2** | Domain Orchestrator | Coordinate specific domain workflows | Metadata only | Skill tool or Agent tool | `ln-310-multi-agent-validator`, `ln-510-quality-coordinator`, `ln-300-task-coordinator`, `ln-520-test-planner` |
 | **Level 3** | Worker | Execute atomic work | FULL descriptions when needed | None (leaf) | `ln-401-task-executor`, `ln-404-test-executor`, `ln-402-task-reviewer`, `ln-301-task-creator`, etc. |
 
 **Critical Rules:**
@@ -390,12 +390,12 @@ Orchestrator automatically creates fix tasks when quality checks fail, then rest
 
 ### Delegation Pattern Selection
 
-**Context:** L2 coordinators can delegate to workers using two patterns: Shared Context (direct Skill tool) or Separate Context (Task tool wrapper).
+**Context:** L2 coordinators can delegate to workers using two patterns: Shared Context (direct Skill tool) or Separate Context (Agent tool wrapper).
 
 | Pattern | When to Use | Pros | Cons |
 |---------|-------------|------|------|
 | **Shared Context**<br>(Direct Skill tool) | Coordinator performs expensive work ONCE (MCP research, Stack detection, Epic analysis) that workers must reuse | ✅ Token efficiency (no duplication)<br>✅ Workers see full context<br>✅ Conversation history preserved | ❌ Context pollution<br>❌ No parallelization (sequential only) |
-| **Separate Context**<br>(Task tool wrapper) | Coordinator only orchestrates workflow, workers are independent | ✅ Context isolation<br>✅ Parallelization possible<br>✅ Clean worker environment | ❌ Context lost between coordinator/worker<br>❌ Must pass all data via prompt |
+| **Separate Context**<br>(Agent tool wrapper) | Coordinator only orchestrates workflow, workers are independent | ✅ Context isolation<br>✅ Parallelization possible<br>✅ Clean worker environment | ❌ Context lost between coordinator/worker<br>❌ Must pass all data via prompt |
 
 **Decision Tree:**
 
@@ -435,7 +435,7 @@ Orchestrator automatically creates fix tasks when quality checks fail, then rest
 | Workers are **fully independent** | | ✅ |
 
 **Anti-Pattern Warnings:**
-- ❌ Task tool on coordinators with expensive shared context → 3x-9x token duplication
+- ❌ Agent tool on coordinators with expensive shared context → 3x-9x token duplication
 - ❌ Shared Context on audit workers → context pollution, lost focus on specific aspect
 
 ### Worker Result Return Patterns
@@ -445,7 +445,7 @@ How workers return results depends on the delegation pattern:
 | Pattern | Mechanism | Coordinator receives | Example |
 |---------|-----------|---------------------|---------|
 | **Shared Context** | Conversation continuation | Worker output appears in coordinator's context automatically | ln-300 → ln-301: task URLs, kanban updates visible in same conversation |
-| **Separate Context** | Task tool return value | Single text message with worker's final output | ln-620 → ln-621: audit findings returned as structured text |
+| **Separate Context** | Agent tool return value | Single text message with worker's final output | ln-620 → ln-621: audit findings returned as structured text |
 | **Status Change** | External state mutation | Coordinator reads updated state (Linear, files, kanban) after worker completes | ln-400 → ln-401: task status changes in Linear, coordinator re-reads |
 
 **Worker output contract:**
@@ -453,7 +453,7 @@ How workers return results depends on the delegation pattern:
 | Delegation | Worker MUST return | Format |
 |------------|-------------------|--------|
 | Shared Context | Result in conversation (implicit) | Free-form — coordinator sees everything |
-| Separate Context (Task tool) | Structured summary as final message | Key data: URLs, counts, verdicts, errors |
+| Separate Context (Agent tool) | Structured summary as final message | Key data: URLs, counts, verdicts, errors |
 | Status Change | Updated external state | Linear status, file changes, kanban updates |
 
 **Anti-Patterns:**
@@ -669,14 +669,14 @@ Phase 3: Orchestration Loop - Delegate to worker → Worker loads FULL descripti
 | 1 | Single LLM call + retrieval | Well-defined task, clear input/output |
 | 2 | Prompt chaining (sequential) | Fixed subtasks, needs validation gates |
 | 3 | Routing (classification) | Distinct categories needing different handling |
-| 4 | Subagents (Task tool) | Parallel independent tasks, only result matters |
+| 4 | Subagents (Agent tool) | Parallel independent tasks, only result matters |
 | 5 | Agent Teams (TeamCreate) | Complex work requiring inter-agent coordination |
 
 **Key insight (Anthropic):** "Deploy agents only when flexibility and model-driven decision-making become essential at scale. Agents demand higher costs and risk compounding errors."
 
 ### Subagents vs Agent Teams Decision
 
-| Dimension | Subagents (Task tool) | Agent Teams (TeamCreate) |
+| Dimension | Subagents (Agent tool) | Agent Teams (TeamCreate) |
 |-----------|----------------------|--------------------------|
 | Context | Own window, results return to caller | Own window, fully independent |
 | Communication | Report back to parent only | Teammates message each other directly |
@@ -686,7 +686,7 @@ Phase 3: Orchestration Loop - Delegate to worker → Worker loads FULL descripti
 | Best for | Focused tasks, only result matters | Multi-stage lifecycle, coordination needed |
 
 **In this repository:**
-- **L1-L3 hierarchy** uses Subagents (Skill tool / Task tool) — orchestrators delegate to workers within single session
+- **L1-L3 hierarchy** uses Subagents (Skill tool / Agent tool) — orchestrators delegate to workers within single session
 - **L0 (ln-1000)** uses Agent Teams (TeamCreate) — lead coordinates independent Story workers across sessions
 
 ### Custom Subagent Configuration (2026)
@@ -949,7 +949,7 @@ Every User Story should be:
 
 5. **Token Efficiency** - Lazy loading (orchestrators: metadata only, workers: full descriptions when needed)
 
-6. **Subagents for isolation, Agent Teams for coordination** - Use Subagents (Task tool) when only result matters. Use Agent Teams (TeamCreate) when workers need inter-agent communication
+6. **Subagents for isolation, Agent Teams for coordination** - Use Subagents (Agent tool) when only result matters. Use Agent Teams (TeamCreate) when workers need inter-agent communication
 
 **When in doubt:** Simple > complex, narrow specialization > monoliths, Subagents > Agent Teams (unless coordination needed).
 

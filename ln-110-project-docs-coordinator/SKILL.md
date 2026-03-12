@@ -221,7 +221,7 @@ ln-110-project-docs-coordinator (this skill)
 - **Actuality verified:** all document facts match current code (paths, functions, APIs, configs exist and are accurate)
 - Summary returned to ln-100
 
-## Meta-Analysis
+## Phase 4: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

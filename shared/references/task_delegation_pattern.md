@@ -1,11 +1,11 @@
-# Task Tool Delegation Pattern
+# Agent Tool Delegation Pattern
 
-Standard pattern for coordinators delegating work through the Task tool with context isolation.
+Standard pattern for coordinators delegating work through the Agent tool with context isolation.
 
 ## Prompt Template
 
 ```javascript
-Task(
+Agent(
   description: "[Action] [item] via [skill-name]",
   prompt: "Execute [skill-name]. Read skill from [skill-name]/SKILL.md. [Context]",
   subagent_type: "general-purpose"
@@ -16,14 +16,14 @@ Task(
 
 1. **Pass the minimum usable context** - prefer IDs or a compact contextStore, not the coordinator's full reasoning trace.
 2. **Fresh eyes review** - worker analyzes the task without coordinator bias.
-3. **Use Task when isolation matters** - audits, focused reviews, and parallel workers benefit most.
+3. **Use Agent when isolation matters** - audits, focused reviews, and parallel workers benefit most.
 4. **Validate outputs explicitly** - coordinator never assumes worker success without checking the returned summary or written artifacts.
 
 ## Output Contract
 
 Choose one output mode per workflow and document it in the coordinator:
 
-- **Compact return** - worker returns a short result directly in the Task response.
+- **Compact return** - worker returns a short result directly in the Agent response.
 - **File-based return** - worker writes a file and returns a compact summary with the file path and key metrics.
 
 For file-based audit workflows, use:
@@ -34,7 +34,7 @@ For file-based audit workflows, use:
 
 | DON'T | DO |
 |------|----|
-| Direct Skill tool without Task wrapper | Use Task with `subagent_type` |
+| Direct Skill tool without Agent wrapper | Use Agent with `subagent_type` |
 | Pass full coordinator reasoning trace | Pass IDs or a compact contextStore |
 | Assume the worker succeeded | Validate returned summary or written artifact |
 | Mix output modes inside one workflow | Pick one output contract per workflow |

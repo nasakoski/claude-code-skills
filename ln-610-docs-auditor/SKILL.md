@@ -80,7 +80,7 @@ mkdir -p {output_dir}
 
 **MANDATORY READ:** Load `shared/references/task_delegation_pattern.md`.
 
-Invoke all workers in parallel via Task tool:
+Invoke all workers in parallel via Agent tool:
 
 | Worker | Invocations | Output |
 |--------|-------------|--------|
@@ -207,7 +207,7 @@ Write consolidated report to `docs/project/docs_audit.md`:
 - Context Validation applied to all findings
 - Consolidated report written to `docs/project/docs_audit.md`
 
-## Meta-Analysis
+## Phase 8: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

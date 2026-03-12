@@ -255,7 +255,7 @@ issues:
 - ln-513 invoked, regression results returned
 - quality_verdict calculated + aggregated results returned
 
-## Meta-Analysis
+## Phase 10: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

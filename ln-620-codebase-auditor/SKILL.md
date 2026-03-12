@@ -127,7 +127,7 @@ Create `{output_dir}` before delegation. Keep prior date folders for history; ne
 | 8 | ln-628-concurrency-auditor | HIGH | Async races, thread safety, TOCTOU, deadlocks, blocking I/O, contention, cross-process races | `628-concurrency.md` |
 | 9 | ln-629-lifecycle-auditor | MEDIUM | Bootstrap, graceful shutdown, resource cleanup | `629-lifecycle.md` |
 
-**Invocation:** All applicable global workers in PARALLEL via Task tool (filter by Phase 2 gate). Pass `contextStore` to each.
+**Invocation:** All applicable global workers in PARALLEL via Agent tool (filter by Phase 2 gate). Pass `contextStore` to each.
 
 ### Phase 5b: Domain-Aware Workers (PARALLEL per domain)
 
@@ -138,7 +138,7 @@ Create `{output_dir}` before delegation. Keep prior date folders for history; ne
 | 3 | ln-623-code-principles-auditor | HIGH | DRY/KISS/YAGNI violations, TODO/FIXME, error handling, DI | `623-principles-{domain}.md` |
 | 4 | ln-624-code-quality-auditor | MEDIUM | Cyclomatic complexity, O(n²), N+1 queries, magic numbers | `624-quality-{domain}.md` |
 
-**Invocation:** IF domain-aware → 2 workers × N domains in PARALLEL (add `domain_mode`, `current_domain` to contextStore). ELSE → 2 workers once for global codebase. All invocations via Task tool in single message.
+**Invocation:** IF domain-aware → 2 workers × N domains in PARALLEL (add `domain_mode`, `current_domain` to contextStore). ELSE → 2 workers once for global codebase. All invocations via Agent tool in single message.
 
 ## Phase 6: Aggregate Results (File-Based)
 
@@ -270,7 +270,7 @@ Worker SKILL.md files contain the detailed audit rules:
 - [ln-628-concurrency-auditor](../ln-628-concurrency-auditor/SKILL.md)
 - [ln-629-lifecycle-auditor](../ln-629-lifecycle-auditor/SKILL.md)
 
-## Meta-Analysis
+## Phase 9: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

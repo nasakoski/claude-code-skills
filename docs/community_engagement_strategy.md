@@ -98,7 +98,7 @@ Track quarterly. Automate via `gh api graphql` where possible.
 | **Announcements** | Releases, breaking changes, milestones | Maintainer only |
 | **Ideas** | Skill proposals, RFCs, workflow improvements | Anyone |
 | **Q&A** | Installation, MCP config, skill usage | Anyone |
-| **Show and Tell** | Projects built with skills, custom workflows | Anyone |
+| **Show and Tell** | Projects, workflows, and tool promotions (see §10) | Anyone |
 | **Polls** | Feature prioritization, community votes | Maintainer |
 | **General** | Everything else | Anyone |
 
@@ -110,3 +110,76 @@ Track quarterly. Automate via `gh api graphql` where possible.
 | **Next: Scale** | 500+ | Structured RFC periods, delegate moderation, quarterly retrospectives | Organic growth loop |
 
 **Current priority:** Break the "silent users" pattern. 14K clones but 3 discussions = feedback loop is missing. Seed content + consistent announcements will open the channel.
+
+## 9. Formatting Best Practices (GitHub Discussions)
+
+### Structural Elements
+
+| Element | Syntax | When to Use |
+|---------|--------|-------------|
+| **Alerts** | `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]` | Key info, migration steps, breaking changes |
+| **Collapsible** | `<details><summary>Title</summary>content</details>` | Secondary details, full file lists, technical specs |
+| **Footnotes** | `text[^1]` + `[^1]: detail` | Technical details that shouldn't interrupt flow |
+| **Tables** | Standard markdown tables | Structured comparisons, feature matrices |
+| **Emoji shortcodes** | `:sparkles:`, `:rocket:`, etc. | Section headers only. GitHub shortcodes, NOT Unicode |
+
+### Announcement Structure Pattern
+
+```
+{emoji} {Title} — imperative, <80 chars
+
+{1-2 sentence hook: what changed + why it matters to users}
+
+> [!IMPORTANT]
+> {Migration note or key action — only if applicable}
+
+### What Changed
+- **{Feature}** — {user-facing impact}. [Link to source](path).
+- ...3-5 bullets max
+
+<details>
+<summary>Detailed changes ({N} files)</summary>
+
+{table or list of specific changes}
+
+</details>
+
+### How to Update
+{install/update commands — skip for informational announcements}
+
+### What's Next
+{1-2 sentences — skip if nothing planned}
+
+---
+*Full changelog: [CHANGELOG.md](...)*
+
+**What do you think?** Let us know in the comments.
+```
+
+### Engagement Patterns
+
+| Pattern | Example | Why |
+|---------|---------|-----|
+| **End with question** | "What do you think? Let us know" | Breaks "silent users" pattern |
+| **Bold: description** | `**Meta-Analysis** — skills now...` | Scannable bullet points |
+| **Link to source** | `[protocol.md](link)` | Users can dive deeper |
+| **Keep brief, link deep** | 3-5 bullets + collapsible details | Respects scanning readers |
+
+## 10. Self-Promotion Policy
+
+**Allowed in:** Show and Tell category only. Tool promotions as comments in other categories are not permitted.
+
+| Rule | Detail |
+|------|--------|
+| **Relevance** | Tool must relate to Claude Code, AI coding, or agentic workflows |
+| **Show, don't tell** | Post must include a real usage example or integration demo — not just "check out my tool" |
+| **One post per tool** | No repeat promotion. Updates to the same tool → edit existing post |
+| **Open-source preferred** | Not required, but OSS tools get more community trust |
+
+### Moderation
+
+| Situation | Action |
+|-----------|--------|
+| Promo comment in non-Show-and-Tell thread | Reply with redirect: "Thanks! Tool posts belong in Show and Tell — please create a dedicated post there" |
+| Account with zero prior engagement posting only self-promo | Remove post, no reply |
+| Post meets all rules above | Welcome it — community ecosystem grows |

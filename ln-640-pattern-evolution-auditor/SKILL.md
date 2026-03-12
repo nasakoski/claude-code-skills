@@ -41,7 +41,7 @@ L2 Coordinator that analyzes implemented architectural patterns against current 
 | ln-645-open-source-replacer | Search OSS replacements for custom modules via MCP Research | Phase 4 |
 | ln-646-project-structure-auditor | Audit physical structure, hygiene, naming conventions | Phase 4 |
 
-All delegations use Task with `subagent_type: "general-purpose"`. Keep Phase 4 workers parallel where inputs are independent; keep ln-641 in Phase 5 because pattern scoring depends on earlier boundary and graph evidence.
+All delegations use Agent with `subagent_type: "general-purpose"`. Keep Phase 4 workers parallel where inputs are independent; keep ln-641 in Phase 5 because pattern scoring depends on earlier boundary and graph evidence.
 
 ## Workflow
 
@@ -182,31 +182,31 @@ Use the shared domain discovery pattern to set `domain_mode` and `all_domains`. 
 IF domain_mode == "domain-aware":
   # Per-domain invocation of ln-642, ln-643, ln-644
   FOR EACH domain IN domains (parallel):
-    Task(ln-642-layer-boundary-auditor)
+    Agent(ln-642-layer-boundary-auditor)
       Input: architecture_path, codebase_root, skip_violations, output_dir,
              domain_mode="domain-aware", current_domain=domain.name, scan_path=domain.path
-    Task(ln-643-api-contract-auditor)
+    Agent(ln-643-api-contract-auditor)
       Input: pattern="API Contracts", locations=[domain.path], bestPractices, output_dir,
              domain_mode="domain-aware", current_domain=domain.name, scan_path=domain.path
-    Task(ln-644-dependency-graph-auditor)
+    Agent(ln-644-dependency-graph-auditor)
       Input: architecture_path, codebase_root, output_dir,
              domain_mode="domain-aware", current_domain=domain.name, scan_path=domain.path
-    Task(ln-645-open-source-replacer)
+    Agent(ln-645-open-source-replacer)
       Input: codebase_root, tech_stack, output_dir,
              domain_mode="domain-aware", current_domain=domain.name, scan_path=domain.path
-    Task(ln-646-project-structure-auditor)
+    Agent(ln-646-project-structure-auditor)
       Input: codebase_root, output_dir,
              domain_mode="domain-aware", current_domain=domain.name, scan_path=domain.path
 ELSE:
-  Task(ln-642-layer-boundary-auditor)
+  Agent(ln-642-layer-boundary-auditor)
     Input: architecture_path, codebase_root, skip_violations, output_dir
-  Task(ln-643-api-contract-auditor)
+  Agent(ln-643-api-contract-auditor)
     Input: pattern="API Contracts", locations=[service_dirs, api_dirs], bestPractices, output_dir
-  Task(ln-644-dependency-graph-auditor)
+  Agent(ln-644-dependency-graph-auditor)
     Input: architecture_path, codebase_root, output_dir
-  Task(ln-645-open-source-replacer)
+  Agent(ln-645-open-source-replacer)
     Input: codebase_root, tech_stack, output_dir
-  Task(ln-646-project-structure-auditor)
+  Agent(ln-646-project-structure-auditor)
     Input: codebase_root, output_dir
 
 # Apply layer deductions from ln-642 return values (score + issue counts)
@@ -219,7 +219,7 @@ ELSE:
 # ln-641 stays GLOBAL (patterns are cross-cutting, not per-domain)
 # Only VERIFIED patterns from Phase 1d (skip EXCLUDED)
 FOR EACH pattern IN catalog WHERE pattern.status == "VERIFIED":
-  Task(ln-641-pattern-analyzer)
+  Agent(ln-641-pattern-analyzer)
     Input: pattern, locations, bestPractices, output_dir
 ```
 
@@ -490,7 +490,7 @@ Append one row to `docs/project/.audit/results_log.md` with: Skill=`ln-640`, Met
 - Trend analysis completed (current vs previous scores compared)
 - Summary report output
 
-## Meta-Analysis
+## Phase 11: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

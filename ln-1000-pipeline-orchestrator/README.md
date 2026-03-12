@@ -11,7 +11,7 @@ For full implementation spec (all phases, pseudocode, error handling), see `SKIL
 Three levels of agent execution, each with different isolation and lifecycle:
 
 ```
-Level 1: TeamCreate Teammate          Level 2: Skill() call             Level 3: Task() subagent
+Level 1: TeamCreate Teammate          Level 2: Skill() call             Level 3: Agent() subagent
 ─────────────────────────────          ──────────────────                ────────────────────────
 Spawned by ln-1000 Lead               Called WITHIN teammate            Spawned BY a coordinator skill
 Has own conversation context           Runs in caller's context          Has ISOLATED context
@@ -20,7 +20,7 @@ Lives until shutdown_request           Lives within caller's turn        Lives u
 One per stage (fresh each time)        No overhead, no isolation         Full isolation, parallel-capable
 ```
 
-**Example chain:** ln-1000 spawns teammate (L1) → teammate calls `Skill("ln-400")` (L2, inline) → ln-400 calls `Task("ln-401...")` (L3, isolated subagent).
+**Example chain:** ln-1000 spawns teammate (L1) → teammate calls `Skill("ln-400")` (L2, inline) → ln-400 calls `Agent("ln-401...")` (L3, isolated subagent).
 
 ## Pipeline Flow with I/O
 
@@ -85,10 +85,10 @@ Plan is NOT passed to Execute Worker. It's a gate check only — Lead evaluates,
 
 ```
 ln-1000 Lead
-  └─ Task(name: "story-{id}-decompose", team: "pipeline-...")     ← L1: teammate
+  └─ Agent(name: "story-{id}-decompose", team: "pipeline-...")     ← L1: teammate
        └─ Skill("ln-300-task-coordinator")                  ← L2: inline
-            ├─ Task("ln-301-task-creator ...")               ← L3: subagent (creates tasks)
-            └─ Task("ln-302-task-replanner ...")             ← L3: subagent (if replan needed)
+            ├─ Agent("ln-301-task-creator ...")               ← L3: subagent (creates tasks)
+            └─ Agent("ln-302-task-replanner ...")             ← L3: subagent (if replan needed)
 ```
 
 | Aspect | Detail |
@@ -104,7 +104,7 @@ ln-1000 Lead
 
 ```
 ln-1000 Lead
-  └─ Task(name: "story-{id}-validate", team: "pipeline-...")     ← L1: teammate
+  └─ Agent(name: "story-{id}-validate", team: "pipeline-...")     ← L1: teammate
        └─ Skill("ln-310-multi-agent-validator")             ← L2: inline
             ├─ Agent("codex-review", background=true)       ← external agent (Codex CLI)
             ├─ Agent("gemini-review", background=true)      ← external agent (Gemini CLI)
@@ -126,18 +126,18 @@ ln-1000 Lead
 
 ```
 ln-1000 Lead
-  └─ Task(name: "story-{id}-implement", team: "pipeline-...")     ← L1: teammate
+  └─ Agent(name: "story-{id}-implement", team: "pipeline-...")     ← L1: teammate
        └─ Skill("ln-400-story-executor")                    ← L2: inline
             │
             │  Task loop (per task, priority: To Review > To Rework > Todo):
             │
-            ├─ Task("ln-401-task-executor {taskId}")        ← L3: subagent (writes code)
+            ├─ Agent("ln-401-task-executor {taskId}")        ← L3: subagent (writes code)
             │    └─ Skill("ln-402-task-reviewer {taskId}")  ← L2: inline in ln-400 (reviews + commits)
             │
-            ├─ Task("ln-403-task-rework {taskId}")          ← L3: subagent (fixes review issues)
+            ├─ Agent("ln-403-task-rework {taskId}")          ← L3: subagent (fixes review issues)
             │    └─ Skill("ln-402-task-reviewer {taskId}")  ← L2: inline in ln-400
             │
-            └─ Task("ln-404-test-executor {taskId}")        ← L3: subagent (runs test tasks)
+            └─ Agent("ln-404-test-executor {taskId}")        ← L3: subagent (runs test tasks)
                  └─ Skill("ln-402-task-reviewer {taskId}")  ← L2: inline in ln-400
 ```
 
@@ -160,19 +160,19 @@ ln-1000 Lead
 
 ```
 ln-1000 Lead
-  └─ Task(name: "story-{id}-qa", team: "pipeline-...")     ← L1: teammate
+  └─ Agent(name: "story-{id}-qa", team: "pipeline-...")     ← L1: teammate
        └─ Skill("ln-500-story-quality-gate")                ← L2: inline
             ├─ Skill("ln-510-quality-coordinator")          ← L2: inline
-            │    ├─ Task("ln-511-code-quality-checker")     ← L3: subagent (metrics + static analysis)
-            │    ├─ Task("ln-512-tech-debt-cleaner")        ← L3: subagent (auto-fixes)
-            │    ├─ Task("ln-513-regression-checker")       ← L3: subagent (runs tests)
+            │    ├─ Agent("ln-511-code-quality-checker")     ← L3: subagent (metrics + static analysis)
+            │    ├─ Agent("ln-512-tech-debt-cleaner")        ← L3: subagent (auto-fixes)
+            │    ├─ Agent("ln-513-regression-checker")       ← L3: subagent (runs tests)
             │    ├─ Agent("codex-review", background)       ← external agent
             │    └─ Agent("gemini-review", background)      ← external agent
             │
             └─ Skill("ln-520-test-planner")                 ← L2: inline (skipped if fast-track)
-                 ├─ Task("ln-521-test-researcher")          ← L3: subagent
-                 ├─ Task("ln-522-manual-tester")            ← L3: subagent
-                 └─ Task("ln-523-auto-test-planner")        ← L3: subagent
+                 ├─ Agent("ln-521-test-researcher")          ← L3: subagent
+                 ├─ Agent("ln-522-manual-tester")            ← L3: subagent
+                 └─ Agent("ln-523-auto-test-planner")        ← L3: subagent
 ```
 
 | Aspect | Detail |
@@ -191,9 +191,9 @@ ln-1000 Lead
 ```
   Lead                              Teammate                        Skill (inside teammate)
    │                                   │                                   │
-   ├─ Task(name, team)────────────────→│ SPAWNED                           │
+   ├─ Agent(name, team)───────────────→│ SPAWNED                           │
    │                                   ├─ Skill("ln-{NNN}")──────────────→│
-   │                                   │                                   ├─ Task() subagents...
+   │                                   │                                   ├─ Agent() subagents...
    │                                   │                                   ├─ work...
    │                                   │                                   ├─ done
    │                                   │←──────────────────────────────────┤

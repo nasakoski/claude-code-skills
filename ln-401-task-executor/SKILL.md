@@ -125,6 +125,8 @@ Step 6: Finish
 
 **Context:** Self-assessment before To Review reduces review round-trips and catches obvious issues early.
 
+**MANDATORY READ:** Load `shared/references/code_efficiency_criterion.md` — self-check before submission.
+
 Before setting To Review, verify all items:
 
 | # | Check | Verify |
@@ -138,6 +140,7 @@ Before setting To Review, verify all items:
 | 6 | **Pattern reuse** | New utilities checked against existing codebase; no duplicate patterns introduced |
 | 7 | **Architecture guard** | Cascade depth <= 2 (leaf functions); no hidden writes in read-named functions; no service chains >= 3 in leaf functions (orchestrator imports exempt) |
 | 8 | **Destructive op safety** | If task has "Destructive Operation Safety" section: (1) backup step executed/planned before destructive code, (2) rollback mechanism exists in code, (3) environment guard present, (4) preview/dry-run evidence attached or referenced |
+| 9 | **Code efficiency** | No unnecessary intermediates, verbose patterns replaced by language idioms, no boilerplate framework handles (per `shared/references/code_efficiency_criterion.md`) |
 
 **MANDATORY READ:** Load `shared/references/destructive_operation_safety.md` for severity classification and safety requirements.
 

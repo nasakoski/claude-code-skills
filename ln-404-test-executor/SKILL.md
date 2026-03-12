@@ -47,7 +47,7 @@ Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 3) **Read environment docs:** **Read `docs/project/infrastructure.md`** — get server IPs, ports, service endpoints. **Read `docs/project/runbook.md`** — understand test environment setup, Docker commands, test execution prerequisites. Use exact commands from runbook.
 4) **Validate plan:** Check Priority ≥15 coverage and Usefulness Criteria; ensure focus on business flows (no infra-only tests).
 5) **Start work:** Set task In Progress (Linear: update_issue; File: Edit status line); move in kanban.
-6) **Implement & run:** Author/update tests per plan; reuse existing fixtures/helpers; run tests; fix failing existing tests; update infra/doc sections as required.
+6) **Implement & run:** **MANDATORY READ:** `shared/references/code_efficiency_criterion.md` — Author/update tests per plan; reuse existing fixtures/helpers; run tests; fix failing existing tests; update infra/doc sections as required. Before handoff, verify 3 efficiency self-checks (especially: reuse fixtures instead of duplicating setup).
 7) **Complete:** Ensure counts/priority still within limits; set task To Review; move in kanban; add comment summarizing coverage, commands run, and any deviations.
 
 ## Critical Rules

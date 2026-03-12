@@ -379,7 +379,7 @@ After ln-200-scope-decomposer completes:
 
 ---
 
-## Meta-Analysis
+## Phase 6: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

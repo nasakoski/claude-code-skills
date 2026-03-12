@@ -94,7 +94,8 @@ Files to review:
 | 10 | AC | 4 criteria validation |
 | 11 | Side-effects | Pre-existing bugs in touched files |
 | 12 | Destructive ops | Safety guards from destructive_operation_safety.md (loaded in step 4) |
-| 13 | CI Checks | lint/typecheck pass per ci_tool_detection.md |
+| 13 | Algorithm correctness | Loop invariants, collection keys, unbounded ops, shared state leaks |
+| 14 | CI Checks | lint/typecheck pass per ci_tool_detection.md |
 
 Expected output: Verdict (Done/To Rework) + Issues + Fix actions
 ```
@@ -169,7 +170,9 @@ Step 9: Update & Commit
    - Naming: follows project's existing convention (check 3+ similar files). No abbreviations except domain terms. No single-letter variables (except loops).
    - Entity Leakage: ORM entities must NOT be returned directly from API endpoints. Use DTOs/response models. (BLOCKER for auth/payment, CONCERN for others) <!-- Defense-in-depth: also checked by ln-511 ARCH-DTO- -->
    - Method Signature: no boolean flag parameters in public methods (use enum/options object); no more than 5 parameters without DTO. (NIT) <!-- Defense-in-depth: also checked by ln-511 MNT-SIG- -->
+   - **Algorithm correctness (loops, collections, boundaries):** Does `break`/`continue`/`return` inside loops handle ALL matching items, not just the first? Do dict/set comprehensions handle duplicate keys correctly (last-wins may lose data)? Any `list(query.all())` or unbounded loop on user-controlled data without LIMIT? Any mutable shared state (connection pool GUCs, session globals) that leaks across requests? (BLOCKER if data loss/corruption, CONCERN otherwise) <!-- Prefix: ALGO- -->
    - **Simplicity criterion (task-scoped):** **MANDATORY READ:** `references/simplicity_criterion.md` — Check MNT-KISS-SCOPE (effort-S task with 3+ new abstractions) and MNT-YAGNI-SCOPE (refactoring added new dependencies or created 2x more files than modified). Advisory CONCERNs only. <!-- Defense-in-depth: also checked by ln-511 KISS/YAGNI -->
+   - **Code efficiency (task-scoped):** Spot-check 2-3 key functions from diff for unnecessary intermediates, verbose patterns where idioms exist, or boilerplate framework handles. If found → CONCERN: `MNT-EFF-SCOPE: {pattern} in {file}`. Advisory only. (`shared/references/code_efficiency_criterion.md`) <!-- Defense-in-depth: executor self-checks via same reference -->
    - Docs: if public API changed → API docs updated. If new env var → .env.example updated. If new concept → README/architecture doc updated.
    - Tests updated/run: for impl/refactor ensure affected tests adjusted; for test tasks verify risk-based limits and priority (≤15) per planner template.
 5) **AC Validation (MANDATORY for implementation tasks):**

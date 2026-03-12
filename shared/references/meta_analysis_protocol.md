@@ -20,11 +20,13 @@ Output to chat — visible to the user.
 - Did output meet the stated goal?
 - Scope coverage: were all required areas addressed?
 - Any critical gaps or incomplete deliverables?
+- What was missed that should have been caught? (blind spots, edge cases, scope omissions)
 
 ### 2. Worker / Subskill Effectiveness
 | Worker/Subskill | Status | Result |
 |----------------|--------|--------|
 | {name} | ✓ OK / ⚠ Degraded / ✗ Failed | {brief result} |
+- Bottleneck: {slowest worker/stage, if applicable}
 
 ### 3. Failure Points
 - Errors, timeouts, crashes, retries during this run
@@ -32,7 +34,15 @@ Output to chat — visible to the user.
 - Manual interventions required
 
 ### 4. Improvement Candidates
-Top 1-3 actionable items for next run (NOT one-off issues).
+Top 1-3 **focus areas** for next run — tied to specific weaknesses of THIS run (NOT generic).
+Format: `{weakness observed} → {concrete action for next run}`
+IF trend data exists (`quality-trend.md` or `results_log.md`): note direction (improving/stable/declining).
+
+### 5. Assumption Audit
+Compare actual outcome against pre-execution expectations (Goal Articulation Gate):
+- Did the stated REAL GOAL match the actual deliverable?
+- What surprised you — what wasn't anticipated in planning?
+- One sentence: what would you change knowing what you know now?
 
 ## Output Format by Skill Type
 
@@ -44,7 +54,8 @@ Top 1-3 actionable items for next run (NOT one-off issues).
 |------------|--------|----------|
 | {plan/tasks/epics} | ✓/⚠/✗ | {N}/{total} items |
 - Failure points: {list or "None"}
-- Improvement: {1-2 items or "None"}
+- Improvement: {1-2 focus areas or "None"}
+- Assumptions: {what matched vs what surprised}
 ```
 
 ### review-coordinator — with agents
@@ -56,7 +67,9 @@ Top 1-3 actionable items for next run (NOT one-off issues).
 | {name} | {N} | {M} | {%} | {areas found} |
 - Overlap: {N} duplicate findings
 - Blind spots: {areas with 0 findings}
-- Improvement: {1-2 items or "None"}
+- Pipeline coverage gaps: see `shared/references/detection_efficacy_audit.md` §Pipeline Coverage Map
+- Improvement: {1-2 focus areas or "None"}
+- Assumptions: {what matched vs what surprised}
 ```
 
 ### review-coordinator — workers only
@@ -67,7 +80,8 @@ Top 1-3 actionable items for next run (NOT one-off issues).
 |--------|----------|----------|------|
 | {name} | {N} | {M} | {%} |
 - Coverage gaps: {areas with 0 findings or "None"}
-- Improvement: {1-2 items or "None"}
+- Improvement: {1-2 focus areas or "None"}
+- Assumptions: {what matched vs what surprised}
 ```
 
 ### execution-orchestrator
@@ -80,7 +94,9 @@ Top 1-3 actionable items for next run (NOT one-off issues).
 ### Problems & Limitations
 {infra issues table or "None detected."}
 ### Improvement Candidates
-{numbered list or "None — ran clean."}
+{numbered list of focus areas or "None — ran clean."}
+### Assumptions
+{what matched vs what surprised}
 ```
 
 ### optimization-coordinator
@@ -91,7 +107,8 @@ Top 1-3 actionable items for next run (NOT one-off issues).
 |--------|---------|-----------|--------|
 | {name} | {N} | {M} | {description} |
 - Failure points: {list or "None"}
-- Improvement: {1-2 items or "None"}
+- Improvement: {1-2 focus areas or "None"}
+- Assumptions: {what matched vs what surprised}
 ```
 
 ## Issue Suggestion Triggers (patterns across 3+ runs)
@@ -103,10 +120,11 @@ Top 1-3 actionable items for next run (NOT one-off issues).
 | Same blind spot repeated | Goal too narrow | Broaden scope in prompt |
 | Failure points > 2 per run | Infra or config issue | Fix root cause |
 | Same improvement candidate repeated | Not actionable in current design | Create GitHub issue |
+| Improvement implemented but no trend change | Fix ineffective or measured wrong | Review metric validity |
 
 If pattern is reproducible:
 > Consider creating issue: https://github.com/levnikolaevich/claude-code-skills/issues
 
 ---
-**Version:** 2.0.0
+**Version:** 3.0.0
 **Last Updated:** 2026-03-12

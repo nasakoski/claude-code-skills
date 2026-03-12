@@ -625,7 +625,7 @@ If any invoked skill fails:
 - **User confirmation required:** Pre-flight check and explicit approval before any file creation
 - **NO_CODE Rule:** All generated documents use tables/ASCII/links; no code blocks >5 lines
 
-## Meta-Analysis
+## Phase 6: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

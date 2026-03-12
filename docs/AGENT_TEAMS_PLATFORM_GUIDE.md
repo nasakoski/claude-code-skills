@@ -11,7 +11,7 @@ Based on: [Anthropic Agent Teams docs](https://code.claude.com/docs/en/agent-tea
 
 ## 1. Subagents vs Agent Teams
 
-| Dimension | Subagents (Task tool) | Agent Teams (TeamCreate) |
+| Dimension | Subagents (Agent tool) | Agent Teams (TeamCreate) |
 |-----------|----------------------|--------------------------|
 | Context | Own window, results return to caller | Own window, fully independent |
 | Communication | Report back to parent only | Teammates message each other directly |

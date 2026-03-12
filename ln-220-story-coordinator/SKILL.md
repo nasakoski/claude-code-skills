@@ -587,7 +587,7 @@ Mark each as in_progress when starting, completed when done.
 
 ---
 
-## Meta-Analysis
+## Phase 8: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

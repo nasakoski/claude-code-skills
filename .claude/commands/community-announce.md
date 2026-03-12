@@ -60,7 +60,11 @@ Structure the body in this format (use GitHub emoji shortcodes, not Unicode):
 
 ---
 *Full changelog: [CHANGELOG.md](https://github.com/levnikolaevich/claude-code-skills/blob/master/CHANGELOG.md)*
+
+**What do you think?** Let us know in the comments.
 ```
+
+**Formatting:** See `docs/community_engagement_strategy.md` Section 9 for GitHub-native elements (alerts, collapsible sections, footnotes) and structural patterns.
 
 **Tone (from strategy):**
 - Declarative: "We shipped X because Y. Here's how to use it."
@@ -71,7 +75,19 @@ Structure the body in this format (use GitHub emoji shortcodes, not Unicode):
 - Link to specific files/skills when mentioning them
 - If breaking change: include migration steps with clear before/after
 
-## Phase 4: Review and Publish
+## Phase 4: Fact-Check
+
+Before presenting to user, verify every verifiable claim in the draft:
+
+1. **Commands & code blocks** — grep `README.md` for each command/snippet in the draft. If command not found in README → replace with the actual command from README. Never invent install/update commands.
+2. **File paths & links** — verify each linked file exists: `ls {path}`. Remove or fix broken links.
+3. **Numbers** — verify counts mentioned (e.g., "32 skills updated") against actual data: `git diff --name-only | grep -c SKILL.md` or `ls -d ln-*/SKILL.md | wc -l`.
+4. **Feature descriptions** — re-read the key source file (from Phase 1 step 7) and confirm the draft accurately describes what changed. No hallucinated capabilities.
+5. **Skill/tool names** — verify names match actual directory/file names in the repo. No `ln-XXX` codes in user-facing text (replace with descriptive names).
+
+**Gate:** If any check fails, fix the draft before proceeding.
+
+## Phase 5: Review and Publish
 
 Present the composed announcement title + body to the user. **Wait for explicit approval before publishing.**
 
@@ -96,7 +112,7 @@ Report the discussion URL to the user.
 
 **Note:** Pinning is not available via API — remind the user to pin manually in GitHub UI if the announcement is important.
 
-## Phase 5: Cross-Post (Optional)
+## Phase 6: Cross-Post (Optional)
 
 If the announcement is a release or breaking change, suggest:
 1. Create a matching GitHub Release if a version tag exists: `gh release create vX.Y.Z --notes "See discussion: URL"`

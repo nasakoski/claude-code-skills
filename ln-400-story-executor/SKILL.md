@@ -75,11 +75,11 @@ Before delegating a Todo task, verify its plan against current codebase:
 2. **Process To Review / To Rework first** (always sequential, one at a time).
 3. **For each Parallel Group** (ascending order):
    - **Single task in group:** Sequential execution (same as current behavior):
-     1. Delegate to worker via Task tool
+     1. Delegate to worker via Agent tool
      2. After executor completes → immediately invoke ln-402 on same task
      3. Reload metadata (task count may change — ln-402 creates [BUG] tasks)
-   - **Multiple tasks in group:** Parallel execution via Task tool subagents:
-     1. Spawn all tasks in group concurrently (multiple Task tool calls in single message)
+   - **Multiple tasks in group:** Parallel execution via Agent tool subagents:
+     1. Spawn all tasks in group concurrently (multiple Agent tool calls in single message)
      2. Wait for ALL subagents to complete
      3. Review each task sequentially via ln-402 (one at a time — review cannot be parallelized)
      4. Reload metadata after all reviews
@@ -97,7 +97,7 @@ When all tasks Done:
 
 ## Worker Invocation
 
-> **CRITICAL:** Executors (ln-401/ln-403/ln-404) use Task tool for context isolation. Reviewer (ln-402) runs inline via Skill tool in main flow.
+> **CRITICAL:** Executors (ln-401/ln-403/ln-404) use Agent tool for context isolation. Reviewer (ln-402) runs inline via Skill tool in main flow.
 
 | Status | Worker | Notes |
 |--------|--------|-------|
@@ -107,9 +107,9 @@ When all tasks Done:
 | Todo (impl) | ln-401-task-executor | Then immediate ln-402 on same task |
 **Prompt templates:**
 
-Executors (ln-401/ln-403/ln-404) — Task tool (isolated context):
+Executors (ln-401/ln-403/ln-404) — Agent tool (isolated context):
 ```
-Task(description: "[Action] task {ID}",
+Agent(description: "[Action] task {ID}",
      prompt: "Execute {skill-name} for task {ID}. Read skill from {skill-name}/SKILL.md.",
      subagent_type: "general-purpose")
 ```
@@ -135,14 +135,14 @@ Before each task, add BOTH steps:
 6. **Story status:** ln-400 handles Todo→In Progress→**To Review**. NEVER set Story to Done — only the quality gate (5XX) can do that after full quality check
 7. **Commit policy:** Only ln-402 commits code. Workers (ln-401/ln-403/ln-404) leave changes uncommitted for ln-402 to review and commit.
 8. **[BUG] tasks:** ln-402 may create new [BUG] tasks mid-review. After metadata reload, reprioritize — new tasks processed in next loop iteration.
-9. **Parallel groups:** Tasks in same group execute concurrently via Task tool subagents. Reviews (ln-402) remain sequential. If `**Parallel Group:**` missing on any task, fall back to fully sequential execution.
+9. **Parallel groups:** Tasks in same group execute concurrently via Agent tool subagents. Reviews (ln-402) remain sequential. If `**Parallel Group:**` missing on any task, fall back to fully sequential execution.
 
 ## Anti-Patterns
 - ❌ Running `mypy`/`ruff`/`pytest` directly instead of skill invocation
 - ❌ "Minimal quality check" then asking "Want me to run full skill?"
 - ❌ Skipping/batching reviews
 - ❌ Self-setting Done status without ln-402
-- ❌ Executors bypassing Task tool subagent (ln-402 is exception — runs inline)
+- ❌ Executors bypassing Agent tool subagent (ln-402 is exception — runs inline)
 
 **ZERO TOLERANCE:** If running commands directly instead of invoking skills, STOP and correct.
 
@@ -176,7 +176,7 @@ When invoked in Plan Mode (agent cannot execute), generate execution plan instea
 - Story set to **To Review** (NOT Done); kanban updated
 - Final report with task counts and recommended next step: quality gate
 
-## Meta-Analysis
+## Phase 6: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

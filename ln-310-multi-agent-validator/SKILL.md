@@ -199,7 +199,7 @@ Mark each `[x]` when verified. ALL must be checked. If ANY unchecked → go back
 - [ ] MCP Ref research executed OR N/A (Phase 3)
 - [ ] Corrections applied to artifacts OR none needed (Phase 3)
 
-## Meta-Analysis
+## Phase 7: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

@@ -113,7 +113,7 @@ ln-520-test-planner (Orchestrator)
 
 ## Worker Invocation (MANDATORY)
 
-> **CRITICAL:** All delegations use Task tool with `subagent_type: "general-purpose"` for context isolation.
+> **CRITICAL:** All delegations use Agent tool with `subagent_type: "general-purpose"` for context isolation.
 
 | Phase | Worker | Purpose |
 |-------|--------|---------|
@@ -123,13 +123,13 @@ ln-520-test-planner (Orchestrator)
 
 **Prompt template:**
 ```
-Task(description: "[Phase N] test planning via ln-52X",
+Agent(description: "[Phase N] test planning via ln-52X",
      prompt: "Execute ln-52X-{worker}. Read skill from ln-52X-{worker}/SKILL.md. Story: {storyId}",
      subagent_type: "general-purpose")
 ```
 
 **Anti-Patterns:**
-- ❌ Direct Skill tool invocation without Task wrapper
+- ❌ Direct Skill tool invocation without Agent wrapper
 - ❌ Running web searches directly (delegate to ln-521)
 - ❌ Creating bash test scripts directly (delegate to ln-522)
 - ❌ Creating test tasks directly (delegate to ln-523)
@@ -154,7 +154,7 @@ Task(description: "[Phase N] test planning via ln-52X",
 
 **Output:** Summary with phase results + test task URL
 
-## Meta-Analysis
+## Phase 6: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

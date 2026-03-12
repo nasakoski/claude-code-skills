@@ -1,6 +1,6 @@
 # Worker Prompt Templates
 
-Templates for spawning story-workers via Task tool with team_name.
+Templates for spawning story-workers via Agent tool with team_name.
 
 ## Message Format Contract
 
@@ -35,7 +35,7 @@ Workers write checkpoint files after significant steps to enable crash recovery.
 {
   "storyId": "{storyId}",
   "stage": {N},
-  "agentId": "<your agent ID from Task context>",
+  "agentId": "<your agent ID from Agent context>",
   "tasksCompleted": ["<completed task IDs>"],
   "tasksRemaining": ["<remaining task IDs>"],
   "lastAction": "<description of last completed action>",
@@ -59,7 +59,7 @@ Workers write checkpoint files after significant steps to enable crash recovery.
 ## Spawn Template
 
 ```
-Task(
+Agent(
   name: "story-{storyId}-{stage}",  # stage = decompose | validate | implement | qa
   team_name: "pipeline-{date}",
   model: "opus",                     # All stages use Opus. Effort differentiated via prompt.
@@ -79,7 +79,7 @@ Task(
 
 **Note:** ln-1000 creates worktree in Phase 3.4 — all workers start in `feature/*` branch. Workers self-detect via `git branch --show-current` (per `shared/references/git_worktree_fallback.md`). ln-400 skips its own worktree creation when already on `feature/*`. `PIPELINE_DIR` = absolute path to `{project_root}/.pipeline` (set by lead in Phase 3.2).
 
-**Worker name:** The `{workerName}` variable in templates = the `name` parameter from Task() spawn. Workers derive it from prompt context: `story-{storyId}-{stage}` where stage = `decompose` | `validate` | `implement` | `qa` (or `-retry` / `-fix{N}` suffix for retries/rework).
+**Worker name:** The `{workerName}` variable in templates = the `name` parameter from Agent() spawn. Workers derive it from prompt context: `story-{storyId}-{stage}` where stage = `decompose` | `validate` | `implement` | `qa` (or `-retry` / `-fix{N}` suffix for retries/rework).
 
 ## Stage 0: Task Planning (ln-300)
 
@@ -127,7 +127,7 @@ Step 4b: Report ERROR to lead (if Step 2 failed):
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 0 for {storyId}" after processing your report.
   - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
-  - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
+  - ON shutdown_request (no explicit ACK): Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
@@ -196,7 +196,7 @@ Step 4: Report to lead (use EXACT format per verdict):
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 1 for {storyId}" after processing your report.
   - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
-  - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
+  - ON shutdown_request (no explicit ACK): Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
@@ -267,7 +267,7 @@ Step 4b: Report ERROR to lead (if Step 2 failed):
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 2 for {storyId}" after processing your report.
   - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
-  - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
+  - ON shutdown_request (no explicit ACK): Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
@@ -340,7 +340,7 @@ Step 4: Report to lead (use EXACT format per verdict):
 Step 5: Wait for ACK from lead:
   Lead will send "ACK Stage 3 for {storyId}" after processing your report.
   - ON ACK received: Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve next shutdown_request
-  - ON shutdown_request (no explicit ACK): Write done.flag -> approve (implicit ACK)
+  - ON shutdown_request (no explicit ACK): Write {PIPELINE_DIR}/worker-{workerName}-done.flag -> approve (implicit ACK)
   - ON lead probe ("Status check"): Respond with status, then retry your report ONCE
   After 1 retry without ACK: approve shutdown regardless (heartbeat handles final recovery).
 NEVER read ~/.claude/ files. NEVER use sleep loops. Messages arrive automatically.
@@ -366,6 +366,29 @@ Workers NEVER receive follow-up stage commands. One stage = one worker lifecycle
 
 **Why:** Long-lived workers accumulate conversation context across stages (validation + task executions + reviews). By Stage 3, context is exhausted. Fresh workers start with clean context containing only stage-specific minimum.
 
+## Subagent Mode Modifications
+
+When `agent_teams_mode == "subagents"`, derive worker prompts from Stage templates above with these changes:
+
+1. **Remove Step 5** (ACK/shutdown) entirely — subagent returns result directly to lead
+2. **Replace SendMessage** in Steps 4a/4b with plain text output (the text becomes the Agent() return value). Use identical content strings — lead parses them by the same regex
+3. **Remove team preamble** — replace `You are a pipeline worker in team "pipeline-{date}".` with `You are a pipeline worker.`
+4. **Remove communication rules** — subagents have no inbox, no SendMessage, no shutdown protocol. Remove the `NEVER read ~/.claude/` block
+5. **Remove checkpoint done.flag writes** — subagents don't use done.flag (lead tracks completion via Agent() return)
+
+**Spawn template for subagent mode:**
+```
+Agent(
+  name: "story-{storyId}-{stage}",
+  model: "opus",
+  mode: "bypassPermissions",
+  subagent_type: "general-purpose",
+  prompt: <modified template per rules above>
+)
+```
+
+**Worker name convention:** Same as teams mode (see table above).
+
 ---
-**Version:** 2.0.0
-**Last Updated:** 2026-03-09
+**Version:** 2.1.0
+**Last Updated:** 2026-03-12

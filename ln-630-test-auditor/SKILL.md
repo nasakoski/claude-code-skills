@@ -103,7 +103,7 @@ Detect `domain_mode` and `all_domains` with the shared pattern. This coordinator
 **Invocation (4 workers in PARALLEL):**
 ```javascript
 FOR EACH worker IN [ln-631, ln-632, ln-633, ln-635]:
-  Task(description: "Test audit via " + worker,
+  Agent(description: "Test audit via " + worker,
        prompt: "Execute " + worker + ". Read skill. Context: " + JSON.stringify(contextStore),
        subagent_type: "general-purpose")
 ```
@@ -125,12 +125,12 @@ IF domain_mode == "domain-aware":
       domain_mode: "domain-aware",
       current_domain: { name: domain.name, path: domain.path }
     }
-    Task(description: "Test audit coverage " + domain.name + " via ln-634",
+    Agent(description: "Test audit coverage " + domain.name + " via ln-634",
          prompt: "Execute ln-634-test-coverage-auditor. Read skill. Context: " + JSON.stringify(domain_context),
          subagent_type: "general-purpose")
 ELSE:
   // Fallback: invoke once for entire codebase (global mode)
-  Task(description: "Test audit coverage via ln-634",
+  Agent(description: "Test audit coverage via ln-634",
        prompt: "Execute ln-634-test-coverage-auditor. Read skill. Context: " + JSON.stringify(contextStore),
        subagent_type: "general-purpose")
 ```
@@ -296,7 +296,7 @@ Each worker:
 - Report written to `docs/project/test_audit.md`
 - Summary returned to user
 
-## Meta-Analysis
+## Phase 6: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

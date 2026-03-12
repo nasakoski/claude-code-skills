@@ -168,6 +168,7 @@ Read every SKILL.md in scope. Check ALL dimensions across ALL skills in scope. P
 - Tables must add information beyond adjacent text, templates, or formulas — no restating
 - 1:1 mapping tables (each row = one input → one output, no conditions) → convert to inline list
 - Tables echoing template section names/structure → reference the template, don't duplicate
+- **Tiebreaker re-read:** After micro-checks above, re-read each changed section end-to-end. If same instruction can be expressed in fewer words without losing agent actionability — compress. Apply code_efficiency_criterion tiebreaker to skill text: among equivalent formulations, choose shorter
 
 ### D6: Stale Artifacts
 - No references to removed/renamed skills or files

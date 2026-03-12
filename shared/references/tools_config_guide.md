@@ -10,7 +10,7 @@
    a. FOR EACH tool category → run Detection (per section in template)
    b. Write docs/tools_config.md with detected values
    c. WARN user: "Created docs/tools_config.md. Review and adjust if needed."
-3. Extract required settings (task_provider, research_chain, agents, git)
+3. Extract required settings (task_provider, research_chain, agents, agent_teams_mode, git)
 4. Use provider values to select operations (per storage_mode_detection.md)
 ```
 
@@ -24,6 +24,7 @@
 | **Research** | Provider (ref/context7/websearch), Fallback chain |
 | **File Editing** | Provider (hashline-edit/standard) |
 | **External Agents** | Agent statuses (codex, gemini) |
+| **Agent Teams** | Mode (teams/subagents), Status, Env var presence |
 | **Git** | Worktree (available/unavailable), Branch strategy |
 
 ## Runtime Error Handling
@@ -56,6 +57,7 @@ When creating tools_config.md from scratch, detect tools in this order:
 | 4 | Hashline-edit | Call `mcp__hashline-edit__read_file` on any file. Success → active |
 | 5 | Agents | Run `codex --version` / `gemini --version`. Exit 0 → available |
 | 6 | Git worktree | Run `git worktree list`. Success → available |
+| 7 | Agent Teams | Check env `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. "1" → available. Absent → unavailable. Ask user preference if available |
 
 ## Usage in SKILL.md
 
