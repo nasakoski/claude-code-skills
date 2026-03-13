@@ -15,16 +15,19 @@ For Story creation workflow.
 | 4 | AC Quality | 3 | 3-5 Given/When/Then scenarios: happy path + error + edge case. Include HTTP codes, timing, exact messages |
 | 5 | Standards Compliance | 10 | Every technical decision references specific RFC/OWASP/REST standard by number in Technical Notes. Use standards research results |
 | 6 | Library & Version | 5 | Latest stable versions in Technical Notes. Query Context7/MCP Ref to verify |
-| 9 | Story Size | 3 | 1-8 tasks (3-5 optimal), 3-5 AC, 6-20 hours total, tests justified by Priority ≥15. If outside range — split or merge |
-| 11 | YAGNI | 3 | Each AC = real user need. No speculative features. Every Task maps to >= 1 AC |
+| 9 | Story Size | 3 | 1-8 tasks (3-5 optimal), 3-5 AC (**HARD LIMIT: >5 ACs = MUST split**), 6-20 hours total, tests justified by Priority ≥15. If outside range — split or merge |
+| 11 | YAGNI | 3 | Each AC = real user need from Epic Scope In. No speculative features. No research-driven ACs (research → Technical Notes only). Every Task maps to >= 1 AC |
 | 12 | KISS | 3 | Simplest approach. No task requires >3 new abstractions. If >3 — split or simplify |
 | 14 | Documentation Complete | 5 | Pattern docs (from best practices research) referenced in Technical Notes. No orphan patterns |
 | 16 | Story-Task Alignment | 3 | Each Task title contains keyword from Story AC (grep-verifiable) |
 | 17 | AC-Task Coverage | 3 | Coverage matrix: every AC covered by >= 1 Task. No empty rows |
 | 18 | Story Dependencies | 10 | No forward dependencies on Stories not yet created. Only reference earlier Stories |
 | 24 | Assumption Registry | 3 | Assumptions section with >=1 typed entry per relevant category (FEASIBILITY/DEPENDENCY/DATA/SCOPE). Each entry has Confidence and Invalidation Impact |
+| 28 | AC Purity | 3 | Every AC describes observable user behavior (Given user does X, Then user sees Y). System internals (lookup priority, cache layers, endpoint URLs, architecture) belong in Technical Notes, not ACs |
+| 29 | Scope Minimalism | 3 | Simplest design that delivers Epic Goal. No benchmark-driven inflation ("industry does X" is not a reason to add AC). Standards Research → Technical Notes only |
+| 30 | Feature Bundling | 3 | Story title has no conjunctions joining distinct capabilities ("and", "&", "+"). Each distinct user capability = separate Story |
 
-**Total exposure:** 53 penalty points if all violated.
+**Total exposure:** 62 penalty points if all violated.
 
 ## Task Creation Checklist
 
