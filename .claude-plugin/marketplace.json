@@ -8,8 +8,8 @@
   },
 
   "metadata": {
-    "description": "Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization).",
-    "version": "3.2.0"
+    "description": "Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization) + Community engagement (Announcements, RFC debates, Triage).",
+    "version": "3.3.0"
   },
   "plugins": [
     {
@@ -68,7 +68,10 @@
         "./ln-120-reference-docs-creator",
         "./ln-130-tasks-docs-creator",
         "./ln-140-test-docs-creator",
-        "./ln-150-presentation-creator"
+        "./ln-150-presentation-creator",
+        "./ln-160-docs-skill-extractor",
+        "./ln-161-skill-creator",
+        "./ln-162-skill-reviewer"
       ]
     },
     {
@@ -133,8 +136,6 @@
         "./ln-741-linter-configurator",
         "./ln-742-precommit-setup",
         "./ln-743-test-infrastructure",
-        "./ln-750-commands-generator",
-        "./ln-751-command-templates",
         "./ln-760-security-setup",
         "./ln-761-secret-scanner",
         "./ln-770-crosscutting-setup",
@@ -166,6 +167,18 @@
         "./ln-830-code-modernization-coordinator",
         "./ln-831-oss-replacer",
         "./ln-832-bundle-optimizer"
+      ]
+    },
+    {
+      "name": "community-engagement",
+      "description": "Community engagement: Analyze repo health, compose announcements, launch RFC debates, triage issues/PRs/discussions. Portable across repositories with dynamic GitHub Discovery.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./ln-910-community-engagement",
+        "./ln-911-github-triager",
+        "./ln-912-community-announcer",
+        "./ln-913-community-debater"
       ]
     }
   ]

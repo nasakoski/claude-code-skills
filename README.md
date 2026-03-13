@@ -1,7 +1,7 @@
 # Claude Code Skills
 
-![Version](https://img.shields.io/badge/version-3.2.0-blue)
-![Skills](https://img.shields.io/badge/skills-116-green)
+![Version](https://img.shields.io/badge/version-3.3.0-blue)
+![Skills](https://img.shields.io/badge/skills-121-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -97,6 +97,9 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-130-tasks-docs-creator/        # kanban_board.md, task provider setup
 |   |-- ln-140-test-docs-creator/         # testing-strategy.md
 |   |-- ln-150-presentation-creator/      # Interactive HTML presentation
+|   |-- ln-160-docs-skill-extractor/     # Scan docs, classify, extract to .claude/commands
+|   |   |-- ln-161-skill-creator/        # Transform doc sections into commands
+|   |   |-- ln-162-skill-reviewer/       # Review SKILL.md and .claude/commands quality
 |
 |  └──────────────────────────────────────────────┘
 |  ┌─ Plugin: codebase-audit-suite ────────────────┐
@@ -148,7 +151,6 @@ claude-code-skills/                      # MARKETPLACE
 |   |   |-- ln-732-cicd-generator/        # GitHub Actions
 |   |   |-- ln-733-env-configurator/      # .env.example
 |   |-- ln-740-quality-setup/          # Linters, pre-commit, tests
-|   |-- ln-750-commands-generator/     # .claude/commands
 |   |-- ln-760-security-setup/         # Security scanning
 |   |-- ln-770-crosscutting-setup/     # Logging, CORS, health checks
 |   |-- ln-780-bootstrap-verifier/     # Build, test, Docker verification
@@ -168,6 +170,15 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-830-code-modernization-coordinator/       # Code modernization:
 |   |   |-- ln-831-oss-replacer/             # Replace custom code with OSS packages
 |   |   |-- ln-832-bundle-optimizer/         # JS/TS bundle size reduction
+|
+|  └──────────────────────────────────────────────┘
+|  ┌─ Plugin: community-engagement ───────────────┐
+|
+|-- ln-9XX-*/                          # COMMUNITY ENGAGEMENT
+|   |-- ln-910-community-engagement/   # L2: Analyze health, consult strategy, delegate
+|   |-- ln-911-github-triager/         # Triage issues/PRs/discussions
+|   |-- ln-912-community-announcer/    # Compose + publish GitHub Discussion announcements
+|   |-- ln-913-community-debater/      # Launch RFC/debate/poll discussions
 |
 |  └──────────────────────────────────────────────┘
 |
