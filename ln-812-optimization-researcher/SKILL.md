@@ -1,0 +1,218 @@
+---
+name: ln-812-optimization-researcher
+description: "Competitive benchmarks, solution research, and hypothesis generation for identified bottlenecks"
+license: MIT
+---
+
+> **Paths:** File paths (`shared/`, `references/`, `../ln-*`) are relative to skills repo root. If not found at CWD, locate this SKILL.md directory and go up one level for repo root.
+
+# ln-812-optimization-researcher
+
+**Type:** L3 Worker
+**Category:** 8XX Optimization
+
+Researches competitive benchmarks, industry standards, and solution approaches for bottlenecks identified by the profiler. Generates prioritized hypotheses for the executor.
+
+---
+
+## Overview
+
+| Aspect | Details |
+|--------|---------|
+| **Input** | Profile results from profiler (bottleneck classification, time map, optimization hints) |
+| **Output** | Industry benchmarks, solution candidates, prioritized hypotheses (H1..H7) |
+| **Pattern** | Research-first: competitors → industry → local codebase → solutions → hypotheses |
+
+---
+
+## Workflow
+
+**Phases:** Competitive Analysis → Bottleneck-Specific Research → Local Codebase Check → Hypothesis Generation → Research Report
+
+---
+
+## Phase 1: Competitive Analysis
+
+**MANDATORY READ:** Load `shared/references/research_tool_fallback.md` for MCP tool priority chain.
+
+### Goal
+
+Establish what "good" looks like for this type of operation. Define target metric if user did not provide one.
+
+### Research Queries
+
+| Goal | Query Template | Tool |
+|------|---------------|------|
+| Industry benchmark | `"{domain} API response time benchmark {year}"` | WebSearch |
+| Competitor performance | `"{competitor_type} {operation} latency"` | WebSearch |
+| Standard expectations | `"acceptable response time for {operation_type}"` | WebSearch |
+| Framework-specific guidance | `"{framework} {operation} performance best practices"` | Context7 / Ref |
+
+### Output
+
+| Field | Description |
+|-------|-------------|
+| industry_benchmark | Expected performance range for this operation type |
+| competitor_approaches | How top systems solve this (2-3 examples) |
+| recommended_target | Suggested target metric (if user did not specify) |
+| sources | URLs with dates for all findings |
+
+---
+
+## Phase 2: Bottleneck-Specific Research
+
+**MANDATORY READ:** Load [research_query_templates.md](references/research_query_templates.md) for per-type query templates.
+
+### Research Strategy
+
+Based on the primary bottleneck type from the profiler:
+
+| Bottleneck Type | Research Focus |
+|-----------------|---------------|
+| Architecture | Batching, pipelining, parallelism, DataLoader pattern |
+| I/O-Network | Connection pooling, HTTP/2, multiplexing, caching |
+| I/O-DB | Query optimization, indexes, eager loading, bulk operations |
+| I/O-File | Streaming, async I/O, memory-mapped files |
+| CPU | Algorithm alternatives, vectorization, caching computation, OSS replacement |
+| Cache | Eviction policies, cache key design, invalidation strategies, tiered caching, warm-up |
+| External | Caching layer, circuit breaker, fallback strategies, provider alternatives |
+
+### Research Protocol
+
+```
+FOR each top bottleneck (max 3):
+  1. Select query templates from research_query_templates.md
+  2. Execute research chain: Context7 → Ref → WebSearch (per research_tool_fallback.md)
+  3. Collect solution approaches with expected impact
+  4. Note technology prerequisites (libraries, infrastructure)
+```
+
+### Solution Evaluation
+
+| Field | Description |
+|-------|-------------|
+| solution | Name/description of the approach |
+| source | Where found (URL, docs section) |
+| expected_impact | Estimated improvement (e.g., "9x reduction for N=9") |
+| complexity | Low / Medium / High |
+| prerequisites | What's needed (library, infrastructure, API support) |
+| feasibility | HIGH / MEDIUM / LOW — based on prerequisites availability |
+
+---
+
+## Phase 3: Local Codebase Check
+
+Before recommending external solutions, check if the codebase already has the capability:
+
+| Check | How |
+|-------|-----|
+| Batch/bulk methods on client classes | Grep for `batch`, `bulk`, `multi` in client/service classes |
+| Cache infrastructure | Grep for `redis`, `memcache`, `cache`, `@cached`, `lru_cache` |
+| Connection pool configuration | Grep for `pool_size`, `max_connections`, `pool` in config |
+| Async variants | Grep for `async_`, `aio`, `Async` prefix/suffix on methods |
+| Unused configuration | Read client/service config for batch_size, max_connections params |
+
+### Impact on Feasibility
+
+| Finding | Effect |
+|---------|--------|
+| Batch API exists, not used | Feasibility = HIGH, Complexity = LOW |
+| Cache infra exists, not configured for this path | Feasibility = HIGH, Complexity = LOW-MEDIUM |
+| No existing capability, requires new library | Feasibility = MEDIUM, Complexity = MEDIUM-HIGH |
+| Requires infrastructure change | Feasibility = LOW, Complexity = HIGH |
+
+---
+
+## Phase 4: Generate Hypotheses (3-7)
+
+### Hypothesis Sources (Priority Order)
+
+| Priority | Source |
+|----------|--------|
+| 1 | Local codebase check (unused existing capabilities — lowest risk) |
+| 2 | Research findings (proven patterns from industry) |
+| 3 | Optimization hints from profiler |
+
+### Hypothesis Format
+
+| Field | Description |
+|-------|-------------|
+| id | H1, H2, ... H7 |
+| description | What to change and how |
+| bottleneck_addressed | Which bottleneck from time map (step reference) |
+| expected_impact | Estimated improvement % or multiplier |
+| complexity | Low / Medium / High |
+| risk | Low / Medium / High |
+| files_to_modify | List of files that need changes |
+| dependencies | Other hypotheses this depends on (e.g., "H2 requires H1") |
+| conflicts_with | Hypotheses that become unnecessary if this one works |
+
+### Ordering Rules
+
+Sort by: `expected_impact DESC, complexity ASC, risk ASC`.
+
+**Conflict detection:** If H1 (batch API) solves the N+1 problem, H3 (parallel calls) becomes unnecessary. Mark `H3.conflicts_with = ["H1"]`.
+
+**Dependency detection:** If H2 (cache prefetch) builds on H1 (batch API), mark `H2.dependencies = ["H1"]`.
+
+---
+
+## Phase 5: Research Report
+
+### Report Structure
+
+```
+research_result:
+  industry_benchmark:
+    metric: "response_time"
+    expected_range: "200-500ms"
+    source: "..."
+  recommended_target: 500          # ms (if user did not specify)
+  competitor_analysis:
+    - name, approach, metric, source
+  solution_candidates:
+    - solution, source, expected_impact, complexity, feasibility
+  hypotheses:
+    - id, description, bottleneck_addressed, expected_impact, complexity, risk,
+      files_to_modify, dependencies, conflicts_with
+  local_codebase_findings:
+    - "Batch API exists: AlignmentClient.batch_align() — accepts up to 50 pairs"
+    - "Redis configured but not used for alignment cache"
+  research_sources:
+    - url, date, relevance
+```
+
+---
+
+## Error Handling
+
+| Error | Recovery |
+|-------|----------|
+| All research tools fail | Use built-in knowledge with disclaimer: "no external sources verified" |
+| No competitive benchmarks found | Skip industry benchmark, note "no baseline found — using general guidelines" |
+| Cannot generate hypotheses | Return empty list — coordinator decides next step |
+| Local codebase check finds nothing | Proceed with external research results only |
+
+---
+
+## References
+
+- [research_query_templates.md](references/research_query_templates.md) — query templates per bottleneck type
+- `shared/references/research_tool_fallback.md` — MCP research tool priority chain
+
+---
+
+## Definition of Done
+
+- [ ] Competitive analysis completed (industry benchmarks, competitor approaches)
+- [ ] Target metric defined (user-provided or derived from research)
+- [ ] Bottleneck-specific solutions researched via MCP chain
+- [ ] Local codebase checked for existing unused capabilities
+- [ ] 3-7 hypotheses generated, ordered by expected impact
+- [ ] Dependencies and conflicts between hypotheses identified
+- [ ] Research report returned to coordinator with sources
+
+---
+
+**Version:** 2.0.0
+**Last Updated:** 2026-03-14

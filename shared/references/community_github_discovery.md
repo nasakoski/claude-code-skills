@@ -56,7 +56,7 @@ Parse the GraphQL response into a mental model:
 
 1. Check if `docs/community_engagement_strategy.md` exists in target project
 2. If found → load as strategy source
-3. If not found → load `../ln-910-community-engagement/references/community_strategy_template.md`
+3. If not found → load `shared/references/community_strategy_template.md`
 
 ## Notes
 

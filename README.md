@@ -1,7 +1,7 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-3.3.0-blue)
-![Skills](https://img.shields.io/badge/skills-121-green)
+![Skills](https://img.shields.io/badge/skills-124-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -22,7 +22,7 @@
 > **✨ NEW: ln-1000 Pipeline Orchestrator** — Autonomous multi-agent system that manages full development lifecycle. Orchestrates a team of specialized agents to execute complete development cycles: from task planning (ln-300) → validation (ln-310) → implementation (ln-400) → quality gate (ln-500) → user-confirmed merge to `develop`. One command, single Story per run.
 
 > [!IMPORTANT]
-> **✨ NEW: Optimization Suite** — Performance optimization, dependency upgrades, and code modernization. **ln-811-algorithm-optimizer** implements an autoresearch loop inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch): benchmark → hypothesize → keep/discard, with test coverage gate ensuring correctness before speed.
+> **✨ NEW: Optimization Suite v2** — Full-stack performance optimization: profile request path → research competitors & solutions → test hypotheses with keep/discard. Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). Diagnoses bottlenecks across modules, submodules, and external services — not just function-level benchmarking.
 
 > [!TIP]
 > **Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
@@ -120,13 +120,14 @@ claude-code-skills/                      # MARKETPLACE
 |   |   |-- ln-627-observability-auditor/ # Logging, metrics
 |   |   |-- ln-628-concurrency-auditor/   # Race conditions
 |   |   |-- ln-629-lifecycle-auditor/     # Bootstrap, shutdown
-|   |-- ln-630-test-auditor/           # 5 test auditors:
+|   |-- ln-630-test-auditor/           # 7 test auditors:
 |   |   |-- ln-631-test-business-logic-auditor/ # Framework vs business logic tests
 |   |   |-- ln-632-test-e2e-priority-auditor/   # E2E coverage for critical paths
 |   |   |-- ln-633-test-value-auditor/          # Risk-based test value scoring
 |   |   |-- ln-634-test-coverage-auditor/       # Missing tests for critical paths
 |   |   |-- ln-635-test-isolation-auditor/      # Isolation + anti-patterns
 |   |   |-- ln-636-manual-test-auditor/        # Manual test quality (harness, golden files, fail-fast)
+|   |   |-- ln-637-test-structure-auditor/      # Test file organization + directory layout
 |   |-- ln-640-pattern-evolution-auditor/ # Architectural pattern analysis + 4-score model
 |   |   |-- ln-641-pattern-analyzer/      # Pattern scoring worker
 |   |   |-- ln-642-layer-boundary-auditor/# Layer violations, I/O isolation
@@ -134,6 +135,7 @@ claude-code-skills/                      # MARKETPLACE
 |   |   |-- ln-644-dependency-graph-auditor/ # Cycles, coupling metrics (Ca/Ce/I)
 |   |   |-- ln-645-open-source-replacer/ # Goal-based OSS replacement audit + migration plan
 |   |   |-- ln-646-project-structure-auditor/ # Physical structure audit with framework-specific rules
+|   |   |-- ln-647-env-config-auditor/ # Env var config, sync, naming, startup validation
 |   |-- ln-650-persistence-performance-auditor/ # DB performance coordinator:
 |   |   |-- ln-651-query-efficiency-auditor/    # N+1, over-fetching, missing bulk ops
 |   |   |-- ln-652-transaction-correctness-auditor/ # Scope, rollback, long-held txns
@@ -159,10 +161,10 @@ claude-code-skills/                      # MARKETPLACE
 |  ┌─ Plugin: optimization-suite ──────────────────┐
 |
 |-- ln-8XX-*/                          # OPTIMIZATION
-|   |-- ln-810-performance-optimization-coordinator/ # Performance optimization:
-|   |   |-- ln-811-algorithm-optimizer/      # Autoresearch loop: benchmark → hypothesize → keep/discard
-|   |   |-- ln-812-query-optimizer/          # Fix N+1, redundant fetches (companion to ln-651)
-|   |   |-- ln-813-runtime-optimizer/        # Fix blocking IO, allocations (companion to ln-653)
+|   |-- ln-810-performance-optimizer/       # Performance optimization:
+|   |   |-- ln-811-performance-profiler/     # Full-stack request tracing, bottleneck classification
+|   |   |-- ln-812-optimization-researcher/  # Competitive benchmarks, solution research, hypotheses
+|   |   |-- ln-813-optimization-executor/    # Multi-file hypothesis testing (keep/discard loop)
 |   |-- ln-820-dependency-optimization-coordinator/  # Dependency upgrades:
 |   |   |-- ln-821-npm-upgrader/             # npm/yarn/pnpm with breaking change handling
 |   |   |-- ln-822-nuget-upgrader/           # .NET NuGet with migration support
@@ -179,6 +181,7 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-911-github-triager/         # Triage issues/PRs/discussions
 |   |-- ln-912-community-announcer/    # Compose + publish GitHub Discussion announcements
 |   |-- ln-913-community-debater/      # Launch RFC/debate/poll discussions
+|   |-- ln-914-community-responder/    # Respond to unanswered discussions/issues
 |
 |  └──────────────────────────────────────────────┘
 |
@@ -515,7 +518,7 @@ Through the Orchestrator-Worker pattern. Instead of feeding the entire codebase 
 <details>
 <summary><b>What can the audit skills detect?</b></summary>
 
-Audit skills in 5 groups: documentation quality (structure, semantics, fact-checking, code comments), codebase health (security, build, DRY/KISS/YAGNI, complexity, dependencies, dead code, observability, concurrency, lifecycle), test suites (business logic, E2E coverage, value scoring, coverage gaps, isolation), architecture (patterns, layer boundaries, API contracts, dependency graphs, OSS replacements, project structure), and persistence performance (query efficiency, transactions, runtime, resource lifecycle).
+Audit skills in 5 groups: documentation quality (structure, semantics, fact-checking, code comments), codebase health (security, build, DRY/KISS/YAGNI, complexity, dependencies, dead code, observability, concurrency, lifecycle), test suites (business logic, E2E coverage, value scoring, coverage gaps, isolation), architecture (patterns, layer boundaries, API contracts, dependency graphs, OSS replacements, project structure, env configuration), and persistence performance (query efficiency, transactions, runtime, resource lifecycle).
 
 </details>
 
@@ -582,7 +585,7 @@ Papers, docs, and methodologies studied and implemented in the skill architectur
 | [Test Desiderata](https://testdesiderata.com/) (Kent Beck, 2019) | 12 properties of valuable tests — behavioral, predictive, specific, inspiring, deterministic... No numerical targets, only usefulness | [`risk_based_testing_guide.md`](shared/references/risk_based_testing_guide.md) — 6 Test Usefulness Criteria (Risk Priority ≥15, Confidence ROI, Behavioral, Predictive, Specific, Non-Duplicative) |
 | Vertical Slicing ([Humanizing Work](https://www.humanizingwork.com/the-humanizing-work-guide-to-splitting-user-stories/)) | "Never split by architectural layer" | Foundation-First task ordering |
 | [Claude Code Picks](https://amplifying.ai/research/claude-code-picks) (Amplifying AI, 2026) | Claude's tool preferences are learned maturity signals, not bias — Drizzle/Vitest/Zustand chosen for objective quality. Build-not-buy in 12/20 categories. "Correcting" valid preferences = recommending worse tools | Research-to-Action Gate in CLAUDE.md — require concrete defect before turning research into skill changes |
-| [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-811-algorithm-optimizer`](ln-811-algorithm-optimizer/SKILL.md) — keep/discard with ≥10% threshold, crash triage, experiment log, test coverage gate |
+| [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-813-optimization-executor`](ln-813-optimization-executor/SKILL.md) — keep/discard with adaptive thresholds, multi-file support, compound baselines, experiment log |
 
 ---
 

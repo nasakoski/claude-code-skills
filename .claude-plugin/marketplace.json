@@ -102,6 +102,7 @@
         "./ln-634-test-coverage-auditor",
         "./ln-635-test-isolation-auditor",
         "./ln-636-manual-test-auditor",
+        "./ln-637-test-structure-auditor",
         "./ln-640-pattern-evolution-auditor",
         "./ln-641-pattern-analyzer",
         "./ln-642-layer-boundary-auditor",
@@ -109,6 +110,7 @@
         "./ln-644-dependency-graph-auditor",
         "./ln-645-open-source-replacer",
         "./ln-646-project-structure-auditor",
+        "./ln-647-env-config-auditor",
         "./ln-650-persistence-performance-auditor",
         "./ln-651-query-efficiency-auditor",
         "./ln-652-transaction-correctness-auditor",
@@ -152,14 +154,14 @@
     },
     {
       "name": "optimization-suite",
-      "description": "Optimization: Performance (algorithm, query, runtime), Dependency upgrades (npm, NuGet, pip), Code modernization (OSS replacement, bundle optimization). Keep/discard verification pattern.",
+      "description": "Optimization: Performance (profile → research → optimize), Dependency upgrades (npm, NuGet, pip), Code modernization (OSS replacement, bundle optimization). Keep/discard verification pattern.",
       "source": "./",
       "strict": false,
       "skills": [
-        "./ln-810-performance-optimization-coordinator",
-        "./ln-811-algorithm-optimizer",
-        "./ln-812-query-optimizer",
-        "./ln-813-runtime-optimizer",
+        "./ln-810-performance-optimizer",
+        "./ln-811-performance-profiler",
+        "./ln-812-optimization-researcher",
+        "./ln-813-optimization-executor",
         "./ln-820-dependency-optimization-coordinator",
         "./ln-821-npm-upgrader",
         "./ln-822-nuget-upgrader",
@@ -171,14 +173,15 @@
     },
     {
       "name": "community-engagement",
-      "description": "Community engagement: Analyze repo health, compose announcements, launch RFC debates, triage issues/PRs/discussions. Portable across repositories with dynamic GitHub Discovery.",
+      "description": "Community engagement: Analyze repo health, compose announcements, launch RFC debates, respond to discussions, triage issues/PRs/discussions. Portable across repositories with dynamic GitHub Discovery.",
       "source": "./",
       "strict": false,
       "skills": [
         "./ln-910-community-engagement",
         "./ln-911-github-triager",
         "./ln-912-community-announcer",
-        "./ln-913-community-debater"
+        "./ln-913-community-debater",
+        "./ln-914-community-responder"
       ]
     }
   ]

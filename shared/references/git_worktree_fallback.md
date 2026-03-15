@@ -24,9 +24,7 @@ Any skill that modifies code checks its git context and creates isolation if nee
 | Category | Branch Pattern | Worktree Dir |
 |----------|---------------|--------------|
 | Story execution | `feature/{id}-{slug}` | `.worktrees/story-{id}` |
-| Algorithm optimization | `optimize/{skill}-{function}-{ts}` | `../optimize-{skill}-{function}-{ts}` |
-| Query optimization | `optimize/{skill}-{ts}` | `../optimize-{skill}-{ts}` |
-| Runtime optimization | `optimize/{skill}-{ts}` | `../optimize-{skill}-{ts}` |
+| Performance optimization | `optimize/{skill}-{target}-{ts}` | `../optimize-{skill}-{target}-{ts}` |
 | Dependency upgrade (npm) | `upgrade/{skill}-npm-{ts}` | `../upgrade-{skill}-{ts}` |
 | Dependency upgrade (NuGet) | `upgrade/{skill}-nuget-{ts}` | `../upgrade-{skill}-{ts}` |
 | Dependency upgrade (pip) | `upgrade/{skill}-pip-{ts}` | `../upgrade-{skill}-{ts}` |

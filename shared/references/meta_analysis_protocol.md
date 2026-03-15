@@ -62,9 +62,10 @@ Compare actual outcome against pre-execution expectations (Goal Articulation Gat
 
 ```
 ### Meta-Analysis: {Skill Name}
-| Agent/Worker | Accepted | Total | Rate | Focus |
-|-------------|----------|-------|------|-------|
-| {name} | {N} | {M} | {%} | {areas found} |
+| Agent/Worker | Applied | Total | Focus |
+|-------------|---------|-------|-------|
+| {name} | {A} | {M} | {areas found} |
+- Applied: findings that led to code changes (primary value metric)
 - Overlap: {N} duplicate findings
 - Blind spots: {areas with 0 findings}
 - Pipeline coverage gaps: see `shared/references/detection_efficacy_audit.md` §Pipeline Coverage Map
@@ -116,7 +117,6 @@ Compare actual outcome against pre-execution expectations (Goal Articulation Gat
 | Pattern | Likely Cause | Action |
 |---------|-------------|--------|
 | Worker consistently ✗ Failed | Wrong config or missing prereq | Check worker setup |
-| Acceptance rate < 30% | Prompt quality or model mismatch | Refine delegation prompt |
 | Same blind spot repeated | Goal too narrow | Broaden scope in prompt |
 | Failure points > 2 per run | Infra or config issue | Fix root cause |
 | Same improvement candidate repeated | Not actionable in current design | Create GitHub issue |

@@ -101,9 +101,9 @@ Each skill adds its own logic ON TOP of this guide:
 | Tech debt cleaner | Revert ALL changes on any FAIL (`git checkout .`) |
 | Regression checker | Tests only; prefer infrastructure.md + runbook.md commands over auto-detect |
 | Build auditor | Full audit with severity scoring (CRITICAL/HIGH/MEDIUM/LOW) |
-| Algorithm optimizer | Benchmark only; 5 runs median; generated bench cleanup |
-| Query optimizer | Tests only; metric = query count reduction |
-| Runtime optimizer | Tests + lint; fix blocking IO patterns |
+| Performance profiler | Read-only analysis; no tests/build needed; traces call paths |
+| Optimization researcher | Read-only research; no tests/build needed; uses MCP research chain |
+| Optimization executor | Tests + benchmark; multi-file changes; compound baselines; keep/discard loop |
 | OSS replacer | Tests only; atomic per-module revert; delete old on keep |
 | Bundle optimizer | Build only; metric = bundle size; JS/TS specific |
 

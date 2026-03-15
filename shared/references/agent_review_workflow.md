@@ -51,19 +51,6 @@ python shared/agents/agent_runner.py --health-check
 - Create `.agent-review/{agent}/` subdirs only if they don't exist
 - Do NOT add `.agent-review/` to project root `.gitignore`
 
-## Step: Load Review Memory
-
-**MANDATORY READ:** Load `shared/references/agent_review_memory.md`
-
-a) If `.agent-review/review_history.md` exists:
-   - Parse all entries (## blocks)
-   - Build known-suggestions set: all accepted suggestions from history `(area, issue summary)`
-   - Build rejected-suggestions set: rejected suggestions with rejection reasons
-
-b) If not exists: proceed without memory (first review for this project)
-
-Claude uses this data during Critical Verification and assembles compact `{project_context}` for agent prompts (see "Step: Build Prompt" step 7).
-
 ## Step: Build Prompt
 
 Assemble the review prompt from base template + mode-specific content:
@@ -89,8 +76,6 @@ Assemble the review prompt from base template + mode-specific content:
    - Architecture: from CLAUDE.md or docs/architecture.md (1 line)
    - Principles: from CLAUDE.md (1 line, key constraints)
    - Tech stack: from docs/tech_stack.md or CLAUDE.md (1 line)
-   - Past rejections: top-5 rejection categories from `.agent-review/review_history.md` (extracted during "Step: Load Review Memory")
-   If no review history exists: omit "Past rejections" line.
 8. Assemble `{focus_hint}` — optional, per-agent differentiation:
    - For codex-review: `"Primary focus: correctness bugs, schema feasibility, data integrity, error handling, code-level edge cases"`
    - For gemini-review: `"Primary focus: performance at scale, security/isolation, resource management, architectural patterns"`
@@ -148,20 +133,31 @@ Per Debate Protocol in `shared/references/agent_delegation_pattern.md`.
 
 For EACH suggestion from agent results:
 
-a) **Dedup Check (memory-informed):** If review memory was loaded, compare `(area, issue)` against known-suggestions from history. Match in accepted set -> skip as "already addressed" (not counted as rejection). Match in rejected set with same reasoning -> note prior rejection context, evaluate on merits. Per `shared/references/agent_review_memory.md` §Memory-Informed Verification (a).
+a) **Claude Evaluation:** Independently assess against the actual code — is the issue real? Actionable? Conflicts with project patterns? Read the agent's Analysis Process and Evidence sections from the report for deeper understanding of the suggestion's basis.
 
-b) **Claude Evaluation:** Independently assess -- is the issue real? Actionable? Conflicts with project patterns? Read the agent's Analysis Process and Evidence sections from the report for deeper understanding of the suggestion's basis.
+b) **AGREE** -> accept as-is. **DISAGREE** -> apply debate triage.
 
-c) **AGREE** -> accept as-is. **DISAGREE/UNCERTAIN** -> initiate challenge.
+c) **Debate triage** (determines whether to challenge or reject outright):
 
-e) **Challenge + Follow-Up (with session resume):** Follow Debate Protocol (Challenge Round 1 -> Follow-Up Round if not resolved). Resume agent's review session for full context continuity:
+```
+IF review_mode == "code":
+  IF area IN {security, correctness} → full debate (Challenge + Follow-Up)
+  ELSE IF confidence >= 95 AND impact_percent >= 20 → full debate
+  ELSE → reject without debate (no challenge rounds)
+ELSE:
+  → full debate for all areas (story/context/plan_review modes)
+```
+
+Rationale: In code mode, only security/correctness findings affect the quality verdict (ln-510 normalization matrix). Debate rounds cost agent session resume + parsing — reserve for verdict-affecting findings. High-confidence high-impact findings in other areas still get debated as exception.
+
+d) **Challenge + Follow-Up (with session resume):** Follow Debate Protocol (Challenge Round 1 -> Follow-Up Round if not resolved). Resume agent's review session for full context continuity:
    - Read `session_id` from `.agent-review/{agent}/{identifier}_session.json`
    - Run with `--resume-session {session_id}` -- agent continues in same session, preserving file analysis and reasoning
    - If `session_resumed: false` in result -> log warning, result still valid (stateless fallback)
    - Challenge files: `.agent-review/{agent}/{identifier}_{review_type}_challenge_{N}_prompt.md` / `_result.md`
    - Follow-up files: `.agent-review/{agent}/{identifier}_{review_type}_followup_{N}_prompt.md` / `_result.md`
 
-f) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{agent}/`
+e) **Persist:** all challenge and follow-up prompts/results in `.agent-review/{agent}/`
 
 ## Step: Aggregate + Return
 
@@ -263,5 +259,5 @@ debate_log:
 - **Challenge schema:** `shared/agents/schemas/challenge_review_schema.json`
 - **Agent registry:** `shared/agents/agent_registry.json`
 - **Agent runner:** `shared/agents/agent_runner.py`
-- **Agent review memory:** `shared/references/agent_review_memory.md`
+- **Agent review memory (write-only):** `shared/references/agent_review_memory.md` — defines review_history.md format (human audit trail)
 - **Meta-analysis protocol:** `shared/references/meta_analysis_protocol.md`

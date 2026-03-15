@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2026-03-15
+
+Full skill coherence review (ln-162) across 17 primary skills. 8XX optimization pipeline renamed (algorithm-optimizer→performance-profiler, query-optimizer→optimization-researcher, runtime-optimizer→optimization-executor) with sequential diagnostic architecture (profile→research→execute). New skills: ln-637-test-structure-auditor (test directory layout audit), ln-647-env-config-auditor (.env sync/naming/validation), ln-914-community-responder (GitHub discussion/issue responses). Worker independence enforced: removed Caller/Parent fields, coordinator names from headers and DoD, peer skill IDs genericized to roles. 9XX shared references decoupled from coordinator directory to shared/references/community_*. D4 gap fixed: Cache bottleneck research strategy added to ln-812. D5: ln-511 output schema extracted to reference file. DoD checkbox format enforced across 7 skills.
+
 ## 2026-03-14
 
 Agent sandbox fix: external files (e.g. plan files from `~/.claude/plans/`) are now materialized to `.agent-review/context/` before being referenced in agent prompts. Gemini CLI cannot read files outside project workspace — this ensures all agent-referenced files are within CWD. Added general "External file rule" to `agent_review_workflow.md`, updated `plan_review.md` template instructions, and added plan file example to persistence pattern in `agent_delegation_pattern.md`.

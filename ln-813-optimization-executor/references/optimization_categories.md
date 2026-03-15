@@ -1,9 +1,9 @@
 # Optimization Categories Checklist
 
-<!-- SCOPE: Hypothesis generation checklist for algorithm optimization. Categories to scan when generating optimization ideas. -->
-<!-- DO NOT add here: optimization workflow → ln-811-algorithm-optimizer SKILL.md -->
+<!-- SCOPE: Optimization pattern reference for the executor. Categories to scan during implementation. -->
+<!-- DO NOT add here: optimization workflow → ln-813-optimization-executor SKILL.md; hypothesis generation → researcher workflow -->
 
-Systematic checklist for generating optimization hypotheses. Scan each category against target function.
+Optimization patterns organized by category. Reference during hypothesis implementation to identify applicable techniques.
 
 ---
 
@@ -63,17 +63,6 @@ Systematic checklist for generating optimization hypotheses. Scan each category 
 | Linked List | Array/Vec | Sequential access, cache locality |
 | Tree (balanced) | Hash Map | No ordering needed |
 | String keys | Integer/Enum keys | Fixed set of keys |
-
----
-
-## Hypothesis Generation Protocol
-
-1. Read target function code
-2. For each category above: check if any pattern matches
-3. For each match: create hypothesis with expected_impact estimate
-4. Cross-reference with MCP research findings
-5. Deduplicate (same fix from multiple categories = one hypothesis)
-6. Order by expected_impact DESC, risk ASC
 
 ---
 

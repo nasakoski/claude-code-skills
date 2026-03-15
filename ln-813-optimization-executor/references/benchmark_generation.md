@@ -1,7 +1,7 @@
 # Benchmark Generation Guide
 
 <!-- SCOPE: Auto-generating benchmarks for target functions when no existing benchmark exists. -->
-<!-- DO NOT add here: optimization logic → ln-811-algorithm-optimizer SKILL.md -->
+<!-- DO NOT add here: optimization logic → ln-813-optimization-executor SKILL.md -->
 
 Templates for generating minimal benchmarks per stack when no existing benchmark is found.
 
