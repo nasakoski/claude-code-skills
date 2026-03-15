@@ -1,28 +1,18 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-3.3.0-blue)
-![Skills](https://img.shields.io/badge/skills-124-green)
+![Skills](https://img.shields.io/badge/skills-125-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
-> [!WARNING]
-> **Breaking Change: Plugin restructuring** — `full-development-workflow-skills` split into 3 focused plugins: **agile-workflow**, **documentation-pipeline**, **codebase-audit-suite**. `claude-code-bootstrap` renamed to **project-bootstrap**. New: **optimization-suite**.
->
-> Reinstall to pick up new plugin names:
-> ```
-> /plugin add levnikolaevich/claude-code-skills                                    # all 5 plugins
-> /plugin add levnikolaevich/claude-code-skills --plugin agile-workflow            # or individually
-> /plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
-> /plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
-> /plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
-> /plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
-> ```
+> [!IMPORTANT]
+> **✨ ln-1000 Pipeline Orchestrator** — Autonomous multi-agent system that manages full development lifecycle. Orchestrates a team of specialized agents to execute complete development cycles: from task planning (ln-300) → validation (ln-310) → implementation (ln-400) → quality gate (ln-500) → user-confirmed merge to `develop`. One command, single Story per run.
 
 > [!IMPORTANT]
-> **✨ NEW: ln-1000 Pipeline Orchestrator** — Autonomous multi-agent system that manages full development lifecycle. Orchestrates a team of specialized agents to execute complete development cycles: from task planning (ln-300) → validation (ln-310) → implementation (ln-400) → quality gate (ln-500) → user-confirmed merge to `develop`. One command, single Story per run.
+> **✨ NEW: Optimization Suite v2** — Full-stack performance optimization: profile → research → **agent-validate** (Codex + Gemini) → strike-first execute with keep/discard. Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). Diagnoses bottlenecks across modules, submodules, and external services — not just function-level benchmarking.
 
 > [!IMPORTANT]
-> **✨ NEW: Optimization Suite v2** — Full-stack performance optimization: profile request path → research competitors & solutions → test hypotheses with keep/discard. Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). Diagnoses bottlenecks across modules, submodules, and external services — not just function-level benchmarking.
+> **✨ Community Engagement (9XX)** — Automated GitHub community management: triage issues/PRs/discussions, compose announcements, launch RFC debates, respond to unanswered threads. Strategy-driven engagement with health metrics analysis.
 
 > [!TIP]
 > **Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
@@ -164,7 +154,8 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-810-performance-optimizer/       # Performance optimization:
 |   |   |-- ln-811-performance-profiler/     # Full-stack request tracing, bottleneck classification
 |   |   |-- ln-812-optimization-researcher/  # Competitive benchmarks, solution research, hypotheses
-|   |   |-- ln-813-optimization-executor/    # Multi-file hypothesis testing (keep/discard loop)
+|   |   |-- ln-813-optimization-plan-validator/ # Agent-validated plan review (Codex + Gemini)
+|   |   |-- ln-814-optimization-executor/    # Strike-first hypothesis execution (keep/discard)
 |   |-- ln-820-dependency-optimization-coordinator/  # Dependency upgrades:
 |   |   |-- ln-821-npm-upgrader/             # npm/yarn/pnpm with breaking change handling
 |   |   |-- ln-822-nuget-upgrader/           # .NET NuGet with migration support
@@ -200,7 +191,7 @@ claude-code-skills/                      # MARKETPLACE
 
 ## Installation
 
-This marketplace contains **5 plugins** — install together or separately:
+This marketplace contains **6 plugins** — install together or separately:
 
 ```bash
 # All plugins (full suite)
@@ -212,6 +203,7 @@ This marketplace contains **5 plugins** — install together or separately:
 /plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
 /plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
 /plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
+/plugin add levnikolaevich/claude-code-skills --plugin community-engagement
 ```
 
 | Plugin | Description |
@@ -221,6 +213,7 @@ This marketplace contains **5 plugins** — install together or separately:
 | **codebase-audit-suite** | Documentation, Security, Build, Code quality, Tests, Architecture, Performance |
 | **project-bootstrap** | CREATE or TRANSFORM projects to production-ready Clean Architecture |
 | **optimization-suite** | Performance optimization, Dependency upgrades, Code modernization |
+| **community-engagement** | GitHub community management: triage, announcements, RFCs, responses |
 
 ### Other AI Agents
 
@@ -323,8 +316,8 @@ Multi-model review uses external AI agents (Codex + Gemini) for parallel code/st
 
 | Model | CLI | Version | Used by | Settings |
 |-------|-----|---------|---------|----------|
-| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-310, ln-510 | `--json --full-auto` (read-only, internet access) |
-| **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-310, ln-510 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
+| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-310, ln-510, ln-813 | `--json --full-auto` (read-only, internet access) |
+| **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-310, ln-510, ln-813 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
 
 **Review Workflow:**
 1. **Parallel Execution** — Both agents run simultaneously (background tasks)
@@ -364,8 +357,9 @@ All prompts/results saved to `.agent-review/{agent}/` for transparency:
 
 - **ln-310-multi-agent-validator** — Story/Tasks validation with inline agent review (Codex + Gemini)
 - **ln-510-quality-coordinator** — Code implementation review with inline agent review (Codex + Gemini)
+- **ln-813-optimization-plan-validator** — Optimization plan review before strike execution (Codex + Gemini)
 
-Both skills support:
+All skills support:
 - Session Resume for multi-round debates
 - Zero timeout (wait for completion)
 - Read-only analysis (no project modifications)
@@ -448,7 +442,7 @@ Claude Opus is the primary model. For code and story reviews, skills delegate to
 <summary><b>How do I install it?</b></summary>
 
 ```bash
-# All 5 plugins (full suite)
+# All 6 plugins (full suite)
 /plugin add levnikolaevich/claude-code-skills
 
 # Or individually:
@@ -457,6 +451,7 @@ Claude Opus is the primary model. For code and story reviews, skills delegate to
 /plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
 /plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
 /plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
+/plugin add levnikolaevich/claude-code-skills --plugin community-engagement
 
 # Git Clone (alternative)
 git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/skills
@@ -474,7 +469,8 @@ git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/ski
 | Audit existing code for issues | `codebase-audit-suite` |
 | Scaffold a new project or restructure existing | `project-bootstrap` |
 | Optimize performance, dependencies, bundle size | `optimization-suite` |
-| Everything | `/plugin add levnikolaevich/claude-code-skills` (all 5) |
+| Manage GitHub community (triage, announcements, RFCs) | `community-engagement` |
+| Everything | `/plugin add levnikolaevich/claude-code-skills` (all 6) |
 
 Each plugin works independently — install only what you need.
 
@@ -585,7 +581,7 @@ Papers, docs, and methodologies studied and implemented in the skill architectur
 | [Test Desiderata](https://testdesiderata.com/) (Kent Beck, 2019) | 12 properties of valuable tests — behavioral, predictive, specific, inspiring, deterministic... No numerical targets, only usefulness | [`risk_based_testing_guide.md`](shared/references/risk_based_testing_guide.md) — 6 Test Usefulness Criteria (Risk Priority ≥15, Confidence ROI, Behavioral, Predictive, Specific, Non-Duplicative) |
 | Vertical Slicing ([Humanizing Work](https://www.humanizingwork.com/the-humanizing-work-guide-to-splitting-user-stories/)) | "Never split by architectural layer" | Foundation-First task ordering |
 | [Claude Code Picks](https://amplifying.ai/research/claude-code-picks) (Amplifying AI, 2026) | Claude's tool preferences are learned maturity signals, not bias — Drizzle/Vitest/Zustand chosen for objective quality. Build-not-buy in 12/20 categories. "Correcting" valid preferences = recommending worse tools | Research-to-Action Gate in CLAUDE.md — require concrete defect before turning research into skill changes |
-| [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-813-optimization-executor`](ln-813-optimization-executor/SKILL.md) — keep/discard with adaptive thresholds, multi-file support, compound baselines, experiment log |
+| [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-814-optimization-executor`](ln-814-optimization-executor/SKILL.md) — keep/discard with adaptive thresholds, multi-file support, compound baselines, experiment log |
 
 ---
 

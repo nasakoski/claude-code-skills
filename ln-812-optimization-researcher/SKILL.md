@@ -147,9 +147,33 @@ Before recommending external solutions, check if the codebase already has the ca
 | dependencies | Other hypotheses this depends on (e.g., "H2 requires H1") |
 | conflicts_with | Hypotheses that become unnecessary if this one works |
 
+### Anti-Bias Checks (mandatory before finalizing)
+
+| Bias | Check | Example |
+|------|-------|---------|
+| **Removal bias** | For each "remove X" hypothesis: generate paired "optimize X" alternative | "remove alignment" → also "optimize alignment config" |
+| **Industry bias** | "Industry doesn't use X" ≠ "X not needed for us". Check: does OUR product need it? | "CAT tools skip alignment" but our users need it for quality |
+| **Premature conclusion** | "X is slow" ≠ "X is wrong". Slow may mean bad implementation, not wrong approach | 5.9s alignment → maybe wrong algorithm, not wrong feature |
+
+**Rule:** Every "remove feature" hypothesis MUST have a paired "optimize feature" hypothesis.
+
+### Fix Hierarchy (mandatory ordering)
+
+Order hypotheses by fix level. Higher levels ALWAYS tried first:
+
+| Level | Example | Priority |
+|-------|---------|----------|
+| 1. Configuration | `matching_methods="i"`, `pool_size=10` | Highest — try first |
+| 2. Infrastructure | Add cache layer, scale service | |
+| 3. Framework | Use framework feature (batch API, built-in cache) | |
+| 4. Application code | Refactor algorithm, add optimization | |
+| 5. Feature removal | Remove functionality | Lowest — last resort only |
+
+**Red flag:** If highest-priority hypothesis is at level 4-5, re-examine: was a level 1-3 solution missed? Apply 5 Whys from root cause to verify.
+
 ### Ordering Rules
 
-Sort by: `expected_impact DESC, complexity ASC, risk ASC`.
+Sort by: `fix_level ASC, expected_impact DESC, complexity ASC, risk ASC`.
 
 **Conflict detection:** If H1 (batch API) solves the N+1 problem, H3 (parallel calls) becomes unnecessary. Mark `H3.conflicts_with = ["H1"]`.
 

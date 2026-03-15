@@ -1,12 +1,12 @@
 ---
-name: ln-813-optimization-executor
+name: ln-814-optimization-executor
 description: "Multi-file hypothesis testing with keep/discard loop, compound baselines, and experiment logging"
 license: MIT
 ---
 
 > **Paths:** File paths (`shared/`, `references/`, `../ln-*`) are relative to skills repo root. If not found at CWD, locate this SKILL.md directory and go up one level for repo root.
 
-# ln-813-optimization-executor
+# ln-814-optimization-executor
 
 **Type:** L3 Worker
 **Category:** 8XX Optimization
@@ -214,7 +214,7 @@ Target: 5000ms → Achieved: 3800ms ✓ TARGET MET
 
 ### Per-Function Delta (if instrumentation available)
 
-If `instrumented_files` from context is non-empty, run `test_command` once more AFTER strike to capture per-function timing with the same instrumentation ln-811 placed:
+If `instrumented_files` from context is non-empty, run `test_command` once more AFTER strike to capture per-function timing with the same instrumentation the profiler placed:
 
 ```
 | Function | Before (ms) | After (ms) | Delta |
@@ -229,7 +229,7 @@ Present both tables to user. This is the primary deliverable — numbers the use
 
 ### Experiment Log
 
-Write to `{project_root}/.optimization/ln-813-log.tsv`:
+Write to `{project_root}/.optimization/ln-814-log.tsv`:
 
 | Column | Description |
 |--------|-------------|
@@ -291,7 +291,7 @@ If target metric not reached after all hypotheses:
 - [ ] Contested alternatives A/B tested on top of full implementation
 - [ ] Bisect performed only if strike fails (not preemptively)
 - [ ] E2E safety test passes (or documented as unavailable)
-- [ ] Experiment log written to `.optimization/ln-813-log.tsv`
+- [ ] Experiment log written to `.optimization/ln-814-log.tsv`
 - [ ] Report returned with baseline, final, improvement%, strike result
 - [ ] All changes on isolated branch, pushed to remote
 - [ ] Gap analysis provided if target metric not met

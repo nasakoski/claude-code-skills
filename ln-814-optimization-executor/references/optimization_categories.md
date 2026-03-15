@@ -1,7 +1,7 @@
 # Optimization Categories Checklist
 
 <!-- SCOPE: Optimization pattern reference for the executor. Categories to scan during implementation. -->
-<!-- DO NOT add here: optimization workflow → ln-813-optimization-executor SKILL.md; hypothesis generation → researcher workflow -->
+<!-- DO NOT add here: optimization workflow → ln-814-optimization-executor SKILL.md; hypothesis generation → researcher workflow -->
 
 Optimization patterns organized by category. Reference during hypothesis implementation to identify applicable techniques.
 

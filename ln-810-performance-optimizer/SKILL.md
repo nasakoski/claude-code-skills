@@ -21,14 +21,14 @@ Sequential diagnostic pipeline for performance optimization. Profiles the full r
 |--------|---------|
 | **Input** | `target` (endpoint/function/pipeline) + `observed_metric` (e.g., "6300ms response time") + optional `target_metric` |
 | **Output** | Optimized code with verification proof, or diagnostic report with recommendations |
-| **Workers** | ln-811 (profiler) → ln-812 (researcher) → ln-813 (executor) |
+| **Workers** | ln-811 (profiler) → ln-812 (researcher) → ln-813 (plan validator) → ln-814 (executor) |
 | **Flow** | Sequential — each phase depends on the output of the previous |
 
 ---
 
 ## Workflow
 
-**Phases:** Pre-flight → Parse Input → Profile → Wrong Tool Gate → Research → Set Target → Write Context → Execute → Report → Meta-Analysis
+**Phases:** Pre-flight → Parse Input → Profile → Wrong Tool Gate → Research → Set Target → Write Context → Validate Plan → Execute → Collect → Report → Meta-Analysis
 
 ---
 
@@ -160,7 +160,7 @@ ln-812 will: competitive analysis → bottleneck-specific research → local cod
 
 Serialize diagnostic results from Phases 2-5 into structured context.
 
-- **Normal mode:** write `.optimization/context.md` in project root — input for ln-813
+- **Normal mode:** write `.optimization/context.md` in project root — input for ln-814
 - **Plan mode:** write same structure to plan file (file writes restricted) → call ExitPlanMode
 
 **Context file structure:**
@@ -172,37 +172,49 @@ Serialize diagnostic results from Phases 2-5 into structured context.
 | Suspicion Stack | ln-811 | Confirmed + dismissed suspicions with evidence |
 | Industry Benchmark | ln-812 | expected_range, source, recommended_target |
 | Hypotheses | ln-812 | Table: ID, description, bottleneck_addressed, expected_impact, complexity, risk, files_to_modify, conflicts_with |
-| Dependencies/Conflicts | ln-812 | H2 requires H1; H3 conflicts with H1 (used by ln-813 for contested vs uncontested triage) |
+| Dependencies/Conflicts | ln-812 | H2 requires H1; H3 conflicts with H1 (used by ln-814 for contested vs uncontested triage) |
 | Local Codebase Findings | ln-812 | Batch APIs, cache infra, connection pools found in code |
 | Test Command | ln-811 | Command used for profiling (reused for post-optimization measurement) |
 | E2E Test | ln-811 | E2E safety test command + source (functional gate for executor) |
-| Instrumented Files | ln-811 | List of files with active instrumentation (ln-813 cleans up after strike) |
+| Instrumented Files | ln-811 | List of files with active instrumentation (ln-814 cleans up after strike) |
 
 ---
 
-## Phase 7: Execute — DELEGATE to ln-813
+## Phase 7: Validate Plan — DELEGATE to ln-813
+
+**Do NOT validate the plan yourself. INVOKE the plan validator.**
+
+**Invoke:** `Skill(skill: "ln-813-optimization-plan-validator")`
+
+ln-813 will: agent review (Codex + Gemini) + own feasibility check → GO/GO_WITH_CONCERNS/NO_GO.
+
+**Receive:** verdict, corrections applied to context.md, agent feedback summary.
+
+| Verdict | Action |
+|---------|--------|
+| GO | Proceed to Phase 8 |
+| GO_WITH_CONCERNS | Proceed with warnings logged |
+| NO_GO | Present issues to user. Ask: proceed (WAIVE) or stop |
+
+---
+
+## Phase 8: Execute — DELEGATE to ln-814
 
 **In Plan Mode:** SKIP this phase. Context file from Phase 6 IS the plan. Call ExitPlanMode.
 
-**Do NOT implement optimizations yourself. INVOKE the executor via Agent.**
+**Do NOT implement optimizations yourself. INVOKE the executor skill.**
 
-**Invoke:**
-```
-Agent(description: "Optimize via ln-813",
-      prompt: "Run Skill(skill: 'ln-813-optimization-executor').
-             Context: .optimization/context.md",
-      subagent_type: "general-purpose")
-```
+**Invoke:** `Skill(skill: "ln-814-optimization-executor")`
 
-ln-813 will: read context → create worktree → strike-first (apply all) → test → measure → bisect if needed → report.
+ln-814 will: read context → create worktree → strike-first (apply all) → test → measure → bisect if needed → report.
 
 **Receive:** branch, baseline, final, strike_result, hypotheses_applied/removed, contested_results, results_comparison.
 
 ---
 
-## Phase 8: Collect Execution Results
+## Phase 9: Collect Execution Results
 
-**Receive from ln-813:**
+**Receive from ln-814:**
 
 | Field | Description |
 |-------|-------------|
@@ -219,7 +231,7 @@ ln-813 will: read context → create worktree → strike-first (apply all) → t
 
 ---
 
-## Phase 9: Final Report
+## Phase 10: Final Report
 
 | Section | Content |
 |---------|---------|
@@ -236,14 +248,14 @@ ln-813 will: read context → create worktree → strike-first (apply all) → t
 
 ### If Target Not Met
 
-Include gap analysis from ln-813:
+Include gap analysis from ln-814:
 - What was achieved (improvement %)
 - Remaining bottlenecks from time map
 - Infrastructure/architecture recommendations beyond code changes
 
 ---
 
-## Phase 10: Meta-Analysis
+## Phase 11: Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 
@@ -260,8 +272,9 @@ Skill type: `optimization-coordinator`.
 | 2 (Profile) | Cannot trace target | Report "cannot identify code path for {target}" |
 | 3 (Gate) | Wrong tool exit | Report diagnosis + recommendations, do NOT proceed |
 | 4 (Research) | No solutions found | Report bottleneck but "no known optimization pattern for {type}" |
-| 7 (Execute) | All hypotheses fail | Report profiling + research as diagnostic value |
-| 7 (Execute) | Worker timeout | Report partial results |
+| 7 (Validate) | NO_GO verdict | Present issues to user, offer WAIVE or stop |
+| 8 (Execute) | All hypotheses fail | Report profiling + research as diagnostic value |
+| 8 (Execute) | Worker timeout | Report partial results |
 
 ### Fatal Errors
 
@@ -275,7 +288,7 @@ Skill type: `optimization-coordinator`.
 
 ## Plan Mode Support: Phased Gate Pattern
 
-Alternates between plan mode (approval gates) and execution. Two gates total.
+Alternates between plan mode (approval gates) and execution.
 
 ```
 GATE 1 — Plan profiling
@@ -296,9 +309,10 @@ GATE 2 — Plan research & execution
   → Present: hypotheses, target, execution plan
   → ExitPlanMode (user approves strike)
 
-EXECUTE 2 — Run optimization
-  Phase 7: Agent("ln-813") — strike execution
-  Phase 8-10: Collect, report, meta-analysis
+EXECUTE 2 — Validate + Execute
+  Phase 7: Skill("ln-813") — agent-validated plan review (GO/NO_GO)
+  Phase 8: Skill("ln-814") — strike execution
+  Phase 9-11: Collect, report, meta-analysis
 ```
 
 ---
@@ -307,7 +321,8 @@ EXECUTE 2 — Run optimization
 
 - `../ln-811-performance-profiler/SKILL.md` (profiler worker)
 - `../ln-812-optimization-researcher/SKILL.md` (researcher worker)
-- `../ln-813-optimization-executor/SKILL.md` (executor worker)
+- `../ln-813-optimization-plan-validator/SKILL.md` (plan validator worker)
+- `../ln-814-optimization-executor/SKILL.md` (executor worker)
 - `shared/references/ci_tool_detection.md` (tool detection)
 - `shared/references/meta_analysis_protocol.md` (meta-analysis)
 
@@ -321,7 +336,8 @@ EXECUTE 2 — Run optimization
 - [ ] Solutions researched by ln-812 (benchmarks, hypotheses with conflicts_with)
 - [ ] Target metric established (user-provided or research-derived)
 - [ ] Context file written (.optimization/context.md)
-- [ ] Strike-first execution by ln-813 (applied/removed/contested)
+- [ ] Plan validated by ln-813 (agent review + feasibility check → GO/NO_GO)
+- [ ] Strike-first execution by ln-814 (applied/removed/contested)
 - [ ] Final report with before/after metrics, strike result, contested alternatives
 - [ ] Meta-analysis completed
 

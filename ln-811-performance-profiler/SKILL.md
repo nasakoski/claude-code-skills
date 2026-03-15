@@ -124,6 +124,11 @@ Starting from entry point, trace depth-first (max depth 5). At each step, READ t
 
 Record `service: "{service_name}"` on each step to track which service owns it. The performance_map `steps` tree can span multiple services.
 
+**Depth-First Rule:** If code of the called service is accessible — ALWAYS profile INSIDE. NEVER classify an accessible service as "External/slow" without profiling its internals. "Slow" is a symptom, not a diagnosis.
+
+**5 Whys for each bottleneck:** Before reporting a bottleneck, chain "why?" until you reach config/architecture level:
+1. "What is slow?" → alignment service (5.9s) 2. "Why?" → 6 pairs × ~1s each 3. "Why ~1s per pair?" → O(n²) mwmf computation 4. "Why O(n²)?" → library default, not production config 5. "Why default?" → `matching_methods` not configured → **root cause = config**
+
 ### Step 2: Classify & Suspicion Scan
 
 For each step, classify by type (CPU, I/O-DB, I/O-Network, I/O-File, Architecture, External, Cache) and scan for performance concerns.
@@ -213,7 +218,7 @@ Add timing/logging along the call stack at instrumentation points identified in 
 | I/O call counter | Network or DB bottleneck suspected | Count HTTP requests, DB queries in loop |
 | Memory snapshot | Memory accumulation suspected | `tracemalloc.get_traced_memory()` before/after |
 
-**KEEP instrumentation in place.** ln-813 will reuse it for post-optimization per-function comparison, then clean up after strike. Report `instrumented_files` in output.
+**KEEP instrumentation in place.** The executor reuses it for post-optimization per-function comparison, then cleans up after strike. Report `instrumented_files` in output.
 
 ---
 
@@ -341,7 +346,7 @@ profile_result:
 - [ ] Call graph traced and function bodies read
 - [ ] Suspicion stack built: each suspicion verified and mapped to instrumentation point
 - [ ] Deep profile completed (non-invasive preferred, invasive if needed)
-- [ ] Instrumented files reported (cleanup deferred to ln-813)
+- [ ] Instrumented files reported (cleanup deferred to executor)
 - [ ] Performance map built in standardized format (real measurements)
 - [ ] Top 3 bottlenecks identified from measured data
 - [ ] Wrong tool indicators evaluated from real metrics
