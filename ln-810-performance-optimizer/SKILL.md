@@ -78,17 +78,17 @@ If `target_metric` not provided by user, defer to Phase 5 (after research establ
 
 ---
 
-## Phase 2: Delegate to Profiler (ln-811)
+## Phase 2: Profile — DELEGATE to ln-811
 
-```
-Skill(skill: "ln-811-performance-profiler")
-```
+**Do NOT trace code, read function bodies, or profile yourself. INVOKE the profiler skill.**
 
-**Delegation pattern:** Skill tool (shared context) — profiler results must be visible to researcher in Phase 4.
+**Invoke:** `Skill(skill: "ln-811-performance-profiler")`
 
-**Pass:** problem statement from Phase 1 + audit_report path (if provided, as hints).
+**Pass:** problem statement from Phase 1 + audit_report path (if provided).
 
-**Receive:** call graph, time map, bottleneck classification, optimization hints, wrong tool indicators.
+ln-811 will: discover/create test → run baseline (multi-metric) → static analysis + suspicion stack → instrument → build performance map.
+
+**Receive:** performance_map, suspicion_stack, optimization_hints, wrong_tool_indicators, e2e_test info.
 
 ---
 
@@ -116,17 +116,17 @@ Evaluate profiler results using structured verdict (adapted from ln-500 quality 
 
 ---
 
-## Phase 4: Delegate to Researcher (ln-812)
+## Phase 4: Research — DELEGATE to ln-812
 
-```
-Skill(skill: "ln-812-optimization-researcher")
-```
+**Do NOT research benchmarks or generate hypotheses yourself. INVOKE the researcher skill.**
 
-**Delegation pattern:** Skill tool (shared context) — researcher needs profiling results from Phase 2.
+**Invoke:** `Skill(skill: "ln-812-optimization-researcher")`
 
-**Context available from shared conversation:** profile results, bottleneck classification, time map, optimization hints.
+**Context available:** performance_map from Phase 2 (in shared conversation).
 
-**Receive:** industry benchmarks, solution candidates, hypotheses (H1..H7), research sources.
+ln-812 will: competitive analysis → bottleneck-specific research → local codebase check → generate hypotheses H1..H7.
+
+**Receive:** industry_benchmark, hypotheses (H1..H7 with conflicts_with), local_codebase_findings, research_sources.
 
 ---
 
@@ -163,10 +163,13 @@ Serialize diagnostic results from Phases 2-5 into structured context.
 
 ---
 
-## Phase 7: Delegate to Executor (ln-813)
+## Phase 7: Execute — DELEGATE to ln-813
 
 **In Plan Mode:** SKIP this phase. Context file from Phase 6 IS the plan. Call ExitPlanMode.
 
+**Do NOT implement optimizations yourself. INVOKE the executor via Agent.**
+
+**Invoke:**
 ```
 Agent(description: "Optimize via ln-813",
       prompt: "Run Skill(skill: 'ln-813-optimization-executor').
@@ -174,7 +177,9 @@ Agent(description: "Optimize via ln-813",
       subagent_type: "general-purpose")
 ```
 
-**Delegation pattern:** Agent spawns subprocess → invokes ln-813 via Skill inside its context. ln-813 reads `.optimization/context.md` and creates its own worktree.
+ln-813 will: read context → create worktree → strike-first (apply all) → test → measure → bisect if needed → report.
+
+**Receive:** branch, baseline, final, strike_result, hypotheses_applied/removed, contested_results, results_comparison.
 
 ---
 
