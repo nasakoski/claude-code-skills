@@ -4,6 +4,10 @@
 
 ---
 
+## 2026-03-16
+
+- **Codex Windows performance** — agent_runner auto-detects Windows and prepends prompt hint directing Codex to prefer built-in file read over PowerShell shell commands (5-15s overhead per call)
+
 ## 2026-03-15
 
 - **Multi-cycle optimization** — performance pipeline now iterates (profile → research → validate → execute → repeat) until target met or plateau detected; each cycle discovers new bottlenecks as dominant ones are fixed (Amdahl's law)

@@ -175,6 +175,18 @@ Pipeline runs can exceed Windows idle timeout, causing the system to sleep mid-e
 
 **DO NOT** call `SetThreadExecutionState` from Stop hook — hook fires every 60s, but the API needs a single call with `ES_CONTINUOUS` to hold state persistently.
 
+### Codex CLI Performance on Windows
+
+Codex uses PowerShell for all shell commands on Windows (hardcoded at Rust compile time: `cfg!(windows) -> ShellType::PowerShell`). Each invocation adds 5-15 seconds overhead.
+
+**Mitigation:** `agent_runner.py` auto-detects Windows via `IS_WINDOWS` and prepends a performance hint to the prompt, directing Codex to prefer its built-in file read tool over shell commands. No manual configuration needed — works automatically for all agents.
+
+| What works | What does NOT work |
+|-----------|-------------------|
+| Prompt hint to prefer built-in file read | `shell_environment_policy.set.SHELL` (env vars, not shell binary) |
+| Batching shell commands in prompt | `allow_login_shell` (login semantics, not shell identity) |
+| `agent_runner.py` auto-injection | Any `config.toml` setting (shell is compile-time) |
+
 ## 7. Concurrency & Worktrees
 
 | Rule | Details |

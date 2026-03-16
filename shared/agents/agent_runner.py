@@ -55,6 +55,31 @@ def build_env(agent_cfg):
     return env
 
 
+WINDOWS_PERFORMANCE_HINT = (
+    "\n## Platform Note (Windows)\n"
+    "You are running on Windows where shell commands use PowerShell "
+    "(5-15 seconds per invocation).\n"
+    "- **PREFER your built-in file read tool** over shell commands "
+    "(`cat`, `type`, `Get-Content`) for reading files. "
+    "Your built-in file read is instant.\n"
+    "- **BATCH shell operations**: combine related checks into one command "
+    "(e.g., `git log --oneline -10 && git diff --stat` instead of "
+    "separate calls).\n"
+    "- **AVOID grep/rg via shell** -- PowerShell escaping differs from bash "
+    "and often causes regex errors. Use your built-in file read to examine "
+    "specific files directly.\n"
+    "- **Shell budget**: each shell call costs 5-15 seconds. "
+    "Prioritize wisely.\n\n"
+)
+
+
+def prepare_prompt(prompt):
+    """Prepend platform-specific performance hints to agent prompt."""
+    if IS_WINDOWS:
+        return WINDOWS_PERFORMANCE_HINT + prompt
+    return prompt
+
+
 def resolve_arg_placeholders(args, context):
     """Replace {cwd}, {output_file}, {session_id} placeholders in args.
 
@@ -620,6 +645,7 @@ def main():
             prompt = f.read()
     if not prompt:
         parser.error("--prompt or --prompt-file is required")
+    prompt = prepare_prompt(prompt)
 
     result = run_agent(
         args.agent, prompt, args.cwd, args.timeout, registry,
