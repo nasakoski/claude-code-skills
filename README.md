@@ -1,26 +1,389 @@
 # Claude Code Skills
 
-![Version](https://img.shields.io/badge/version-3.3.0-blue)
+![Version](https://img.shields.io/badge/version-2026.03.17-blue)
 ![Skills](https://img.shields.io/badge/skills-125-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
-> [!IMPORTANT]
-> **✨ ln-1000 Pipeline Orchestrator** — Autonomous multi-agent system that manages full development lifecycle. Orchestrates a team of specialized agents to execute complete development cycles: from task planning (ln-300) → validation (ln-310) → implementation (ln-400) → quality gate (ln-500) → user-confirmed merge to `develop`. One command, single Story per run.
-
-> [!IMPORTANT]
-> **✨ Community Engagement (9XX)** — Automated GitHub community management: triage issues/PRs/discussions, compose announcements, launch RFC debates, respond to unanswered threads. Strategy-driven engagement with health metrics analysis.
+> **6 plugins. One install command.** Automate your full delivery workflow —
+> from project bootstrap to code audit to production quality gates.
+> Works standalone or as a complete Agile pipeline. No API keys required.
 
 > [!TIP]
 > **Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
 
-> Tired of manual Epic decomposition? Stories without standards research? Tasks that miss quality gates?
->
-> **This plugin automates your entire Agile workflow** — from scope to Done.
+[Plugins](#plugins) · [Quick Start](#quick-start) · [Workflow](#workflow) · [Hooks](#hooks-optional) · [MCP](#mcp-servers-optional) · [AI Review](#ai-review-models-optional) · [FAQ](#faq) · [Full Skill Tree](#whats-inside) · [Links](#links)
+
+---
+
+## Plugins
+
+Install the full suite or pick only the plugins you need. Each works independently.
+
+```bash
+# All 6 plugins
+/plugin add levnikolaevich/claude-code-skills
+
+# Or individually:
+/plugin add levnikolaevich/claude-code-skills --plugin agile-workflow
+/plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
+/plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
+/plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
+/plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
+/plugin add levnikolaevich/claude-code-skills --plugin community-engagement
+```
+
+| Plugin | Description |
+|--------|-------------|
+| **agile-workflow** | Scope decomposition, Story/Task management, Execution, Quality gates, Orchestration |
+| **documentation-pipeline** | Full project docs pipeline with auto-detection (backend/frontend/devops) |
+| **codebase-audit-suite** | Documentation, Security, Build, Code quality, Tests, Architecture, Performance |
+| **project-bootstrap** | CREATE or TRANSFORM projects to production-ready Clean Architecture |
+| **optimization-suite** | Performance optimization, Dependency upgrades, Code modernization |
+| **community-engagement** | GitHub community management: triage, announcements, RFCs, responses |
+
+Browse and discover individual skills at [skills.sh](https://skills.sh/LevNikolaevich/claude-code-skills).
+
+---
+
+## Quick Start
+
+**Standalone** (works immediately, no setup):
+```bash
+ln-620-codebase-auditor    # Audit your code for issues
+ln-700-project-bootstrap   # CREATE or TRANSFORM project
+ln-100-documents-pipeline  # Generate documentation
+```
+
+**Full Agile workflow** (Linear or File Mode — auto-detected):
+```bash
+ln-200-scope-decomposer    # Scope -> Epics -> Stories
+ln-400-story-executor      # Execute Story to Done (fully automated)
+```
+
+---
+
+## Workflow
+
+```
+ln-700-project-bootstrap   # 0. CREATE or TRANSFORM to production
+         ↓
+ln-100-documents-pipeline  # 1. Documentation
+         ↓
+ln-200-scope-decomposer    # 2. Scope -> Epics -> Stories
+         ↓
+ln-400-story-executor      # 3. Tasks -> Review -> Quality -> Done
+```
+
+---
+
+## Hooks (Optional)
+
+Automated validation hooks that run during development:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| **secret-scanner** | `git commit` | Blocks commits containing secrets |
+| **story-validator** | `ln-400` prompt | Validates Story before execution |
+| **code-quality** | After Edit/Write | Reports DRY/KISS/YAGNI violations |
+
+**Installation:** Copy hooks config to `~/.claude/settings.json`. See [hooks/README.md](hooks/README.md)
+
+---
+
+## MCP Servers (Optional)
+
+Skills use MCP servers for research, documentation lookup, and task tracking. All skills work without MCP — they automatically fallback to File Mode (local markdown) when Linear is unavailable, and to WebSearch when research MCPs are missing.
+
+| Server | Purpose | API Key | Used by |
+|--------|---------|---------|---------|
+| **[Context7](https://github.com/upstash/context7)** | Library docs, APIs, migration guides | Optional ([dashboard](https://context7.com/dashboard)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
+| **[Ref](https://docs.ref.tools/install)** | Standards, RFCs, best practices | Required ([ref.tools/keys](https://ref.tools/keys)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
+| **[Linear](https://linear.app/docs/mcp)** | Issue tracking (Agile workflow) | OAuth via browser | ln-300+, ln-400+, ln-500+ |
+| **[hashline-edit](https://github.com/Submersible/mcp-hashline-edit-server)** | Hash-based file editing with integrity verification | — | ln-1000 workers, all skills¹ |
+
+¹ Requires [Bun](https://bun.sh) runtime: `npm install -g bun` (or `curl -fsSL https://bun.sh/install | bash` on macOS/Linux). Also requires [ripgrep](https://github.com/BurntSushi/ripgrep) for `grep` tool.
+
+**CLI setup:**
+```bash
+# Context7 — library documentation
+claude mcp add context7 -- npx -y @upstash/context7-mcp
+
+# Ref — standards & best practices search (API key required)
+claude mcp add --transport http Ref https://api.ref.tools/mcp?apiKey=YOUR_API_KEY
+
+# Linear — issue tracking (OAuth via browser after adding)
+claude mcp add linear-server -- npx -y mcp-remote https://mcp.linear.app/sse
+
+# hashline-edit — hash-based file editing (requires bun + ripgrep)
+claude mcp add hashline-edit -- bunx mcp-hashline-edit-server
+```
+
+<details>
+<summary><b>JSON config alternative</b></summary>
+
+Add to `~/.claude/settings.json`:
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "Ref": {
+      "type": "http",
+      "url": "https://api.ref.tools/mcp?apiKey=YOUR_API_KEY"
+    },
+    "linear-server": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
+    },
+    "hashline-edit": {
+      "command": "bunx",
+      "args": ["mcp-hashline-edit-server"]
+    }
+  }
+}
+```
+</details>
+
+---
+
+## AI Review Models (Optional)
+
+Multi-model review uses external AI agents (Codex + Gemini) for parallel code/story analysis. Both agents run simultaneously with automatic fallback to Claude Opus if unavailable.
+
+| Model | CLI | Version | Used by | Settings |
+|-------|-----|---------|---------|----------|
+| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-310, ln-510, ln-813 | `--json --full-auto` (read-only, internet access) |
+| **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-310, ln-510, ln-813 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
+
+**Review Workflow:**
+1. **Parallel Execution** — Both agents run simultaneously (background tasks)
+2. **Critical Verification** — Claude validates each suggestion (AGREE/DISAGREE/UNCERTAIN)
+3. **Debate Protocol** — Challenge rounds (max 2) for controversial findings
+4. **Filtering** — Only high-confidence (≥90%), high-impact (>2%) suggestions surface
+5. **Fallback** — Self-Review (Claude Opus) if agents unavailable
+
+**Installation:**
+```bash
+# Codex (OpenAI)
+npm install -g @anthropic/codex-cli
+codex login
+
+# Gemini (Google)
+pip install google-gemini-cli
+gemini auth login
+```
+
+**Configuration:**
+Review agents auto-configure via `shared/agents/agent_registry.json`. No manual setup required.
+
+**Audit Trail:**
+All prompts/results saved to `.agent-review/{agent}/` for transparency:
+```
+.agent-review/
+├── codex/
+│   ├── PROJ-123_storyreview_prompt.md
+│   ├── PROJ-123_storyreview_result.md
+│   └── PROJ-123_session.json
+└── gemini/
+    └── (same structure)
+```
+
+<details>
+<summary><b>Skills using external AI review</b></summary>
+
+- **ln-310-multi-agent-validator** — Story/Tasks validation with inline agent review (Codex + Gemini)
+- **ln-510-quality-coordinator** — Code implementation review with inline agent review (Codex + Gemini)
+- **ln-813-optimization-plan-validator** — Optimization plan review before strike execution (Codex + Gemini)
+
+All skills support:
+- Session Resume for multi-round debates
+- Zero timeout (wait for completion)
+- Read-only analysis (no project modifications)
+- Internet access for research
+
+</details>
+
+<details>
+<summary><b>Sharing skills & MCP between agents</b></summary>
+
+**Share skills** — symlink/junction plugin directory:
+
+| OS | Command |
+|----|---------|
+| Windows (PowerShell) | `New-Item -ItemType Junction -Path "C:\Users\<USER>\.gemini\skills" -Target "<PLUGIN_DIR>"` |
+| Windows (CMD) | `mklink /J "C:\Users\<USER>\.gemini\skills" "<PLUGIN_DIR>"` |
+| macOS / Linux | `ln -s ~/.claude/plugins/<PLUGIN_DIR> ~/.gemini/skills` |
+
+Same for `.codex/skills`. Or use **ln-004-agent-config-sync** to automate symlinks + MCP sync.
+
+**MCP settings locations** (for manual sharing):
+
+| Agent | Config File | Format | Docs |
+|-------|------------|--------|------|
+| **Claude Code** | `~/.claude/settings.json` | JSON (`mcpServers: {}`) | [docs](https://docs.anthropic.com/en/docs/claude-code) |
+| **Gemini CLI** | `~/.gemini/settings.json` | JSON (`mcpServers: {}`) | [docs](https://github.com/google/gemini-cli) |
+| **Codex CLI** | `~/.codex/config.toml` | TOML (`[mcp_servers.name]`) | [docs](https://developers.openai.com/codex/mcp) |
+
+**Note:** Claude and Gemini use identical JSON format for `mcpServers` — copy the block directly. Codex uses TOML — convert manually.
+
+</details>
+
+---
+
+## FAQ
+
+<details>
+<summary><b>What is Claude Code Skills?</b></summary>
+
+A plugin for [Claude Code](https://claude.ai/code) that provides production-ready skills automating the full Agile development lifecycle — from project bootstrap and documentation through scope decomposition, task execution, quality gates, and comprehensive code audits.
+
+</details>
+
+<details>
+<summary><b>How does it automate the Agile workflow?</b></summary>
+
+Skills form a complete pipeline: `ln-700` bootstraps the project → `ln-100` generates documentation → `ln-200` decomposes scope into Epics and Stories → `ln-400` executes tasks with automated review loops → `ln-500` runs quality gates before marking Done. Each stage is fully automated with human approval checkpoints.
+
+</details>
+
+<details>
+<summary><b>Does it require Linear or any external dependencies?</b></summary>
+
+No. All skills work without Linear or any external tools. Linear integration is optional — when unavailable, skills fallback to a standalone flow using local markdown files (`kanban_board.md`) as the task management backend. No API keys, no paid services required.
+
+</details>
+
+<details>
+<summary><b>What AI models does it use?</b></summary>
+
+Claude Opus is the primary model. For code and story reviews, skills delegate to external agents (OpenAI Codex, Google Gemini) for parallel multi-model review with automatic fallback to Claude Opus if external agents are unavailable.
+
+</details>
+
+<details>
+<summary><b>How do I install it?</b></summary>
+
+```bash
+# All 6 plugins (full suite)
+/plugin add levnikolaevich/claude-code-skills
+
+# Or individually:
+/plugin add levnikolaevich/claude-code-skills --plugin agile-workflow
+/plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
+/plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
+/plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
+/plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
+/plugin add levnikolaevich/claude-code-skills --plugin community-engagement
+
+# Git Clone (alternative)
+git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/skills
+```
+
+</details>
+
+<details>
+<summary><b>Which plugin do I need?</b></summary>
+
+| If you want to... | Install |
+|---|---|
+| Run full Agile pipeline (plan → execute → review) | `agile-workflow` |
+| Generate project documentation | `documentation-pipeline` |
+| Audit existing code for issues | `codebase-audit-suite` |
+| Scaffold a new project or restructure existing | `project-bootstrap` |
+| Optimize performance, dependencies, bundle size | `optimization-suite` |
+| Manage GitHub community (triage, announcements, RFCs) | `community-engagement` |
+| Everything | `/plugin add levnikolaevich/claude-code-skills` (all 6) |
+
+Each plugin works independently — install only what you need.
+
+</details>
+
+<details>
+<summary><b>Can I run individual skills without the full pipeline?</b></summary>
+
+Yes. Most skills work standalone — just invoke them directly (e.g., `/ln-620-codebase-auditor` for a full code audit). Pipeline orchestrators (`ln-1000`, `ln-400`) coordinate other skills but aren't required. Audit skills (`ln-6XX`) and bootstrap skills (`ln-7XX`) are fully self-contained.
+
+</details>
+
+<details>
+<summary><b>Can I use it on an existing project?</b></summary>
+
+Yes. `ln-700-project-bootstrap` has a TRANSFORM mode that restructures existing projects to Clean Architecture without starting from scratch. Audit skills (`ln-6XX`) work standalone on any codebase — no setup required.
+
+</details>
+
+<details>
+<summary><b>How does it handle "almost right" AI-generated code?</b></summary>
+
+Through automated review loops. `ln-402-task-reviewer` checks every task output, `ln-403-task-rework` fixes issues and resubmits for review, and `ln-500-story-quality-gate` runs a 4-level gate (PASS/CONCERNS/REWORK/FAIL) before any Story is marked Done. Code is never shipped without passing quality checks.
+
+</details>
+
+<details>
+<summary><b>Does it replace human code review?</b></summary>
+
+No — it augments human review. Multi-model cross-checking (Claude + Codex + Gemini) catches issues before human reviewers see the code. Human approval points are built into the workflow at Story validation (`ln-310`) and quality gates (`ln-500`). The goal is to reduce reviewer burden, not eliminate oversight.
+
+</details>
+
+<details>
+<summary><b>How does it maintain context across large codebases?</b></summary>
+
+Through the Orchestrator-Worker pattern. Instead of feeding the entire codebase into one prompt, L1 orchestrators decompose work into focused tasks, L2 coordinators manage scope, and L3 workers execute with minimal, targeted context. Each skill loads only the files it needs, keeping token usage efficient.
+
+</details>
+
+<details>
+<summary><b>What can the audit skills detect?</b></summary>
+
+Audit skills in 5 groups: documentation quality (structure, semantics, fact-checking, code comments), codebase health (security, build, DRY/KISS/YAGNI, complexity, dependencies, dead code, observability, concurrency, lifecycle), test suites (business logic, E2E coverage, value scoring, coverage gaps, isolation), architecture (patterns, layer boundaries, API contracts, dependency graphs, OSS replacements, project structure, env configuration), and persistence performance (query efficiency, transactions, runtime, resource lifecycle).
+
+</details>
+
+<details>
+<summary><b>How is it different from custom prompts or slash commands?</b></summary>
+
+Custom prompts are ad-hoc and context-free. Claude Code Skills provides coordinated skills with an [Orchestrator-Worker architecture](docs/architecture/SKILL_ARCHITECTURE_GUIDE.md) — L0 meta-orchestrator (Agent Teams) coordinates L1 orchestrators, which delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
+
+</details>
+
+<details>
+<summary><b>What is the Orchestrator-Worker pattern?</b></summary>
+
+A 4-level hierarchy: L0 meta-orchestrator (`ln-1000-pipeline-orchestrator`) coordinates via Agent Teams (TeamCreate), L1 orchestrators (e.g., `ln-400-story-executor`) manage Story lifecycle, L2 coordinators (e.g., `ln-220-story-coordinator`) handle mid-level scope, and L3 workers (e.g., `ln-221-story-creator`) execute specific tasks. Each level has single responsibility and loads only the context it needs. See [SKILL_ARCHITECTURE_GUIDE.md](docs/architecture/SKILL_ARCHITECTURE_GUIDE.md).
+
+</details>
+
+<details>
+<summary><b>Can it catch technical debt from AI-generated code?</b></summary>
+
+Yes. Audit skills specifically target AI-induced tech debt: `ln-623` checks DRY/KISS/YAGNI violations, `ln-626` finds dead code and unused imports, `ln-640` audits architectural pattern evolution, `ln-644` detects dependency cycles and coupling metrics, `ln-645` finds custom code that can be replaced by battle-tested open-source packages, and `ln-646` validates project structure against framework-specific conventions. Run `ln-620-codebase-auditor` to scan all 9 categories in parallel.
+
+</details>
+
+<details>
+<summary><b>How does it handle multi-stack or polyglot projects?</b></summary>
+
+Bootstrap skills (`ln-7XX`) support React, .NET, and Python project structures. Audit skills are language-aware — `ln-622-build-auditor` checks compiler/type errors across stacks, `ln-625-dependencies-auditor` scans npm, NuGet, and pip packages, and `ln-651-query-efficiency-auditor` catches N+1 queries regardless of ORM.
+
+</details>
+
+<details>
+<summary><b>Can I share these skills with Gemini CLI or OpenAI Codex?</b></summary>
+
+Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-config-sync` to automate it. See [AI Review Models > Sharing skills & MCP between agents](#ai-review-models-optional) for commands and MCP config paths.
+
+</details>
 
 ---
 
 ## What's Inside
+
+<details>
+<summary><b>Full Skill Tree (125 skills)</b></summary>
 
 ```
 claude-code-skills/                      # MARKETPLACE
@@ -186,370 +549,6 @@ claude-code-skills/                      # MARKETPLACE
 |-- CLAUDE.md                          # Full documentation
 ```
 
----
-
-## Installation
-
-This marketplace contains **6 plugins** — install together or separately:
-
-```bash
-# All plugins (full suite)
-/plugin add levnikolaevich/claude-code-skills
-
-# Or individually:
-/plugin add levnikolaevich/claude-code-skills --plugin agile-workflow
-/plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
-/plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
-/plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
-/plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
-/plugin add levnikolaevich/claude-code-skills --plugin community-engagement
-```
-
-| Plugin | Description |
-|--------|-------------|
-| **agile-workflow** | Scope decomposition, Story/Task management, Execution, Quality gates, Orchestration |
-| **documentation-pipeline** | Full project docs pipeline with auto-detection (backend/frontend/devops) |
-| **codebase-audit-suite** | Documentation, Security, Build, Code quality, Tests, Architecture, Performance |
-| **project-bootstrap** | CREATE or TRANSFORM projects to production-ready Clean Architecture |
-| **optimization-suite** | Performance optimization, Dependency upgrades, Code modernization |
-| **community-engagement** | GitHub community management: triage, announcements, RFCs, responses |
-
-### Other AI Agents
-
-Browse and discover individual skills at [skills.sh](https://skills.sh/LevNikolaevich/claude-code-skills).
-
----
-
-## Quick Start
-
-**Standalone** (works immediately, no setup):
-```bash
-ln-620-codebase-auditor    # Audit your code for issues
-ln-700-project-bootstrap   # CREATE or TRANSFORM project
-ln-100-documents-pipeline  # Generate documentation
-```
-
-**Full Agile workflow** (Linear or File Mode — auto-detected):
-```bash
-ln-200-scope-decomposer    # Scope -> Epics -> Stories
-ln-400-story-executor      # Execute Story to Done (fully automated)
-```
-
----
-
-## Hooks (Optional)
-
-Automated validation hooks that run during development:
-
-| Hook | Trigger | Action |
-|------|---------|--------|
-| **secret-scanner** | `git commit` | Blocks commits containing secrets |
-| **story-validator** | `ln-400` prompt | Validates Story before execution |
-| **code-quality** | After Edit/Write | Reports DRY/KISS/YAGNI violations |
-
-**Installation:** Copy hooks config to `~/.claude/settings.json`. See [hooks/README.md](hooks/README.md)
-
----
-
-## MCP Servers (Optional)
-
-Skills use MCP servers for research, documentation lookup, and task tracking. All skills work without MCP — they automatically fallback to File Mode (local markdown) when Linear is unavailable, and to WebSearch when research MCPs are missing.
-
-| Server | Purpose | API Key | Used by |
-|--------|---------|---------|---------|
-| **[Context7](https://github.com/upstash/context7)** | Library docs, APIs, migration guides | Optional ([dashboard](https://context7.com/dashboard)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
-| **[Ref](https://docs.ref.tools/install)** | Standards, RFCs, best practices | Required ([ref.tools/keys](https://ref.tools/keys)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
-| **[Linear](https://linear.app/docs/mcp)** | Issue tracking (Agile workflow) | OAuth via browser | ln-300+, ln-400+, ln-500+ |
-| **[hashline-edit](https://github.com/Submersible/mcp-hashline-edit-server)** | Hash-based file editing with integrity verification | — | ln-1000 workers, all skills¹ |
-
-¹ Requires [Bun](https://bun.sh) runtime: `npm install -g bun` (or `curl -fsSL https://bun.sh/install | bash` on macOS/Linux). Also requires [ripgrep](https://github.com/BurntSushi/ripgrep) for `grep` tool.
-
-**CLI setup:**
-```bash
-# Context7 — library documentation
-claude mcp add context7 -- npx -y @upstash/context7-mcp
-
-# Ref — standards & best practices search (API key required)
-claude mcp add --transport http Ref https://api.ref.tools/mcp?apiKey=YOUR_API_KEY
-
-# Linear — issue tracking (OAuth via browser after adding)
-claude mcp add linear-server -- npx -y mcp-remote https://mcp.linear.app/sse
-
-# hashline-edit — hash-based file editing (requires bun + ripgrep)
-claude mcp add hashline-edit -- bunx mcp-hashline-edit-server
-```
-
-<details>
-<summary><b>JSON config alternative</b></summary>
-
-Add to `~/.claude/settings.json`:
-```json
-{
-  "mcpServers": {
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
-    },
-    "Ref": {
-      "type": "http",
-      "url": "https://api.ref.tools/mcp?apiKey=YOUR_API_KEY"
-    },
-    "linear-server": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
-    },
-    "hashline-edit": {
-      "command": "bunx",
-      "args": ["mcp-hashline-edit-server"]
-    }
-  }
-}
-```
-</details>
-
----
-
-## AI Review Models (Optional)
-
-Multi-model review uses external AI agents (Codex + Gemini) for parallel code/story analysis. Both agents run simultaneously with automatic fallback to Claude Opus if unavailable.
-
-| Model | CLI | Version | Used by | Settings |
-|-------|-----|---------|---------|----------|
-| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-310, ln-510, ln-813 | `--json --full-auto` (read-only, internet access) |
-| **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-310, ln-510, ln-813 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
-
-**Review Workflow:**
-1. **Parallel Execution** — Both agents run simultaneously (background tasks)
-2. **Critical Verification** — Claude validates each suggestion (AGREE/DISAGREE/UNCERTAIN)
-3. **Debate Protocol** — Challenge rounds (max 2) for controversial findings
-4. **Filtering** — Only high-confidence (≥90%), high-impact (>2%) suggestions surface
-5. **Fallback** — Self-Review (Claude Opus) if agents unavailable
-
-**Installation:**
-```bash
-# Codex (OpenAI)
-npm install -g @anthropic/codex-cli
-codex login
-
-# Gemini (Google)
-pip install google-gemini-cli
-gemini auth login
-```
-
-**Configuration:**
-Review agents auto-configure via `shared/agents/agent_registry.json`. No manual setup required.
-
-**Audit Trail:**
-All prompts/results saved to `.agent-review/{agent}/` for transparency:
-```
-.agent-review/
-├── codex/
-│   ├── PROJ-123_storyreview_prompt.md
-│   ├── PROJ-123_storyreview_result.md
-│   └── PROJ-123_session.json
-└── gemini/
-    └── (same structure)
-```
-
-<details>
-<summary><b>Skills using external AI review</b></summary>
-
-- **ln-310-multi-agent-validator** — Story/Tasks validation with inline agent review (Codex + Gemini)
-- **ln-510-quality-coordinator** — Code implementation review with inline agent review (Codex + Gemini)
-- **ln-813-optimization-plan-validator** — Optimization plan review before strike execution (Codex + Gemini)
-
-All skills support:
-- Session Resume for multi-round debates
-- Zero timeout (wait for completion)
-- Read-only analysis (no project modifications)
-- Internet access for research
-
-</details>
-
-<details>
-<summary><b>Sharing skills & MCP between agents</b></summary>
-
-**Share skills** — symlink/junction plugin directory:
-
-| OS | Command |
-|----|---------|
-| Windows (PowerShell) | `New-Item -ItemType Junction -Path "C:\Users\<USER>\.gemini\skills" -Target "<PLUGIN_DIR>"` |
-| Windows (CMD) | `mklink /J "C:\Users\<USER>\.gemini\skills" "<PLUGIN_DIR>"` |
-| macOS / Linux | `ln -s ~/.claude/plugins/<PLUGIN_DIR> ~/.gemini/skills` |
-
-Same for `.codex/skills`. Or use **ln-004-agent-config-sync** to automate symlinks + MCP sync.
-
-**MCP settings locations** (for manual sharing):
-
-| Agent | Config File | Format | Docs |
-|-------|------------|--------|------|
-| **Claude Code** | `~/.claude/settings.json` | JSON (`mcpServers: {}`) | [docs](https://docs.anthropic.com/en/docs/claude-code) |
-| **Gemini CLI** | `~/.gemini/settings.json` | JSON (`mcpServers: {}`) | [docs](https://github.com/google/gemini-cli) |
-| **Codex CLI** | `~/.codex/config.toml` | TOML (`[mcp_servers.name]`) | [docs](https://developers.openai.com/codex/mcp) |
-
-**Note:** Claude and Gemini use identical JSON format for `mcpServers` — copy the block directly. Codex uses TOML — convert manually.
-
-</details>
-
----
-
-## Workflow
-
-```
-ln-700-project-bootstrap   # 0. CREATE or TRANSFORM to production
-         ↓
-ln-100-documents-pipeline  # 1. Documentation
-         ↓
-ln-200-scope-decomposer    # 2. Scope -> Epics -> Stories
-         ↓
-ln-400-story-executor      # 3. Tasks -> Review -> Quality -> Done
-```
-
----
-
-## FAQ
-
-<details>
-<summary><b>What is Claude Code Skills?</b></summary>
-
-A plugin for [Claude Code](https://claude.ai/code) that provides production-ready skills automating the full Agile development lifecycle — from project bootstrap and documentation through scope decomposition, task execution, quality gates, and comprehensive code audits.
-
-</details>
-
-<details>
-<summary><b>How does it automate the Agile workflow?</b></summary>
-
-Skills form a complete pipeline: `ln-700` bootstraps the project → `ln-100` generates documentation → `ln-200` decomposes scope into Epics and Stories → `ln-400` executes tasks with automated review loops → `ln-500` runs quality gates before marking Done. Each stage is fully automated with human approval checkpoints.
-
-</details>
-
-<details>
-<summary><b>Does it require Linear or any external dependencies?</b></summary>
-
-No. All skills work without Linear or any external tools. Linear integration is optional — when unavailable, skills fallback to a standalone flow using local markdown files (`kanban_board.md`) as the task management backend. No API keys, no paid services required.
-
-</details>
-
-<details>
-<summary><b>What AI models does it use?</b></summary>
-
-Claude Opus is the primary model. For code and story reviews, skills delegate to external agents (OpenAI Codex, Google Gemini) for parallel multi-model review with automatic fallback to Claude Opus if external agents are unavailable.
-
-</details>
-
-<details>
-<summary><b>How do I install it?</b></summary>
-
-```bash
-# All 6 plugins (full suite)
-/plugin add levnikolaevich/claude-code-skills
-
-# Or individually:
-/plugin add levnikolaevich/claude-code-skills --plugin agile-workflow
-/plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
-/plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite
-/plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
-/plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
-/plugin add levnikolaevich/claude-code-skills --plugin community-engagement
-
-# Git Clone (alternative)
-git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/skills
-```
-
-</details>
-
-<details>
-<summary><b>Which plugin do I need?</b></summary>
-
-| If you want to... | Install |
-|---|---|
-| Run full Agile pipeline (plan → execute → review) | `agile-workflow` |
-| Generate project documentation | `documentation-pipeline` |
-| Audit existing code for issues | `codebase-audit-suite` |
-| Scaffold a new project or restructure existing | `project-bootstrap` |
-| Optimize performance, dependencies, bundle size | `optimization-suite` |
-| Manage GitHub community (triage, announcements, RFCs) | `community-engagement` |
-| Everything | `/plugin add levnikolaevich/claude-code-skills` (all 6) |
-
-Each plugin works independently — install only what you need.
-
-</details>
-
-<details>
-<summary><b>Can I run individual skills without the full pipeline?</b></summary>
-
-Yes. Most skills work standalone — just invoke them directly (e.g., `/ln-620-codebase-auditor` for a full code audit). Pipeline orchestrators (`ln-1000`, `ln-400`) coordinate other skills but aren't required. Audit skills (`ln-6XX`) and bootstrap skills (`ln-7XX`) are fully self-contained.
-
-</details>
-
-<details>
-<summary><b>Can I use it on an existing project?</b></summary>
-
-Yes. `ln-700-project-bootstrap` has a TRANSFORM mode that restructures existing projects to Clean Architecture without starting from scratch. Audit skills (`ln-6XX`) work standalone on any codebase — no setup required.
-
-</details>
-
-<details>
-<summary><b>How does it handle "almost right" AI-generated code?</b></summary>
-
-Through automated review loops. `ln-402-task-reviewer` checks every task output, `ln-403-task-rework` fixes issues and resubmits for review, and `ln-500-story-quality-gate` runs a 4-level gate (PASS/CONCERNS/REWORK/FAIL) before any Story is marked Done. Code is never shipped without passing quality checks.
-
-</details>
-
-<details>
-<summary><b>Does it replace human code review?</b></summary>
-
-No — it augments human review. Multi-model cross-checking (Claude + Codex + Gemini) catches issues before human reviewers see the code. Human approval points are built into the workflow at Story validation (`ln-310`) and quality gates (`ln-500`). The goal is to reduce reviewer burden, not eliminate oversight.
-
-</details>
-
-<details>
-<summary><b>How does it maintain context across large codebases?</b></summary>
-
-Through the Orchestrator-Worker pattern. Instead of feeding the entire codebase into one prompt, L1 orchestrators decompose work into focused tasks, L2 coordinators manage scope, and L3 workers execute with minimal, targeted context. Each skill loads only the files it needs, keeping token usage efficient.
-
-</details>
-
-<details>
-<summary><b>What can the audit skills detect?</b></summary>
-
-Audit skills in 5 groups: documentation quality (structure, semantics, fact-checking, code comments), codebase health (security, build, DRY/KISS/YAGNI, complexity, dependencies, dead code, observability, concurrency, lifecycle), test suites (business logic, E2E coverage, value scoring, coverage gaps, isolation), architecture (patterns, layer boundaries, API contracts, dependency graphs, OSS replacements, project structure, env configuration), and persistence performance (query efficiency, transactions, runtime, resource lifecycle).
-
-</details>
-
-<details>
-<summary><b>How is it different from custom prompts or slash commands?</b></summary>
-
-Custom prompts are ad-hoc and context-free. Claude Code Skills provides coordinated skills with an [Orchestrator-Worker architecture](docs/architecture/SKILL_ARCHITECTURE_GUIDE.md) — L0 meta-orchestrator (Agent Teams) coordinates L1 orchestrators, which delegate to L2 coordinators and L3 workers, each with single responsibility and token-efficient context loading. Skills build on each other's outputs across the full lifecycle.
-
-</details>
-
-<details>
-<summary><b>What is the Orchestrator-Worker pattern?</b></summary>
-
-A 4-level hierarchy: L0 meta-orchestrator (`ln-1000-pipeline-orchestrator`) coordinates via Agent Teams (TeamCreate), L1 orchestrators (e.g., `ln-400-story-executor`) manage Story lifecycle, L2 coordinators (e.g., `ln-220-story-coordinator`) handle mid-level scope, and L3 workers (e.g., `ln-221-story-creator`) execute specific tasks. Each level has single responsibility and loads only the context it needs. See [SKILL_ARCHITECTURE_GUIDE.md](docs/architecture/SKILL_ARCHITECTURE_GUIDE.md).
-
-</details>
-
-<details>
-<summary><b>Can it catch technical debt from AI-generated code?</b></summary>
-
-Yes. Audit skills specifically target AI-induced tech debt: `ln-623` checks DRY/KISS/YAGNI violations, `ln-626` finds dead code and unused imports, `ln-640` audits architectural pattern evolution, `ln-644` detects dependency cycles and coupling metrics, `ln-645` finds custom code that can be replaced by battle-tested open-source packages, and `ln-646` validates project structure against framework-specific conventions. Run `ln-620-codebase-auditor` to scan all 9 categories in parallel.
-
-</details>
-
-<details>
-<summary><b>How does it handle multi-stack or polyglot projects?</b></summary>
-
-Bootstrap skills (`ln-7XX`) support React, .NET, and Python project structures. Audit skills are language-aware — `ln-622-build-auditor` checks compiler/type errors across stacks, `ln-625-dependencies-auditor` scans npm, NuGet, and pip packages, and `ln-651-query-efficiency-auditor` catches N+1 queries regardless of ORM.
-
-</details>
-
-<details>
-<summary><b>Can I share these skills with Gemini CLI or OpenAI Codex?</b></summary>
-
-Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-config-sync` to automate it. See [AI Review Models > Sharing skills & MCP between agents](#ai-review-models-optional) for commands and MCP config paths.
-
 </details>
 
 ---
@@ -566,8 +565,10 @@ Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-
 | **Discussions** | [GitHub Discussions](https://github.com/levnikolaevich/claude-code-skills/discussions) |
 | **Issues** | [GitHub Issues](https://github.com/levnikolaevich/claude-code-skills/issues) |
 | **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| **Browse Skills** | [skills.sh](https://skills.sh/LevNikolaevich/claude-code-skills) |
 
-## Research & Influences
+<details>
+<summary><b>Research & Influences</b></summary>
 
 Papers, docs, and methodologies studied and implemented in the skill architecture.
 
@@ -583,6 +584,8 @@ Papers, docs, and methodologies studied and implemented in the skill architectur
 | Vertical Slicing ([Humanizing Work](https://www.humanizingwork.com/the-humanizing-work-guide-to-splitting-user-stories/)) | "Never split by architectural layer" | Foundation-First task ordering |
 | [Claude Code Picks](https://amplifying.ai/research/claude-code-picks) (Amplifying AI, 2026) | Claude's tool preferences are learned maturity signals, not bias — Drizzle/Vitest/Zustand chosen for objective quality. Build-not-buy in 12/20 categories. "Correcting" valid preferences = recommending worse tools | Research-to-Action Gate in CLAUDE.md — require concrete defect before turning research into skill changes |
 | [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-814-optimization-executor`](ln-814-optimization-executor/SKILL.md) — keep/discard with adaptive thresholds, multi-file support, compound baselines, experiment log |
+
+</details>
 
 ---
 

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codebase Audit Suite — Claude Code Skills</title>
+  <meta name="description" content="Parallel auditors for security, quality, architecture, tests, and performance. 36 skills for Claude Code.">
+  <link rel="icon" type="image/jpeg" href="../favicon.jpg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #16161f;
+      --bg-card-hover: #1c1c28;
+      --border: #2a2a3a;
+      --text-primary: #e8e8f0;
+      --text-secondary: #9898aa;
+      --text-muted: #6a6a7a;
+      --accent: #7c6aef;
+      --accent-light: #9d8ff5;
+      --accent-glow: rgba(124, 106, 239, 0.15);
+      --green: #34d399;
+      --blue: #60a5fa;
+      --amber: #fbbf24;
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --max-width: 1120px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-light); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #bfb3ff; }
+
+    .container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 10, 15, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    nav .logo { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+    nav .logo span { color: var(--accent-light); }
+    nav .links { display: flex; gap: 24px; font-size: 14px; }
+    nav .links a { color: var(--text-secondary); }
+    nav .links a:hover { color: var(--text-primary); }
+
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, var(--accent-glow), transparent);
+    }
+    .hero .back-link {
+      display: inline-block;
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      transition: color 0.2s;
+    }
+    .hero .back-link:hover { color: var(--accent-light); }
+    .hero h1 {
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .hero .subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto 32px;
+      line-height: 1.5;
+    }
+    .hero .install-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .hero .install-block:hover { border-color: var(--accent); }
+    .hero .install-block .prompt { color: var(--text-muted); user-select: none; }
+    .hero .install-block .cmd { color: var(--green); }
+    .hero .install-block .copy {
+      color: var(--text-muted); font-size: 12px;
+      padding: 4px 8px; border-radius: 4px;
+      background: var(--bg-card);
+      transition: color 0.2s;
+    }
+    .hero .install-block:hover .copy { color: var(--text-primary); }
+
+    section { padding: 64px 0; }
+    section h2 {
+      font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    section .section-desc {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      margin-bottom: 32px;
+      max-width: 600px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 24px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    .skill-id {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      white-space: nowrap;
+    }
+    .skill-desc { color: var(--text-secondary); }
+    .group-header td {
+      background: var(--bg-card);
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-primary);
+      padding: 10px 16px;
+    }
+    .group-header:hover td { background: var(--bg-card); }
+
+    .workflow-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+    }
+    .workflow-block p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .workflow-block code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .code-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-x: auto;
+      max-width: 640px;
+    }
+    .code-block .comment { color: var(--text-muted); }
+    .code-block .cmd { color: var(--green); }
+
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--text-secondary); }
+    footer .links-row { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .hero { padding: 48px 0 36px; }
+      section { padding: 48px 0; }
+      nav .links { gap: 16px; }
+      .hero .install-block { font-size: 12px; padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="../index.html" class="logo">Claude Code <span>Skills</span></a>
+      <div class="links">
+        <a href="../index.html#plugins">All Plugins</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <a href="../index.html#plugins" class="back-link">&larr; Back to all plugins</a>
+      <h1>Codebase Audit Suite</h1>
+      <p class="subtitle">Parallel auditors for security, quality, architecture, tests, and performance</p>
+      <div class="install-block" onclick="navigator.clipboard.writeText('/plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite'); this.querySelector('.copy').textContent='Copied!'">
+        <span class="prompt">$</span>
+        <span class="cmd">/plugin add levnikolaevich/claude-code-skills --plugin codebase-audit-suite</span>
+        <span class="copy">Copy</span>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="container">
+      <h2>Skills</h2>
+      <p class="section-desc">36 skills across 5 audit domains, each with a coordinator and parallel workers.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Skill ID</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr class="group-header"><td colspan="2">Documentation</td></tr>
+            <tr><td class="skill-id">ln-610</td><td class="skill-desc">Coordinate 4 documentation audit workers</td></tr>
+            <tr><td class="skill-id">ln-611</td><td class="skill-desc">Check hierarchy, links, SSOT, freshness</td></tr>
+            <tr><td class="skill-id">ln-612</td><td class="skill-desc">Audit content against SCOPE and goals</td></tr>
+            <tr><td class="skill-id">ln-613</td><td class="skill-desc">Check WHY-not-WHAT, density, docstrings</td></tr>
+            <tr><td class="skill-id">ln-614</td><td class="skill-desc">Verify claims against codebase</td></tr>
+
+            <tr class="group-header"><td colspan="2">Codebase Health</td></tr>
+            <tr><td class="skill-id">ln-620</td><td class="skill-desc">Coordinate 9 parallel audit workers</td></tr>
+            <tr><td class="skill-id">ln-621</td><td class="skill-desc">Secrets, injection, XSS, insecure deps</td></tr>
+            <tr><td class="skill-id">ln-622</td><td class="skill-desc">Compiler errors, deprecations, type errors</td></tr>
+            <tr><td class="skill-id">ln-623</td><td class="skill-desc">DRY, KISS/YAGNI, error handling, DI</td></tr>
+            <tr><td class="skill-id">ln-624</td><td class="skill-desc">Complexity, nesting, god classes, N+1</td></tr>
+            <tr><td class="skill-id">ln-625</td><td class="skill-desc">Outdated, unused, reinvented wheels, CVE</td></tr>
+            <tr><td class="skill-id">ln-626</td><td class="skill-desc">Unreachable code, unused imports/vars</td></tr>
+            <tr><td class="skill-id">ln-627</td><td class="skill-desc">Logging, health checks, metrics, tracing</td></tr>
+            <tr><td class="skill-id">ln-628</td><td class="skill-desc">Async races, thread safety, deadlocks</td></tr>
+            <tr><td class="skill-id">ln-629</td><td class="skill-desc">Bootstrap order, graceful shutdown</td></tr>
+
+            <tr class="group-header"><td colspan="2">Test Suites</td></tr>
+            <tr><td class="skill-id">ln-630</td><td class="skill-desc">Coordinate 7 test audit workers</td></tr>
+            <tr><td class="skill-id">ln-631</td><td class="skill-desc">Detect tests validating framework not code</td></tr>
+            <tr><td class="skill-id">ln-632</td><td class="skill-desc">Validate E2E coverage for critical paths</td></tr>
+            <tr><td class="skill-id">ln-633</td><td class="skill-desc">Calculate test Usefulness Score</td></tr>
+            <tr><td class="skill-id">ln-634</td><td class="skill-desc">Identify missing critical business tests</td></tr>
+            <tr><td class="skill-id">ln-635</td><td class="skill-desc">Check isolation, determinism, anti-patterns</td></tr>
+            <tr><td class="skill-id">ln-636</td><td class="skill-desc">Audit manual test script quality</td></tr>
+            <tr><td class="skill-id">ln-637</td><td class="skill-desc">Audit test file organization</td></tr>
+
+            <tr class="group-header"><td colspan="2">Architecture</td></tr>
+            <tr><td class="skill-id">ln-640</td><td class="skill-desc">Audit patterns against best practices</td></tr>
+            <tr><td class="skill-id">ln-641</td><td class="skill-desc">Analyze pattern, calculate 4 scores</td></tr>
+            <tr><td class="skill-id">ln-642</td><td class="skill-desc">Check layer violations, transactions</td></tr>
+            <tr><td class="skill-id">ln-643</td><td class="skill-desc">Layer leakage, missing DTOs, errors</td></tr>
+            <tr><td class="skill-id">ln-644</td><td class="skill-desc">Build dep graph, detect cycles</td></tr>
+            <tr><td class="skill-id">ln-645</td><td class="skill-desc">Find OSS alternatives for custom code</td></tr>
+            <tr><td class="skill-id">ln-646</td><td class="skill-desc">File hygiene, conventions, naming</td></tr>
+            <tr><td class="skill-id">ln-647</td><td class="skill-desc">Env var sync, defaults, validation</td></tr>
+
+            <tr class="group-header"><td colspan="2">Persistence</td></tr>
+            <tr><td class="skill-id">ln-650</td><td class="skill-desc">Coordinate 4 persistence workers</td></tr>
+            <tr><td class="skill-id">ln-651</td><td class="skill-desc">N+1, over-fetching, missing bulk ops</td></tr>
+            <tr><td class="skill-id">ln-652</td><td class="skill-desc">Transaction scope, rollback handling</td></tr>
+            <tr><td class="skill-id">ln-653</td><td class="skill-desc">Blocking IO, unnecessary allocations</td></tr>
+            <tr><td class="skill-id">ln-654</td><td class="skill-desc">Session scope, pool config, leaks</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>How it works</h2>
+      <div class="workflow-block">
+        <p>
+          5 domain coordinators (<code>ln-610</code>, <code>ln-620</code>, <code>ln-630</code>,
+          <code>ln-640</code>, <code>ln-650</code>) each launch their workers in parallel.
+          Workers produce individual reports that get aggregated into a unified audit summary.
+        </p>
+        <p style="margin-top: 16px;">
+          Run a single coordinator for a focused audit, or run multiple coordinators for comprehensive coverage.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2>Quick start</h2>
+      <div class="code-block">
+        <span class="comment"># Full codebase audit</span><br>
+        <span class="cmd">ln-620-codebase-auditor</span><br><br>
+        <span class="comment"># Documentation audit only</span><br>
+        <span class="cmd">ln-610-docs-auditor</span><br><br>
+        <span class="comment"># Test suite audit only</span><br>
+        <span class="cmd">ln-630-test-auditor</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="links-row">
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/releases" target="_blank">Releases</a>
+        <a href="https://skills.sh/LevNikolaevich/claude-code-skills" target="_blank">skills.sh</a>
+      </div>
+      <p>
+        Made by <a href="https://github.com/levnikolaevich" target="_blank">@levnikolaevich</a>
+        &middot; MIT License
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
