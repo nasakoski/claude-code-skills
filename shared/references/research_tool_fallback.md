@@ -14,6 +14,10 @@ Execute in order, stop at first successful result:
 | 4 | `WebFetch` | Specific URL known | Medium | Reading specific pages |
 | 5 | Built-in knowledge | Last resort | Low | Flag: "Based on training data, may be outdated" |
 
+**MANDATORY READ:** Load `shared/references/epistemic_protocol.md` — source marking for all research output.
+
+**Source Attribution:** When using results from any level, mark provenance per epistemic protocol.
+
 ## Usage Pattern
 
 ```

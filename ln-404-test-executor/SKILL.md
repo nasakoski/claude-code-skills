@@ -59,11 +59,11 @@ Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 - **Do NOT commit.** Leave all changes uncommitted — the reviewer reviews and commits.
 
 ## Definition of Done
-- Task identified as test task and set to In Progress; kanban updated.
-- Plan validated (priority/limits) and guides read.
-- Tests implemented/updated and executed; existing failures fixed.
-- Docs/infra updates applied per task plan.
-- Task set to To Review; kanban moved; summary comment added with commands and coverage.
+- [ ] Task identified as test task and set to In Progress; kanban updated
+- [ ] Plan validated (priority/limits) and guides read
+- [ ] Tests implemented/updated and executed; existing failures fixed
+- [ ] Docs/infra updates applied per task plan
+- [ ] Task set to To Review; kanban moved; summary comment added with commands and coverage
 
 ## Test Failure Analysis Protocol
 

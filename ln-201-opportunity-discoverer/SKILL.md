@@ -460,6 +460,15 @@ $50/user pricing proven, can MVP in 3 weeks with existing skills.
 
 ---
 
+## Definition of Done
+
+- [ ] Ideas brainstormed from product context and market signals
+- [ ] KILL funnel applied: each idea passed/killed at each filter stage
+- [ ] Survivors scored and ranked
+- [ ] Discovery document generated at `docs/reference/research/[YYYY-MM-DD]-discovery.md`
+- [ ] TOP RECOMMENDATION identified with channel + rationale
+- [ ] KILL Log documents all eliminated ideas with reasons
+
 ## Reference Files
 
 | File | Purpose |

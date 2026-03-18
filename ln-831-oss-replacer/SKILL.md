@@ -177,12 +177,12 @@ Options:
 
 ## Definition of Done
 
-- Migration plan loaded from audit report or target module analyzed
-- Candidates prioritized by confidence + LOC
-- Each replacement applied atomically: install → rewrite → test → keep/discard
-- Discarded replacements fully reverted (package + files + lock)
-- Kept replacements: old custom module deleted
-- Report returned with candidates total, applied, discarded, LOC removed
+- [ ] Migration plan loaded from audit report or target module analyzed
+- [ ] Candidates prioritized by confidence + LOC
+- [ ] Each replacement applied atomically: install → rewrite → test → keep/discard
+- [ ] Discarded replacements fully reverted (package + files + lock)
+- [ ] Kept replacements: old custom module deleted
+- [ ] Report returned with candidates total, applied, discarded, LOC removed
 
 ---
 

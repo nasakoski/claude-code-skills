@@ -505,6 +505,12 @@ Before completing work, verify ALL checkpoints:
 - [ ] Phase 3 logged: structural fixes (if any)
 - [ ] Phase 4 logged: content updates (if any)
 
+## Meta-Analysis
+
+**MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
+
+Skill type: `documentation-creator`. Run after all phases complete. Output to chat using the `documentation-creator` format.
+
 ---
 
 ## Technical Details

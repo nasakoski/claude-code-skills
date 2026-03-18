@@ -92,6 +92,9 @@ For each finding:
 - **REVERT** (from Phase 4) -- roll back the change via Edit
 - **RETHINK** (from Phase 4) -- do NOT fix, pass to Phase 6 report
 
+After all fixes applied:
+- **Holistic compaction:** re-read each primary SKILL.md end-to-end. Apply D5 tiebreaker to whole file -- merge duplicate rules, combine overlapping tables, deduplicate cross-section instructions. Fix as SIMPLIFY.
+
 ### Phase 6: Report
 
 **Verdict rules:**
@@ -210,6 +213,7 @@ Pass rate: {X}%
 - [ ] D1-D9 dimensions reviewed across all skills
 - [ ] M1-M5 intent evaluated for primary skills
 - [ ] Fixable findings auto-fixed via Edit
+- [ ] Post-fix holistic compaction applied to each primary SKILL.md
 - [ ] Report generated with PASS/PASS with CONCERNS/FAIL verdict
 
 ---
