@@ -1,6 +1,6 @@
 ---
 name: ln-300-task-coordinator
-description: Orchestrates task operations. Analyzes Story, builds optimal plan (1-8 implementation tasks), delegates to ln-301-task-creator (CREATE/ADD) or ln-302-task-replanner (REPLAN). Auto-discovers team ID.
+description: "Analyzes Story and builds optimal task plan (1-8 tasks), then routes to create or replan. Use when Story needs task breakdown or replanning."
 license: MIT
 ---
 

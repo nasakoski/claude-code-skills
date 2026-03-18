@@ -1,6 +1,6 @@
 ---
 name: ln-001-standards-researcher
-description: Research standards/patterns via MCP Ref. Generates Standards Research for Story Technical Notes subsection. Reusable worker.
+description: "Researches standards and patterns via MCP Ref for Story Technical Notes. Use when Story needs standards research before task generation."
 license: MIT
 ---
 

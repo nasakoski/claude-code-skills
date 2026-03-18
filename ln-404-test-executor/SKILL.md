@@ -1,6 +1,6 @@
 ---
 name: ln-404-test-executor
-description: Executes Story Finalizer test tasks (label "tests") from Todo -> To Review. Enforces risk-based limits and priority.
+description: "Executes test tasks (label 'tests') through Todo to To Review with risk-based limits. Use for test task execution. Not for implementation tasks."
 license: MIT
 ---
 

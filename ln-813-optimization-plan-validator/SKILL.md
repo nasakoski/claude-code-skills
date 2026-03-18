@@ -1,6 +1,6 @@
 ---
 name: ln-813-optimization-plan-validator
-description: "Validates optimization plan via parallel multi-agent review (Codex + Gemini) before execution. GO/NO-GO verdict."
+description: "Validates optimization plan via multi-agent review before execution. Use when verifying feasibility of optimization hypotheses."
 license: MIT
 ---
 

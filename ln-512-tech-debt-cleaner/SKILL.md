@@ -1,6 +1,6 @@
 ---
 name: ln-512-tech-debt-cleaner
-description: "Applies safe auto-fixes for low-risk audit findings (unused imports, dead code, commented-out code). Confidence >=90% only. Creates single commit with summary."
+description: "Auto-fixes low-risk tech debt (unused imports, dead code, commented-out code) with >=90% confidence. Use when audit findings need safe automated cleanup."
 license: MIT
 ---
 

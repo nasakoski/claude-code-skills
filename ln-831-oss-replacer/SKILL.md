@@ -1,6 +1,6 @@
 ---
 name: ln-831-oss-replacer
-description: "Replaces custom modules with OSS packages using ln-645 migration plans, atomic keep/discard"
+description: "Replaces custom modules with OSS packages using atomic keep/discard testing. Use when migrating custom code to established libraries."
 license: MIT
 ---
 

@@ -264,6 +264,10 @@ Workers (Executors)
 
 Move detailed content to `references/` to stay within limits.
 
+**Skill Types:** `capability` = model can't do it yet (re-eval per release), `preference` = team workflow encoding (durable), `hybrid` = both. Most pipeline skills are `preference`. Optional `metadata.skill-type` frontmatter field.
+
+**Definition of Done:** min 1 functional criterion beyond structural (e.g., "Produces valid output for X"). Rollout: apply on next skill edit.
+
 ### Description Quality Rules
 
 | Rule | Details | Source |
@@ -273,10 +277,12 @@ Move detailed content to `references/` to stay within limits.
 | **Trigger phrases** | Include exact user phrases that activate skill | skill-development |
 | **YAML quoting** | If description contains `:`, MUST wrap in double quotes | skill-creator |
 | **Allowed fields** | name, description (+ license, allowed-tools, metadata for plugins) | skill-creator |
+| **Negative triggers** | "Not for X" when overlapping domains exist | skill-development |
 | **Name format** | hyphen-case, 3-64 chars, no leading/trailing hyphens | skill-creator |
 
-**Good:** `"Orchestrates task operations. Analyzes Story, builds optimal plan (1-8 tasks), delegates to ln-301/ln-302."`
+**Good:** `"Orchestrates task operations. Analyzes Story, builds optimal plan (1-8 tasks). Use when Story needs task breakdown."`
 **Bad:** `Orchestrates task operations: analyzes Story` ← unquoted colon breaks YAML
+**Disambiguation:** `"Audits security: secrets, injection, XSS, insecure deps. Not for build/lint errors"` ← prevents over-triggering
 
 ### Skill Directory Structure
 

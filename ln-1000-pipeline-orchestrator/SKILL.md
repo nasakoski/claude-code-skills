@@ -1,6 +1,6 @@
 ---
 name: ln-1000-pipeline-orchestrator
-description: "Meta-orchestrator: reads kanban board, lets user pick ONE Story, drives it through pipeline 300->310->400->500 via TeamCreate. Creates worktree isolation; coordinates workers + reports."
+description: "Drives a Story through full pipeline (tasks, validation, execution, quality). Use when executing a Story end-to-end from kanban board."
 license: MIT
 ---
 

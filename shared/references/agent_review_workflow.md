@@ -212,7 +212,7 @@ Entry format (per `shared/references/agent_review_memory.md`):
 - Log all attempts for user visibility (agent name, duration, suggestion count)
 - **Persist** per-agent prompts in `.agent-review/{agent}/`, results and challenge artifacts in `.agent-review/{agent}/` -- do NOT delete
 - Ensure `.agent-review/.gitignore` exists before creating files (only create if `.agent-review/` is new)
-- **HARD TIMEOUT (15 min default):** `agent_runner.py` kills the agent process after `hard_timeout_seconds` (configurable in registry, override via `--timeout`). Agents are prompted to finish within 10 minutes; 15 min provides headroom. On timeout, runner writes `timeout` heartbeat and returns `success: false`. **TaskStop is still FORBIDDEN** for agent background tasks — the runner handles timeout internally.
+- **HARD TIMEOUT (30 min default):** `agent_runner.py` kills the agent process after `hard_timeout_seconds` (configurable in registry, override via `--timeout`). Agents are prompted to finish within 25 minutes; 30 min provides headroom. On timeout, runner writes `timeout` heartbeat and returns `success: false`. **TaskStop is still FORBIDDEN** for agent background tasks — the runner handles timeout internally.
 - **CRITICAL VERIFICATION:** Do NOT trust agent suggestions blindly. Claude MUST independently verify each suggestion and debate if disagreeing. Accept only after verification.
 
 ## Definition of Done

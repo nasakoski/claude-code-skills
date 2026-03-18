@@ -1,6 +1,6 @@
 ---
 name: ln-510-quality-coordinator
-description: "Coordinates code quality: ln-511 metrics, ln-512 cleanup, inline agent review (Codex + Gemini), ln-513 regression, ln-514 log analysis. Returns quality_verdict + aggregated results."
+description: "Coordinates code quality checks: metrics, cleanup, agent review, regression, log analysis. Use when Story needs quality_verdict with aggregated results."
 license: MIT
 ---
 

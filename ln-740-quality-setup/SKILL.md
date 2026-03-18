@@ -1,6 +1,6 @@
 ---
 name: ln-740-quality-setup
-description: Coordinates linters, pre-commit hooks, and test infrastructure setup
+description: "Sets up linters, pre-commit hooks, and test infrastructure. Use when adding code quality tooling to a project."
 license: MIT
 ---
 

@@ -70,6 +70,7 @@ Source: [Claude Code Docs](https://code.claude.com/docs/en/) + [shanraisshan/cla
 | `context: fork` | Runs in isolated subagent context. Prevents context pollution. Use for heavy operations |
 | `user-invocable: false` | Background knowledge for agent preloading only. Not in `/` menu |
 | `disable-model-invocation: true` | Only invocable via `/` or Skill tool. Prevents accidental auto-triggering |
+| `metadata.skill-type` | Repo convention: `capability` (may obsolete), `preference` (durable workflow), `hybrid`. Not an official platform field |
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: ln-514-test-log-analyzer
-description: "Analyzes application logs: classifies errors, checks log quality/format, maps stack traces to source, recommends fixes."
+description: "Analyzes application logs: classifies errors, checks log quality, maps stack traces to source. Use when logs need review after test runs or during development."
 license: MIT
 ---
 
@@ -38,7 +38,7 @@ If no `args` — use defaults (last 1h, no expected errors).
 
 ### Phase 1: Log Source Detection and Script Execution
 
-**MANDATORY READ:** Load `docs/project/infrastructure.md`, `docs/project/runbook.md`
+Read target project files if they exist: `docs/project/infrastructure.md`, `docs/project/runbook.md`
 
 1) Check if `scripts/analyze_test_logs.py` exists in target project. If missing, copy from `references/analyze_test_logs.py`.
 2) Detect log source mode (auto-detection priority: docker → file → loki):

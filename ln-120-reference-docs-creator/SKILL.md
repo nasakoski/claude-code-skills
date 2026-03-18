@@ -1,6 +1,6 @@
 ---
 name: ln-120-reference-docs-creator
-description: Creates reference documentation structure + smart documents (ADRs/Guides/Manuals) based on TECH_STACK. Only creates justified documents (nontrivial technology choices).
+description: "Creates reference docs (ADRs, guides, manuals) for nontrivial tech stack choices. Use when project needs justified architecture decision records."
 license: MIT
 ---
 

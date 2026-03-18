@@ -1,6 +1,6 @@
 ---
 name: ln-743-test-infrastructure
-description: Creates test infrastructure with Vitest, xUnit, and pytest
+description: "Sets up test infrastructure with Vitest, xUnit, and pytest. Use when adding testing frameworks and sample tests to a project."
 license: MIT
 ---
 

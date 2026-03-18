@@ -584,6 +584,7 @@ Papers, docs, and methodologies studied and implemented in the skill architectur
 | Vertical Slicing ([Humanizing Work](https://www.humanizingwork.com/the-humanizing-work-guide-to-splitting-user-stories/)) | "Never split by architectural layer" | Foundation-First task ordering |
 | [Claude Code Picks](https://amplifying.ai/research/claude-code-picks) (Amplifying AI, 2026) | Claude's tool preferences are learned maturity signals, not bias — Drizzle/Vitest/Zustand chosen for objective quality. Build-not-buy in 12/20 categories. "Correcting" valid preferences = recommending worse tools | Research-to-Action Gate in CLAUDE.md — require concrete defect before turning research into skill changes |
 | [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-814-optimization-executor`](ln-814-optimization-executor/SKILL.md) — keep/discard with adaptive thresholds, multi-file support, compound baselines, experiment log |
+| [The Complete Guide to Building Skills](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf) (Anthropic, 2026) | WHAT+WHEN descriptions, trigger testing, capability vs preference classification, negative triggers, 3-level progressive disclosure | Check #14 (trigger quality), negative trigger pattern, `metadata.skill-type` classification, functional DoD, M6 advisory |
 
 </details>
 

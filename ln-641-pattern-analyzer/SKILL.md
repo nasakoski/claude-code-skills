@@ -1,6 +1,6 @@
 ---
 name: ln-641-pattern-analyzer
-description: Analyzes single pattern implementation, calculates 4 scores (compliance, completeness, quality, implementation), identifies gaps. Invoked by ln-640 or standalone.
+description: "Analyzes single pattern implementation, calculates compliance/completeness/quality scores, identifies gaps. Use when auditing a specific pattern."
 license: MIT
 ---
 

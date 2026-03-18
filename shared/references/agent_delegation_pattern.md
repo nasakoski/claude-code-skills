@@ -119,7 +119,7 @@ External agents run in non-interactive mode (`exec` / `-p`) with tool access for
 
 ## Agent Timeout Policy
 
-**Hard timeout (15 min default).** `agent_runner.py` kills the agent process after `hard_timeout_seconds` (configurable per agent in registry, override via `--timeout` CLI flag). Agents are prompted to finish within 10 minutes; 15 min provides 50% headroom for long analyses. The runner writes process-level `heartbeat.json` every 30s and streams stdout to a log file for real-time visibility. On both timeout and normal completion, the runner kills the entire process tree (not just the immediate child) to prevent orphaned Codex/Gemini sub-processes. On Unix this uses `os.killpg()` (process group via `os.setsid`); on Windows — `taskkill /T /F /PID`.
+**Hard timeout (30 min default).** `agent_runner.py` kills the agent process after `hard_timeout_seconds` (configurable per agent in registry, override via `--timeout` CLI flag). Agents are prompted to finish within 25 minutes; 30 min provides headroom for long analyses. The runner writes process-level `heartbeat.json` every 30s and streams stdout to a log file for real-time visibility. On both timeout and normal completion, the runner kills the entire process tree (not just the immediate child) to prevent orphaned Codex/Gemini sub-processes. On Unix this uses `os.killpg()` (process group via `os.setsid`); on Windows — `taskkill /T /F /PID`.
 
 | Condition | Action |
 |-----------|--------|
@@ -200,7 +200,7 @@ Prompt ------+                                                                  
 2. Both agents receive identical prompt, run simultaneously with `--output-file`
 3. When first agent completes (background task notification): read result file, proceed to Critical Verification
 4. When second agent completes: read result file, verify, merge with first batch
-5. Agents have a **hard timeout** (15 min default) — runner kills process at limit (see Agent Timeout Policy)
+5. Agents have a **hard timeout** (30 min default) — runner kills process at limit (see Agent Timeout Policy)
 6. If an agent fails: log failure, continue with available results
 7. Log all attempts for user visibility (agent name, duration, suggestion count)
 

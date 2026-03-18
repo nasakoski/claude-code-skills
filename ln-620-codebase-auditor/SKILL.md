@@ -1,6 +1,6 @@
 ---
 name: ln-620-codebase-auditor
-description: "Coordinates 9 audit workers (ln-621..ln-629) in parallel. Research best practices, delegate, aggregate into docs/project/codebase_audit.md."
+description: "Coordinates codebase audit across security, build, code quality, dependencies, and architecture. Use when auditing entire codebase."
 allowed-tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, mcp__Ref, mcp__context7, Skill
 license: MIT
 ---

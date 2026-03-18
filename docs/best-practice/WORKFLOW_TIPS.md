@@ -74,6 +74,9 @@
 | Run terminal as background task for log streaming | Better debugging context |
 | `/doctor` for installation/auth/config issues | Setup problems |
 | Cross-model review for QA | Independent verification |
+| Ask Claude "When would you use skill X?" to verify trigger quality | After writing/editing description field |
+| Undertriggering: skill doesn't load → add keywords to description | Users manually invoke skill |
+| Overtriggering: skill loads for unrelated → add "Not for X" to description | Users disable skill |
 
 ---
 

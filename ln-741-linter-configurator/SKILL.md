@@ -1,6 +1,6 @@
 ---
 name: ln-741-linter-configurator
-description: Configures ESLint, Prettier, Ruff, mypy, and .NET analyzers
+description: "Configures ESLint, Prettier, Ruff, mypy, and .NET analyzers. Use when setting up linting and formatting for a project."
 license: MIT
 ---
 

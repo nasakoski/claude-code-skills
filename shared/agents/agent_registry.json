@@ -6,7 +6,7 @@
       "command": "gemini",
       "args": ["-p", ""],
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
-      "hard_timeout_seconds": 300,
+      "hard_timeout_seconds": 1800,
       "heartbeat_interval_seconds": 30,
       "skill_groups": ["200"],
       "health_check": "gemini --version"
@@ -16,7 +16,7 @@
       "command": "codex",
       "args": ["exec"],
       "env_override": {},
-      "hard_timeout_seconds": 600,
+      "hard_timeout_seconds": 1800,
       "heartbeat_interval_seconds": 30,
       "skill_groups": ["300"],
       "health_check": "codex --version"
@@ -32,7 +32,7 @@
         "pattern": "session.id:\\s*([0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+)"
       },
       "env_override": {},
-      "hard_timeout_seconds": 900,
+      "hard_timeout_seconds": 1800,
       "heartbeat_interval_seconds": 30,
       "skill_groups": ["310", "510"],
       "health_check": "codex --version"
@@ -49,7 +49,7 @@
         "parse": "first_uuid"
       },
       "env_override": {"GOOGLE_CLOUD_PROJECT": ""},
-      "hard_timeout_seconds": 900,
+      "hard_timeout_seconds": 1800,
       "heartbeat_interval_seconds": 30,
       "skill_groups": ["310", "510"],
       "health_check": "gemini --version"

@@ -10,6 +10,7 @@
 - **Python advanced tools mandatory** — import-linter, deptry, vulture, pip-audit promoted from optional to required in linter configurator; new config templates added
 - **Multi-stack verification matrix** — quality setup coordinator now has tool matrix across TypeScript/Python/.NET for all verification checks
 - **Epistemic protocol** — new `shared/references/epistemic_protocol.md` for source attribution and anti-hallucination across all research skills; integrated into research_tool_fallback, phase2_research_audit, solution_validation
+- **Description triggers + agent timeout 30min** — all 125 descriptions rewritten with "Use when..." triggers; ln-162 reviewer gains M6 + CHECK 14; all agent hard timeouts raised to 30 min; 7XX bootstrap skills get Meta-Analysis sections
 
 ## 2026-03-16
 

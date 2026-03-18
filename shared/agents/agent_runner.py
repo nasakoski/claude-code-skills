@@ -36,7 +36,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REGISTRY_PATH = os.path.join(SCRIPT_DIR, "agent_registry.json")
 IS_WINDOWS = sys.platform == "win32"
 
-DEFAULT_HARD_TIMEOUT = 900  # 15 minutes
+DEFAULT_HARD_TIMEOUT = 1800  # 30 minutes
 
 UUID_PATTERN = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",

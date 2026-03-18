@@ -1,6 +1,6 @@
 ---
 name: ln-310-multi-agent-validator
-description: "Validates Stories/Tasks, plans, or context via parallel multi-agent review (Codex + Gemini). Merges findings, debates, applies fixes. GO/NO-GO verdict."
+description: "Validates Stories, plans, or context via parallel multi-agent review with GO/NO-GO verdict. Use when changes need cross-agent validation before proceeding."
 license: MIT
 ---
 
