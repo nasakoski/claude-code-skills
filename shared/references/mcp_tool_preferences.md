@@ -1,24 +1,42 @@
-# MCP Tool Preferences
+# Tool Preferences for Code Editing
 
-When MCP servers provide enhanced versions of standard tools, prefer them for code files.
+Hash-verified editing for code files via bundled `hashline.mjs`.
 
-## hashline-edit (hash-based file editing)
+## hashline.mjs (bundled)
 
-**Detection:** `ToolSearch("+hashline-edit")` at start of execution. If unavailable, use standard tools — no error.
+**Detection:** Check if `shared/tools/hashline.mjs` exists relative to skills repo root.
 
-**When available, prefer for CODE files** (.ts, .py, .js, .go, .rs, .java, etc.):
+**Usage via Bash tool:**
 
-| Standard Tool | hashline-edit Replacement | Why |
-|---------------|--------------------------|-----|
-| `Read` | `mcp__hashline-edit__read_file` | Hash-prefixed lines enable verified edits |
-| `Edit` | `mcp__hashline-edit__edit_file` | Atomic validation prevents corruption on large files |
-| `Write` | `mcp__hashline-edit__write_file` | Consistent interface with hash verification |
-| `Grep` | `mcp__hashline-edit__grep` | Results include LINE:HASH refs for direct editing |
+```bash
+# Read with hash anchors
+node shared/tools/hashline.mjs read <file> [--offset N] [--limit N]
+# Output: LINE:HASH|content (e.g., "42:b1c2|const x = 5;")
 
-**DO NOT use hashline-edit for:** JSON configs, small YAML, markdown docs, .md files (overkill — standard tools are fine).
+# Edit with hash verification (rejects if file changed since read)
+node shared/tools/hashline.mjs edit <file> --edits-file <json-path>
+# Edits JSON: [{"anchor": "42:b1c2", "text": "const x = 10;"}]
 
-**Fallback:** If hashline-edit MCP becomes unavailable mid-session (e.g., after context compaction), re-run `ToolSearch("+hashline-edit")` to reload. If still unavailable, use standard tools.
+# Search with hash refs + context
+node shared/tools/hashline.mjs grep <pattern> [path] [--glob "*.ts"] [-B 2] [-A 2]
+```
+
+**Workflow:** read -> note anchors -> edit by anchor -> hash mismatch = retry read.
+
+**Features:** fuzzy matching (+-5 lines), batch edits, range replace, insert-after, grep context.
+
+## Detection Sequence
+
+At start of code-editing task (first match wins):
+1. **hashline.mjs** -- check `shared/tools/hashline.mjs` exists. If yes: use via Bash
+2. **Standard tools** -- fallback. Use built-in Read/Edit/Write/Grep. Always works.
+
+## When to Use
+
+- **USE for CODE files** (.ts, .js, .py, .go, .rs, .java, etc.) -- precision matters
+- **DO NOT use for:** JSON configs, small YAML, markdown, .md files -- standard tools are fine
+- **Fallback:** If hashline.mjs not found, use standard tools. No error.
 
 ---
-**Version:** 1.0.0
+**Version:** 3.0.0
 **Last Updated:** 2026-03-19

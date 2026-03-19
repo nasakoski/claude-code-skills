@@ -38,11 +38,7 @@ Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
 **File Mode transitions:** To Rework → In Progress → To Review
 
-## MCP Tool Preferences
-
-**MANDATORY READ:** Load `shared/references/mcp_tool_preferences.md`
-
-When hashline-edit MCP available, prefer for code files. Detection: `ToolSearch("+hashline-edit")`. Fallback: standard tools.
+**MANDATORY READ:** Load `shared/references/mcp_tool_preferences.md` — prefer hashline for code files.
 
 ## Workflow (concise)
 1) **Resolve taskId:** Run Task Resolution Chain per guide (status filter: [To Rework]).

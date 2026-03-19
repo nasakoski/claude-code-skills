@@ -22,7 +22,7 @@
 |---------|-----------|
 | **Task Management** | Provider (linear/file), Status, Team ID, Fallback |
 | **Research** | Provider (ref/context7/websearch), Fallback chain |
-| **File Editing** | Provider (hashline-edit/standard) |
+| **File Editing** | Provider — see `mcp_tool_preferences.md` |
 | **External Agents** | Agent statuses (codex, gemini) |
 | **Git** | Worktree (available/unavailable), Branch strategy |
 
@@ -53,7 +53,7 @@ When creating tools_config.md from scratch, detect tools in this order:
 | 1 | Linear MCP | Call `list_teams()`. Success → active. 401 → auth expired. Not found → unavailable |
 | 2 | MCP Ref | Call `ref_search_documentation(query="test")`. Success → active |
 | 3 | MCP Context7 | Call `resolve-library-id(libraryName="react")`. Success → active |
-| 4 | Hashline-edit | Call `mcp__hashline-edit__read_file` on any file. Success → active |
+| 4 | File Editing tools | Per mcp_tool_preferences.md detection sequence |
 | 5 | Agents | Run `codex --version` / `gemini --version`. Exit 0 → available |
 | 6 | Git worktree | Run `git worktree list`. Success → available |
 

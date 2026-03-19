@@ -106,9 +106,6 @@ Skills use MCP servers for research, documentation lookup, and task tracking. Al
 | **[Context7](https://github.com/upstash/context7)** | Library docs, APIs, migration guides | Optional ([dashboard](https://context7.com/dashboard)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
 | **[Ref](https://docs.ref.tools/install)** | Standards, RFCs, best practices | Required ([ref.tools/keys](https://ref.tools/keys)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
 | **[Linear](https://linear.app/docs/mcp)** | Issue tracking (Agile workflow) | OAuth via browser | ln-300+, ln-400+, ln-500+ |
-| **[hashline-edit](https://github.com/Submersible/mcp-hashline-edit-server)** | Hash-based file editing with integrity verification | — | ln-400 executors, all code-writing skills¹ |
-
-¹ Requires [Bun](https://bun.sh) runtime: `npm install -g bun` (or `curl -fsSL https://bun.sh/install | bash` on macOS/Linux). Also requires [ripgrep](https://github.com/BurntSushi/ripgrep) for `grep` tool.
 
 **CLI setup:**
 ```bash
@@ -121,8 +118,6 @@ claude mcp add --transport http Ref https://api.ref.tools/mcp?apiKey=YOUR_API_KE
 # Linear — issue tracking (OAuth via browser after adding)
 claude mcp add linear-server -- npx -y mcp-remote https://mcp.linear.app/sse
 
-# hashline-edit — hash-based file editing (requires bun + ripgrep)
-claude mcp add hashline-edit -- bunx mcp-hashline-edit-server
 ```
 
 <details>
@@ -143,10 +138,6 @@ Add to `~/.claude/settings.json`:
     "linear-server": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
-    },
-    "hashline-edit": {
-      "command": "bunx",
-      "args": ["mcp-hashline-edit-server"]
     }
   }
 }
@@ -544,9 +535,9 @@ claude-code-skills/                      # MARKETPLACE
 |
 |-- hooks/                             # AUTOMATED VALIDATION HOOKS
 |   |-- hooks.json                     # Hook configuration (copy to settings.json)
-|   |-- secret-scanner.py              # PreToolUse: blocks commits with secrets
-|   |-- story-validator.py             # UserPromptSubmit: validates Story before execution
-|   |-- code-quality.py                # PostToolUse: DRY/KISS/YAGNI checks
+|   |-- secret-scanner.mjs             # PreToolUse: blocks commits with secrets
+|   |-- story-validator.mjs            # UserPromptSubmit: validates Story before execution
+|   |-- code-quality.mjs               # PostToolUse: DRY/KISS/YAGNI checks
 |
 |-- docs/
 |   |-- architecture/                  # Skill patterns & delegation runtime

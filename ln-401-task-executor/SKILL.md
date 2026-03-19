@@ -44,11 +44,7 @@ Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 **Status:** In Progress | **Priority:** High | **Estimate:** 4h
 ```
 
-## MCP Tool Preferences
-
-**MANDATORY READ:** Load `shared/references/mcp_tool_preferences.md`
-
-When hashline-edit MCP available, prefer for code files. Detection: `ToolSearch("+hashline-edit")`. Fallback: standard tools.
+**MANDATORY READ:** Load `shared/references/mcp_tool_preferences.md` — prefer hashline for code files.
 
 ## Mode Detection
 
