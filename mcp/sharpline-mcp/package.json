@@ -24,8 +24,8 @@
   "keywords": ["mcp", "sharpline", "hashline", "ast", "outline", "file-edit", "coding-agent", "model-context-protocol", "trueline", "hash-verified"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/LevNikolaevich/claude-code-skills",
+    "url": "https://github.com/levnikolaevich/claude-code-skills",
     "directory": "mcp/sharpline-mcp"
   },
-  "homepage": "https://github.com/LevNikolaevich/claude-code-skills/tree/master/mcp/sharpline-mcp"
+  "homepage": "https://github.com/levnikolaevich/claude-code-skills/tree/master/mcp/sharpline-mcp"
 }
