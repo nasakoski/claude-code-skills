@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-03-19
+
+- **Python → Node.js ESM** — all runtime scripts (.py) replaced with .mjs: agent_runner, 3 hooks, analyze_test_logs; Python dependency eliminated ⚠️ BREAKING
+- **ln-1000 redesign** — TeamCreate/heartbeat replaced with sequential Skill() calls; quality gate (ln-500) and test planning (ln-520) can no longer be skipped ⚠️ BREAKING
+- **Bundled hashline.mjs** — hash-verified file editing tool included in repo; external hashline-edit MCP dependency removed ⚠️ BREAKING
+- **ln-162 D10/D11** — new skill review dimensions: Cross-Skill Behavioral Contracts and Resource Lifecycle Integrity
+- **Tool preferences centralized** — single source of truth in mcp_tool_preferences.md; 4 SKILL.md sections deduplicated
+
 ## 2026-03-18
 
 - **Agent process tree kill** — agent_runner kills entire process tree (not just immediate child) on both timeout and normal completion; `--verify-dead` CLI flag for safety net checks
