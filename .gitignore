@@ -71,6 +71,9 @@ tmpclaude-*
 # Agent Review Artifacts
 .agent-review/
 
+# Codegraph DB
+.codegraph/
+
 # Git-related
 *.orig
 
@@ -97,3 +100,4 @@ wheels/
 *.swn
 .*.sw*
 NUL
+/docs/research

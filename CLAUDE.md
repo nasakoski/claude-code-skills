@@ -1,65 +1,79 @@
 # CLAUDE.md
 
-> **SCOPE:** Entry point with rules and navigation ONLY. Detailed guides in `docs/`. Skill workflows in individual `SKILL.md` files. Public documentation in `README.md`.
+> **SCOPE:** Entry point with rules and navigation ONLY. Guides in `docs/`. Workflows in `SKILL.md`. Public docs in `README.md`.
 
 Skills collection for Claude Code with config-driven Agile task management (Linear or File Mode).
 
 ## Critical Rules
 
-**Read this table BEFORE starting any work.**
+| Rule | Details |
+|------|---------|
+| **Architecture Guide** | Read `docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` before any skill work |
+| **MANDATORY READ** | Use `**MANDATORY READ:** Load {file}`. Passive refs are NOT followed |
+| **Path Resolution** | Relative to skills repo root, NOT target project |
+| **Sequential Numbering** | 1, 2, 3 (NOT 1.5). Sub-steps: Na/Nb (3a, 4a) |
+| **Docs in English** | Stories/Tasks can be EN/RU |
+| **No version auto-updates** | Update ONLY when user explicitly requests |
+| **YAML quoting** | Wrap `description:` in quotes if it contains `:` |
+| **Research-to-Action Gate** | No defect = informational, not actionable |
+| **No hardcoded counts** | Counts ONLY in README.md badge |
+| **No Changes sections** | `**Version:** X.Y.Z` + `**Last Updated:**` at end |
+| **DoD with checkboxes** | `## Definition of Done` with `- [ ]` items |
+| **Worker independence** | No parent/peer refs in L3 Workers |
 
-| Rule | When to Apply | Details |
-|------|---------------|---------|
-| **Read Architecture Guide first** | Before working with skills | `cat docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` — L0-L3 hierarchy, SRP, Token Efficiency, Red Flags |
-| **MANDATORY READ pattern** | File references in SKILL.md | Use `**MANDATORY READ:** Load {file}`. Passive refs (`See`, `Per`, `Follows`) are NOT followed by agents. Group multiple into ONE block at section start |
-| **Path Resolution** | File paths in SKILL.md | Relative to skills repo root, NOT target project. Every SKILL.md with file refs includes `> **Paths:**` note after frontmatter |
-| **Sequential Numbering** | Phases/Sections/Steps | 1, 2, 3, 4 (NOT 1, 1.5, 2). Sub-steps: Na/Nb (e.g., 3a, 4a CREATE, 4b REPLAN) |
-| **Docs in English** | All documentation | Stories/Tasks can be EN/RU regardless of provider |
-| **No version auto-updates** | After any changes | Update versions ONLY when user explicitly requests. Default: change files, do NOT touch versions |
-| **YAML description quoting** | SKILL.md frontmatter | If `description:` contains `:`, wrap in double quotes |
-| **Research-to-Action Gate** | Before turning research into changes | "What specific defect in current skill output does this fix?" No defect = informational, not actionable |
-| **No hardcoded counts** | Documentation files | Counts ONLY in README.md badge (`skills-NNN`). Everywhere else: no aggregate counts |
-| **No Changes sections** | SKILL.md versioning | `**Version:** X.Y.Z` + `**Last Updated:** YYYY-MM-DD` at end. Git history tracks changes |
-| **DoD with checkboxes** | All SKILL.md files | `## Definition of Done` section with `- [ ]` items |
-| **Worker independence** | L3 Worker SKILL.md | No `**Parent:**`, no coordinator names, no peer cross-references (`→ ln-NNN`). Workers are standalone-invocable. Coordinator knows workers (top-down), not reverse |
+## MCP Tool Preferences
+
+When `hex-line` MCP is available, **always prefer it** over built-in file tools:
+
+| Instead of | Use | Why |
+|-----------|-----|-----|
+| Built-in Read | `hex-line read_file` | Hash-annotated, edit-ready |
+| Built-in Edit | `hex-line edit_file` | Hash-verified anchors |
+| Built-in Write | `hex-line write_file` | Consistent workflow |
+| Built-in Grep | `hex-line grep_search` | Hash-annotated matches |
+| Large code file | `hex-line outline` then `read_file` with range | 95% token reduction |
+
+**Exceptions** (use built-in Read): images, PDFs, Jupyter notebooks.
 
 ## Quick Understanding
 
 | What | How |
 |------|-----|
-| Project overview + full tree | `cat README.md` |
-| Skill count | `ls -d ln-*/SKILL.md \| wc -l` |
-| Architecture patterns (L0-L3) | `cat docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` |
-| Agent Delegation runtime (hooks, Windows) | `cat docs/architecture/AGENT_TEAMS_PLATFORM_GUIDE.md` |
-| Component selection (command/agent/skill) | `cat docs/best-practice/COMPONENT_SELECTION.md` |
-| Workflow tips | `cat docs/best-practice/WORKFLOW_TIPS.md` |
-| Tool configuration (Linear/File Mode) | `cat shared/references/tools_config_guide.md` |
-| Key workflow | `ln-700 → ln-100 → ln-200 → ln-1000` (or manually: `ln-400 → ln-500`) |
-| Skill metadata | `head -20 {ln-NNN}/SKILL.md` (frontmatter + type/category) |
-| Reference files for a skill | `ls {ln-NNN}/references/` |
-| Shared templates | `ls shared/templates/` |
-| Questions format | `cat shared/references/questions_format.md` |
+| Project overview + tree | `cat README.md` |
+| Architecture (L0-L3) | `cat docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` |
+| Key workflow | `ln-700 → ln-100 → ln-200 → ln-1000` |
+| Tool config (Linear/File) | `cat shared/references/tools_config_guide.md` |
+| Skill metadata | `head -20 {ln-NNN}/SKILL.md` |
 
 ## Navigation
 
-**DAG:** CLAUDE.md → `docs/README.md` → topic docs. Read SCOPE tag first in each doc.
+**DAG:** CLAUDE.md → `docs/README.md` → topic docs. Read SCOPE tag first.
 
 | Topic | File |
 |-------|------|
 | Writing Guidelines | `docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` §Writing Guidelines |
-| Tool Configuration (Phase 0) | `shared/references/tools_config_guide.md` |
+| Tool Configuration | `shared/references/tools_config_guide.md` |
 | Task kanban + Team ID | `docs/tasks/kanban_board.md` |
 | Risk-Based Testing | `shared/references/risk_based_testing_guide.md` |
 | Frontmatter fields | `shared/references/frontmatter_reference.md` |
 | Hooks reference | `shared/references/hooks_reference.md` |
 | Questions format | `shared/references/questions_format.md` |
+| Hook Design | `docs/best-practice/HOOK_DESIGN_GUIDE.md` |
+| MCP Tool Design | `docs/best-practice/MCP_TOOL_DESIGN_GUIDE.md` |
+| Token Efficiency | `docs/standards/TOKEN_EFFICIENCY_PATTERNS.md` |
+| Prompt Caching | `docs/best-practice/PROMPT_CACHING_GUIDE.md` |
 
 ## Maintenance
 
-**Version update protocol** (ONLY when user explicitly requests):
+Version update (ONLY on explicit request): update `**Version:**` in SKILL.md, version in README.md tables, CHANGELOG.md paragraph.
 
-1. Update `**Version:**` in `{skill}/SKILL.md`
-2. Update version in README.md feature tables
-3. Update CHANGELOG.md — one summary paragraph per date (`## YYYY-MM-DD`), no duplicate dates
+## Compact Instructions
 
-**Last Updated:** 2026-03-15
+Preserve in priority order during /compact:
+- Architecture decisions and rationale (NEVER summarize)
+- Modified files and their key changes
+- Current verification status (pass/fail)
+- Open TODOs and rollback notes
+- Tool outputs (can delete, keep summary only)
+
+**Last Updated:** 2026-03-20

@@ -1,0 +1,49 @@
+{
+  "name": "@levnikolaevich/hex-ssh-mcp",
+  "version": "1.0.0",
+  "description": "Token-efficient SSH MCP server with hash-verified file operations. 6 tools: remote-ssh, ssh-read-lines, ssh-edit-block, ssh-search-code, ssh-write-chunk, ssh-verify.",
+  "type": "module",
+  "main": "server.mjs",
+  "bin": {
+    "hex-ssh-mcp": "server.mjs"
+  },
+  "files": [
+    "server.mjs",
+    "lib/",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node server.mjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "node --test test/*.mjs",
+    "check": "node --check server.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "diff": "^8.0.3",
+    "ssh2": "^1.16.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "ssh",
+    "remote",
+    "hash-verified",
+    "token-efficient",
+    "model-context-protocol",
+    "hex-ssh"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/levnikolaevich/claude-code-skills",
+    "directory": "mcp/hex-ssh-mcp"
+  },
+  "homepage": "https://github.com/levnikolaevich/claude-code-skills/tree/master/mcp/hex-ssh-mcp",
+  "devDependencies": {
+    "eslint": "^10.1.0"
+  }
+}

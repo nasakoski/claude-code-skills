@@ -6,7 +6,27 @@
 
 Agent sessions consume tokens on raw CLI output: verbose test results, unfiltered build errors, duplicated log lines. These patterns reduce noise at the skill level — no external tooling required.
 
-## 2. Core Patterns
+## 2. Context Window Budget (200K)
+
+| Component | Tokens | Notes |
+|-----------|--------|-------|
+| System prompt | ~2K | Fixed overhead |
+| Skills (loaded) | 1-5K each | Auto-invoked skills load on match |
+| MCP tool definitions | 10-20K | 5 servers x ~5K each = 25K (12.5%) |
+| LSP diagnostics | 2-5K | Language server output |
+| CLAUDE.md chain | 2-5K | Global + project + local |
+| Memory files | 1-2K | MEMORY.md, auto-memory |
+| **Available for conversation** | **~170K** | After all overhead |
+
+**MCP overhead rule:** Count servers x 5K. WARN if >5 servers or >25K total. Each MCP server registers all tool schemas upfront, even if unused.
+
+**CLAUDE.md budget:** Target <=2.5K tokens (~100 lines). Reference: Anthropic's own CLAUDE.md. Use tables, not prose. Link to docs/ for details.
+
+**Tool output is the hidden killer:** A single `cargo test` or `npm test` can produce thousands of lines. Mitigation: RTK-style PostToolUse filter hook truncates output before it enters context. See Pattern 6 below.
+
+---
+
+## 3. Core Patterns
 
 | # | Pattern | What It Does | Where Applied |
 |---|---------|-------------|---------------|
@@ -17,7 +37,7 @@ Agent sessions consume tokens on raw CLI output: verbose test results, unfiltere
 | 5 | **Trend Tracking** | Append scores to results_log for improving/stable/declining detection | `shared/references/results_log_pattern.md` |
 | 6 | **Hook Health Check** | Validate hook configs, scripts, dependencies before relying on them | `shared/references/hook_health_check.md` |
 
-## 3. Applicability Matrix (Source: RTK Analysis)
+## 4. Applicability Matrix (Source: RTK Analysis)
 
 Analysis of RTK (Rust Token Killer) — CLI proxy reducing output by 60-90%.
 
@@ -46,9 +66,9 @@ PostToolUse:Bash hook. On exit_code != 0: save full stderr+stdout to `logs/error
 PreToolUse:Bash hook. `systemMessage`-only (no blocking, no modification). Pattern-matches Bash commands to recommend relevant skills. Example: `npm test` → "For test analysis, consider ln-513/ln-514". Script: `hooks/skill-suggest.sh` (~40 lines).
 
 **Pattern 13 (Hook Health Check):**
-Integrated into ln-005 environment scanner. Validates: JSON syntax of hooks.json, script file existence, dependency availability (node). See `shared/references/hook_health_check.md`.
+Integrated into ln-010 dev-environment-setup (Phase 1d). Validates: JSON syntax of hooks.json, script file existence, dependency availability (node). See `shared/references/hook_health_check.md`.
 
-## 4. Skills Modernization
+## 5. Skills Modernization
 
 | Skill | Change | Shared Reference |
 |-------|--------|-----------------|
@@ -56,10 +76,10 @@ Integrated into ln-005 environment scanner. Validates: JSON syntax of hooks.json
 | **ln-513** (regression-checker) | Group failing tests by error category in verdict | `shared/references/output_normalization.md` |
 | **ln-622** (build-auditor) | Append build_health score to results_log with trend | `shared/references/results_log_pattern.md` |
 | **ln-811** (performance-profiler) | Deduplicate suspicion stack entries across call chain steps | `shared/references/output_normalization.md` |
-| **ln-005** (environment-scanner) | Validate hooks.json integrity, scripts, dependencies | `shared/references/hook_health_check.md` |
+| **ln-013** (config-syncer) | Sync Claude settings to Gemini/Codex via symlinks and config conversion | `shared/references/hook_health_check.md` |
 | **ln-514** (test-log-analyzer) | §6 Message Normalization → MANDATORY READ to shared | `shared/references/output_normalization.md` |
 
-## 5. What NOT to Adopt
+## 6. What NOT to Adopt
 
 | Anti-Pattern | Why |
 |-------------|-----|
@@ -70,4 +90,4 @@ Integrated into ln-005 environment scanner. Validates: JSON syntax of hooks.json
 | Inline executable tests | Our tests are DoD checklists + ln-310 multi-agent validation |
 
 ---
-**Last Updated:** 2026-03-15
+**Last Updated:** 2026-03-20

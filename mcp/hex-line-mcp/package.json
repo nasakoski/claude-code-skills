@@ -1,0 +1,57 @@
+{
+  "name": "@levnikolaevich/hex-line-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Hash-verified file editing MCP + token efficiency hook for AI coding agents. 11 tools: read, edit, write, grep, outline, verify, directory_tree, file_info, setup_hooks, changes, bulk_replace.",
+  "main": "server.mjs",
+  "bin": {
+    "hex-line-mcp": "server.mjs"
+  },
+  "files": [
+    "server.mjs",
+    "hook.mjs",
+    "benchmark.mjs",
+    "lib/",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node server.mjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "node --test test/*.mjs",
+    "check": "node --check server.mjs && node --check hook.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "diff": "^8.0.3",
+    "tree-sitter-wasms": "^0.1.0",
+    "web-tree-sitter": "^0.25.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "hex-line",
+    "ast",
+    "outline",
+    "file-edit",
+    "coding-agent",
+    "model-context-protocol",
+    "hash-verified",
+    "token-efficiency",
+    "hook",
+    "rtk",
+    "bulk-replace"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/levnikolaevich/claude-code-skills",
+    "directory": "mcp/hex-line-mcp"
+  },
+  "homepage": "https://github.com/levnikolaevich/claude-code-skills/tree/master/mcp/hex-line-mcp",
+  "devDependencies": {
+    "eslint": "^10.1.0"
+  }
+}

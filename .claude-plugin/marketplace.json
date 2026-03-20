@@ -8,7 +8,7 @@
   },
 
   "metadata": {
-    "description": "Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization) + Community engagement (Announcements, RFC debates, Triage).",
+    "description": "Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization) + Community engagement (Announcements, RFC debates, Triage) + Dev environment (agent install, MCP config, settings sync).",
     "version": "2026.03.19"
   },
   "plugins": [
@@ -18,11 +18,6 @@
       "source": "./",
       "strict": false,
       "skills": [
-        "./ln-001-standards-researcher",
-        "./ln-002-best-practices-researcher",
-        "./ln-003-push-all",
-        "./ln-004-agent-config-sync",
-        "./ln-005-environment-scanner",
         "./ln-200-scope-decomposer",
         "./ln-201-opportunity-discoverer",
         "./ln-210-epic-coordinator",
@@ -183,6 +178,22 @@
         "./ln-912-community-announcer",
         "./ln-913-community-debater",
         "./ln-914-community-responder"
+      ]
+    }
+    ,
+    {
+      "name": "dev-environment",
+      "description": "Dev environment setup: Install CLI agents (Codex, Gemini), configure MCP servers, sync settings across agents, audit instruction files. One-command setup for multi-agent workflows.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./ln-001-push-all",
+        "./ln-010-dev-environment-setup",
+        "./ln-011-agent-installer",
+        "./ln-012-mcp-configurator",
+        "./ln-013-config-syncer",
+        "./ln-014-agent-instructions-auditor",
+        "./ln-020-codegraph"
       ]
     }
   ]

@@ -18,7 +18,8 @@ docs/
 │   ├── documentation-pipeline.md
 │   ├── project-bootstrap.md
 │   ├── optimization-suite.md
-│   └── community-engagement.md
+│   ├── community-engagement.md
+│   └── dev-environment.md
 ├── standards/                       # How to write documentation
 │   ├── DOCUMENTATION_STANDARDS.md   # 90 requirements for project docs
 │   └── GITHUB_README_BEST_PRACTICES.md # README writing guidelines
@@ -27,14 +28,15 @@ docs/
 
 ## Plugins
 
-| Plugin | Description | Skills |
-|--------|-------------|--------|
-| [agile-workflow](plugins/agile-workflow.md) | Scope decomposition, Story/Task management, Execution, Quality gates, Pipeline orchestration | 32 |
-| [codebase-audit-suite](plugins/codebase-audit-suite.md) | Security, code quality, architecture, tests, persistence performance audits | 36 |
-| [documentation-pipeline](plugins/documentation-pipeline.md) | Auto-detect project type, generate complete documentation suite | 14 |
-| [project-bootstrap](plugins/project-bootstrap.md) | CREATE or TRANSFORM projects to Clean Architecture with Docker, CI/CD | 26 |
-| [optimization-suite](plugins/optimization-suite.md) | Performance profiling, dependency upgrades, code modernization | 12 |
-| [community-engagement](plugins/community-engagement.md) | GitHub triage, announcements, RFC debates, response automation | 5 |
+| Plugin | Description |
+|--------|-------------|
+| [agile-workflow](plugins/agile-workflow.md) | Scope decomposition, Story/Task management, Execution, Quality gates, Pipeline orchestration |
+| [codebase-audit-suite](plugins/codebase-audit-suite.md) | Security, code quality, architecture, tests, persistence performance audits |
+| [documentation-pipeline](plugins/documentation-pipeline.md) | Auto-detect project type, generate complete documentation suite |
+| [project-bootstrap](plugins/project-bootstrap.md) | CREATE or TRANSFORM projects to Clean Architecture with Docker, CI/CD |
+| [optimization-suite](plugins/optimization-suite.md) | Performance profiling, dependency upgrades, code modernization |
+| [community-engagement](plugins/community-engagement.md) | GitHub triage, announcements, RFC debates, response automation |
+| [dev-environment](plugins/dev-environment.md) | Install CLI agents, configure MCP servers, sync settings, audit instruction files |
 
 ## Responsibility Boundaries
 

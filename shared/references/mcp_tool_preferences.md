@@ -1,10 +1,10 @@
 # Tool Preferences for Code Editing
 
-Hash-verified file operations via `sharpline-mcp` MCP or `hashline.mjs` CLI.
+Hash-verified file operations via `hex-line-mcp` MCP server.
 
-## sharpline-mcp (MCP — preferred)
+## hex-line-mcp (MCP — preferred)
 
-MCP server at `mcp/sharpline-mcp/`. 6 tools with FNV-1a hash verification:
+MCP server at `mcp/hex-line-mcp/`. 6 tools with FNV-1a hash verification:
 
 | Tool | Purpose | When to use |
 |------|---------|-------------|
@@ -18,21 +18,10 @@ MCP server at `mcp/sharpline-mcp/`. 6 tools with FNV-1a hash verification:
 **Hash format:** `{tag}.{lineNum}\t{content}` where tag = 2-char FNV-1a.
 **Checksums:** `checksum: start-end:8hex` after each read range.
 
-## hashline.mjs (CLI fallback)
-
-CLI at `shared/tools/hashline.mjs`. Same core logic, invoked via Bash:
-
-```bash
-node shared/tools/hashline.mjs read <file> [--offset N] [--limit N]
-node shared/tools/hashline.mjs edit <file> --edits '<JSON>'
-node shared/tools/hashline.mjs grep <pattern> [path] [--glob "*.ts"]
-```
-
 ## Detection Sequence
 
-1. **sharpline-mcp MCP** — `read_file`/`outline` in tool list → use MCP
-2. **hashline.mjs CLI** — `shared/tools/hashline.mjs` exists → use via Bash
-3. **Standard tools** — fallback. Built-in Read/Edit/Write/Grep
+1. **hex-line-mcp MCP** — `read_file`/`outline` in tool list → use MCP
+2. **Standard tools** — fallback. Built-in Read/Edit/Write/Grep
 
 ## When to Use
 
@@ -43,16 +32,9 @@ node shared/tools/hashline.mjs grep <pattern> [path] [--glob "*.ts"]
 ## Setup
 
 ```bash
-cd mcp/sharpline-mcp && npm install
-```
-
-Agent config (ln-004 syncs automatically):
-```toml
-[mcp_servers.file-edit]
-command = "node"
-args = ["{skills_root}/mcp/sharpline-mcp/server.mjs"]
+claude mcp add -s user hex-line -- npx -y @levnikolaevich/hex-line-mcp
 ```
 
 ---
-**Version:** 4.0.0
-**Last Updated:** 2026-03-19
+**Version:** 5.0.0
+**Last Updated:** 2026-03-20

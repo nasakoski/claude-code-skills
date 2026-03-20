@@ -8,7 +8,7 @@
 # This plugin only
 /plugin add levnikolaevich/claude-code-skills --plugin agile-workflow
 
-# Full suite (all 6 plugins)
+# Full suite
 /plugin add levnikolaevich/claude-code-skills
 ```
 
@@ -20,11 +20,6 @@ Automates the full Agile delivery cycle. Decomposes scope into Epics and Stories
 
 | Skill | Description |
 |-------|-------------|
-| ln-001-standards-researcher | Research standards and patterns via MCP Ref |
-| ln-002-best-practices-researcher | Create ADRs, guides, and manuals from research |
-| ln-003-push-all | Commit and push all changes to remote |
-| ln-004-agent-config-sync | Sync skills config to Gemini CLI and Codex CLI |
-| ln-005-environment-scanner | Probe agent availability, write config |
 | ln-200-scope-decomposer | Decompose scope into Epics, Stories, RICE |
 | ln-201-opportunity-discoverer | Traffic-First KILL funnel for idea validation |
 | ln-210-epic-coordinator | CREATE or REPLAN 3-7 Epics from scope |

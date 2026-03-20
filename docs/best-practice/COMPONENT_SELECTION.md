@@ -35,6 +35,7 @@ Source: [Claude Code Docs](https://code.claude.com/docs/en/) + [shanraisshan/cla
 | Domain knowledge for a specific agent | **Skill** preloaded via `skills:` | Injected at agent startup |
 | Background knowledge, never user-triggered | **Skill** with `user-invocable: false` | Hidden from `/` menu, available for preloading |
 | Cross-session learning | **Agent** with `memory:` | Persistent memory across sessions |
+| Destructive procedure (push, create issues, install) | **Skill** with `disable-model-invocation: true` | Prevents accidental auto-triggering |
 
 ---
 
@@ -114,3 +115,4 @@ Agent remembers across sessions in project scope. Use for:
 | Agent for one-liner tasks | Context overhead for simple operation | Use skill instead |
 | Command that auto-invokes | Commands NEVER auto-invoke | Use skill if auto-invocation needed |
 | Preloading too many skills into agent | Context bloat at startup | Preload only essential domain knowledge |
+| Auto-invocable skill with side effects | Accidental git push, issue creation | Add `disable-model-invocation: true` |

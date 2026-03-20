@@ -181,8 +181,9 @@ Target: 400-600 lines for core principles, 600-800 lines with advanced documenta
     - [Orchestrator Design Checklist](#orchestrator-design-checklist)
     - [Worker Design Checklist](#worker-design-checklist)
     - [Idempotent Operations Checklist](#idempotent-operations-checklist)
-14. [References](#references)
-15. [Appendix A: Concise Terms Dictionary](#appendix-a-concise-terms-dictionary)
+14. [Skill Types and Invocation Strategy](#skill-types-and-invocation-strategy)
+15. [References](#references)
+16. [Appendix A: Concise Terms Dictionary](#appendix-a-concise-terms-dictionary)
 
 ---
 
@@ -279,6 +280,7 @@ Move detailed content to `references/` to stay within limits.
 | **Allowed fields** | name, description (+ license, allowed-tools, metadata for plugins) | skill-creator |
 | **Negative triggers** | "Not for X" when overlapping domains exist | skill-development |
 | **Name format** | hyphen-case, 3-64 chars, no leading/trailing hyphens | skill-creator |
+| **Side-effect guard** | Destructive skills MUST have `disable-model-invocation: true` | frontmatter_reference |
 
 **Good:** `"Orchestrates task operations. Analyzes Story, builds optimal plan (1-8 tasks). Use when Story needs task breakdown."`
 **Bad:** `Orchestrates task operations: analyzes Story` ← unquoted colon breaks YAML
@@ -523,7 +525,7 @@ How workers return results depends on the delegation pattern:
 | **Rarely Used Independently** | Functions almost always used together |
 | **Small Total Size** | Combined SKILL.md < 500 lines, < 3 major workflow steps |
 
-### Example: ln-321-best-practices-researcher (doc_type="adr")
+### Example (hypothetical): best-practices-researcher (doc_type="adr")
 
 **Functions:** Ask 5 questions → Generate ADR document (7 sections) → Create file in docs/adrs/
 
@@ -548,7 +550,7 @@ Phase 4: Output/Save
 **Examples:**
 - `ln-111-docs-creator` - generates documentation sequentially
 - `ln-112-html-builder` - builds HTML presentation
-- `ln-002-best-practices-researcher` - creates guides/manuals/ADRs/research
+- `ln-301-task-creator` - creates implementation tasks from templates
 
 **Diagram Type:** `graph TD` (top-down linear)
 
@@ -609,6 +611,19 @@ Phase 3: Check condition
 - `ln-210-epic-coordinator` - loops through domains
 
 **Diagram Type:** `graph TD` with loop-back arrows
+
+**Stop Conditions (MANDATORY for Pattern 4 skills):**
+
+Every looping workflow MUST define `### Stop Conditions` table after the loop description.
+
+| Category | Example |
+|----------|--------|
+| Success | All items processed |
+| Budget | max_cycles reached, time elapsed |
+| Plateau | N consecutive failures, no improvement |
+| Failure | Unrecoverable state, infra broken |
+
+Gold standard: `ln-810-performance-optimizer`.
 
 ### Pattern 5: Orchestrator
 
@@ -936,6 +951,46 @@ Every User Story should be:
 
 ---
 
+## Skill Types and Invocation Strategy
+
+### Three Skill Types
+
+| Type | Purpose | Example | Key Feature |
+|------|---------|---------|-------------|
+| **Checklist** | Quality gate | release-check | All items must pass before proceeding |
+| **Workflow** | Standardized operation | config-migration | Steps + rollback + `disable-model-invocation` |
+| **Domain Expert** | Decision structure | runtime-diagnosis | Evidence collection -> decision matrix -> fix |
+
+### Descriptor Optimization
+
+High-frequency skills: target <15 tokens in description. Focus on "WHEN to use", not "WHAT it does".
+
+| Quality | Example |
+|---------|---------|
+| Bad | "This skill helps review code and find issues in pull requests" |
+| Good | "Use for PR reviews with focus on correctness" |
+| Bad | "help with backend" (too vague, overtriggers) |
+| Good | "Use when adding REST endpoints to Express/Fastify services" |
+
+### Auto-Invoke Strategy
+
+| Frequency | Action | Rationale |
+|-----------|--------|-----------|
+| >1x/session | auto-invoke ON, optimize descriptor | Frequent use justifies context cost |
+| <1x/session | auto-invoke OFF, manual only | Save context budget |
+| <1x/month | Delete skill, move logic to AGENTS.md | Dead weight in skill registry |
+
+### Skill Design Anti-Patterns
+
+| Anti-Pattern | Problem | Fix |
+|-------------|---------|-----|
+| Description too short ("help with backend") | Overtriggers on unrelated prompts | Add specific WHEN triggers and "Not for X" |
+| SKILL.md hundreds of lines | Blows context budget on load | Split into orchestrator + workers, move detail to `references/` |
+| One skill covers 5 tasks | Violates SRP, always loads full context | Split by domain (one skill = one job) |
+| Side-effect skill allows auto-invoke | Destructive action fires without user intent | Set `disable-model-invocation: true` in frontmatter |
+
+---
+
 ## Conclusion
 
 **Key Takeaways:**
@@ -1040,5 +1095,5 @@ Quality gates run before completion."
 
 ---
 
-**Version:** 1.5.0
-**Last Updated:** 2026-02-13
+**Version:** 1.6.0
+**Last Updated:** 2026-03-20

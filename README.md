@@ -1,13 +1,13 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-2026.03.19-blue)
-![Skills](https://img.shields.io/badge/skills-125-green)
+![Skills](https://img.shields.io/badge/skills-127-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
-> **6 plugins. One install command.** Automate your full delivery workflow —
+> **7 plugins. One install command.** Automate your full delivery workflow —
 > from project bootstrap to code audit to production quality gates.
-> Works standalone or as a complete Agile pipeline. No API keys required.
+> Works standalone or as a complete Agile pipeline.
 
 > [!TIP]
 > **Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
@@ -21,7 +21,7 @@
 Install the full suite or pick only the plugins you need. Each works independently.
 
 ```bash
-# All 6 plugins
+# All 7 plugins
 /plugin add levnikolaevich/claude-code-skills
 
 # Or individually:
@@ -31,6 +31,7 @@ Install the full suite or pick only the plugins you need. Each works independent
 /plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
 /plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
 /plugin add levnikolaevich/claude-code-skills --plugin community-engagement
+/plugin add levnikolaevich/claude-code-skills --plugin dev-environment
 ```
 
 | Plugin | Description |
@@ -41,8 +42,12 @@ Install the full suite or pick only the plugins you need. Each works independent
 | **project-bootstrap** | CREATE or TRANSFORM projects to production-ready Clean Architecture |
 | **optimization-suite** | Performance optimization, Dependency upgrades, Code modernization |
 | **community-engagement** | GitHub community management: triage, announcements, RFCs, responses |
+| **dev-environment** | Install CLI agents, configure MCP servers, sync settings, audit instruction files |
 
 Browse and discover individual skills at [skills.sh](https://skills.sh/LevNikolaevich/claude-code-skills).
+
+> [!NOTE]
+> **skills.sh is a showcase only.** Skills depend on shared resources (`shared/` directory) that are not copied by `npx skills add`. Use `/plugin add` for a working installation.
 
 ---
 
@@ -99,53 +104,70 @@ Automated validation hooks that run during development:
 
 ## MCP Servers (Optional)
 
-Skills use MCP servers for research, documentation lookup, and task tracking. All skills work without MCP — they automatically fallback to File Mode (local markdown) when Linear is unavailable, and to WebSearch when research MCPs are missing.
+Skills use MCP servers for research, documentation lookup, file editing, and task tracking. All skills work without MCP — they automatically fallback to File Mode (local markdown) when Linear is unavailable, and to WebSearch when research MCPs are missing.
 
-| Server | Purpose | API Key | Used by |
-|--------|---------|---------|---------|
-| **[sharpline-mcp](mcp/sharpline-mcp/)** | Hash-verified file editing + AST outline | Bundled | ln-310, ln-401, ln-403, ln-510+ |
-| **[Context7](https://github.com/upstash/context7)** | Library docs, APIs, migration guides | Optional ([dashboard](https://context7.com/dashboard)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
-| **[Ref](https://docs.ref.tools/install)** | Standards, RFCs, best practices | Required ([ref.tools/keys](https://ref.tools/keys)) | ln-001, ln-002, ln-310, ln-511, ln-640+ |
-| **[Linear](https://linear.app/docs/mcp)** | Issue tracking (Agile workflow) | OAuth via browser | ln-300+, ln-400+, ln-500+ |
+| Server | Purpose | Transport | API Key | Used by |
+|--------|---------|-----------|---------|---------|
+| **[hex-line-mcp](mcp/hex-line-mcp/)** | Hash-verified file editing + AST outline | stdio | Bundled | ln-310, ln-401, ln-403, ln-510+ |
+| **[hex-ssh-mcp](mcp/hex-ssh-mcp/)** | Token-efficient SSH with hash-verified ops | stdio | Bundled | Remote server work |
+| **[hex-graph-mcp](mcp/hex-graph-mcp/)** | Code knowledge graph with AST indexing | stdio | Bundled | Architecture analysis |
+| **[Context7](https://context7.com)** | Library docs, APIs, migration guides | HTTP | Optional ([dashboard](https://context7.com/dashboard)) | ln-310, ln-511, ln-640+ |
+| **[Ref](https://docs.ref.tools/install)** | Standards, RFCs, best practices | HTTP | Required ([ref.tools/keys](https://ref.tools/keys)) | ln-310, ln-511, ln-640+ |
+| **[Linear](https://linear.app/docs/mcp)** | Issue tracking (Agile workflow) | HTTP | OAuth via browser | ln-300+, ln-400+, ln-500+ |
 
 **CLI setup:**
 ```bash
-# sharpline — hash-verified file editing (bundled, recommended)
-claude mcp add sharpline -- npx -y sharpline-mcp
+# hex-line — hash-verified file editing (bundled)
+claude mcp add -s user hex-line -- npx -y @levnikolaevich/hex-line-mcp
 
-# Context7 — library documentation
-claude mcp add context7 -- npx -y @upstash/context7-mcp
+# hex-ssh — token-efficient SSH with hash verification (bundled)
+claude mcp add -s user hex-ssh -- npx -y @levnikolaevich/hex-ssh-mcp
 
-# Ref — standards & best practices search (API key required)
-claude mcp add --transport http Ref https://api.ref.tools/mcp?apiKey=YOUR_API_KEY
+# hex-graph — code knowledge graph (bundled)
+claude mcp add -s user hex-graph -- npx -y @levnikolaevich/hex-graph-mcp
 
-# Linear — issue tracking (OAuth via browser after adding)
-claude mcp add linear-server -- npx -y mcp-remote https://mcp.linear.app/sse
+# Context7 — library documentation (HTTP, optional API key)
+claude mcp add -s user --transport http --header "CONTEXT7_API_KEY: YOUR_KEY" context7 https://mcp.context7.com/mcp
 
+# Ref — standards & best practices (HTTP, API key required)
+claude mcp add -s user --transport http --header "x-ref-api-key: YOUR_KEY" Ref https://api.ref.tools/mcp
+
+# Linear — issue tracking (HTTP, OAuth via browser)
+claude mcp add -s user --transport http linear-server https://mcp.linear.app/mcp
 ```
 
 <details>
 <summary><b>JSON config alternative</b></summary>
 
-Add to `~/.claude/settings.json`:
+Add to `~/.claude.json` → `mcpServers`:
 ```json
 {
   "mcpServers": {
-    "sharpline": {
+    "hex-line": {
       "command": "npx",
-      "args": ["-y", "sharpline-mcp"]
+      "args": ["-y", "@levnikolaevich/hex-line-mcp"]
+    },
+    "hex-ssh": {
+      "command": "npx",
+      "args": ["-y", "@levnikolaevich/hex-ssh-mcp"],
+      "env": { "MCP_SSH_ALLOWED_HOSTS": "your-server" }
+    },
+    "hex-graph": {
+      "command": "npx",
+      "args": ["-y", "@levnikolaevich/hex-graph-mcp"]
     },
     "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     },
     "Ref": {
       "type": "http",
-      "url": "https://api.ref.tools/mcp?apiKey=YOUR_API_KEY"
+      "url": "https://api.ref.tools/mcp",
+      "headers": { "x-ref-api-key": "YOUR_API_KEY" }
     },
     "linear-server": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp"
     }
   }
 }
@@ -222,7 +244,7 @@ All skills support:
 | Windows (CMD) | `mklink /J "C:\Users\<USER>\.gemini\skills" "<PLUGIN_DIR>"` |
 | macOS / Linux | `ln -s ~/.claude/plugins/<PLUGIN_DIR> ~/.gemini/skills` |
 
-Same for `.codex/skills`. Or use **ln-004-agent-config-sync** to automate symlinks + MCP sync.
+Same for `.codex/skills`. Or use **ln-013-config-syncer** to automate symlinks + MCP sync.
 
 **MCP settings locations** (for manual sharing):
 
@@ -272,7 +294,7 @@ Claude Opus is the primary model. For code and story reviews, skills delegate to
 <summary><b>How do I install it?</b></summary>
 
 ```bash
-# All 6 plugins (full suite)
+# Full suite
 /plugin add levnikolaevich/claude-code-skills
 
 # Or individually:
@@ -300,7 +322,8 @@ git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/ski
 | Scaffold a new project or restructure existing | `project-bootstrap` |
 | Optimize performance, dependencies, bundle size | `optimization-suite` |
 | Manage GitHub community (triage, announcements, RFCs) | `community-engagement` |
-| Everything | `/plugin add levnikolaevich/claude-code-skills` (all 6) |
+| Set up multi-agent dev environment | `dev-environment` |
+| Everything | `/plugin add levnikolaevich/claude-code-skills` (all 7) |
 
 Each plugin works independently — install only what you need.
 
@@ -379,7 +402,7 @@ Bootstrap skills (`ln-7XX`) support React, .NET, and Python project structures. 
 <details>
 <summary><b>Can I share these skills with Gemini CLI or OpenAI Codex?</b></summary>
 
-Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-config-sync` to automate it. See [AI Review Models > Sharing skills & MCP between agents](#ai-review-models-optional) for commands and MCP config paths.
+Yes — create symlinks/junctions to the plugin directory, or use `ln-013-config-syncer` to automate it. See [AI Review Models > Sharing skills & MCP between agents](#ai-review-models-optional) for commands and MCP config paths.
 
 </details>
 
@@ -388,17 +411,12 @@ Yes — create symlinks/junctions to the plugin directory, or use `ln-004-agent-
 ## What's Inside
 
 <details>
-<summary><b>Full Skill Tree (125 skills)</b></summary>
+<summary><b>Full Skill Tree (127 skills)</b></summary>
 
 ```
 claude-code-skills/                      # MARKETPLACE
 |
 |  ┌─ Plugin: agile-workflow ──────────────────────┐
-|
-|-- ln-001-standards-researcher/       # Research standards via MCP Context7/Ref
-|-- ln-002-best-practices-researcher/  # Create ADRs, guides, manuals
-|-- ln-003-push-all/                   # Commit and push all changes in one command
-|-- ln-004-agent-config-sync/                 # Sync skills & MCP settings to Gemini/Codex
 |
 |-- ln-2XX-*/                          # PLANNING
 |   |-- ln-200-scope-decomposer/       # TOP: scope -> Epics -> Stories (one command)
@@ -538,6 +556,18 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-912-community-announcer/    # Compose + publish GitHub Discussion announcements
 |   |-- ln-913-community-debater/      # Launch RFC/debate/poll discussions
 |   |-- ln-914-community-responder/    # Respond to unanswered discussions/issues
+|
+|  └──────────────────────────────────────────────┘
+|  ┌─ Plugin: dev-environment ──────────────────────┐
+|
+|-- ln-001-push-all/                   # Commit and push all changes in one command
+|-- ln-0XX-*/                          # DEV ENVIRONMENT SETUP
+|   |-- ln-010-dev-environment-setup/  # L2: Full environment setup coordinator
+|   |-- ln-011-agent-installer/        # Install/update Codex & Gemini CLI
+|   |-- ln-012-mcp-configurator/       # MCP server setup & budget analysis
+|   |-- ln-013-config-syncer/          # Sync settings to Gemini/Codex
+|   |-- ln-014-agent-instructions-auditor/ # Audit CLAUDE.md/AGENTS.md/GEMINI.md
+|-- ln-020-codegraph/                  # Code knowledge graph for dependency analysis & impact checking
 |
 |  └──────────────────────────────────────────────┘
 |

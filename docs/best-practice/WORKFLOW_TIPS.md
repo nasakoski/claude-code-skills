@@ -22,6 +22,7 @@
 | Tip | When |
 |-----|------|
 | Always start with `/plan` mode | Before any non-trivial work |
+| **Plan Mode** via Shift+Tab x2 | Separate research from execution. One Claude plans, another reviews |
 | Start with minimal spec, ask Claude to interview you via `AskUserQuestion` | New features, unclear requirements |
 | Make phase-wise gated plans with tests at each phase | Complex implementations |
 | Spin up second Claude to review plan as staff engineer | Plan validation |
@@ -35,10 +36,12 @@
 | Tip | When |
 |-----|------|
 | Manual `/compact` at max 50% context | Before entering degradation zone |
-| `/clear` to reset context when switching tasks | Task boundaries |
+| `/clear` to reset context when switching tasks | Task boundaries, after 2+ user corrections (context drift) |
 | Set `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` in settings.json `env` | Prevent degradation in long sessions |
-| Use `/context` to see context usage | Monitor context health |
+| Use `/context` to diagnose token spend | BEFORE hitting compression limit. Identifies expensive MCP servers |
 | Use 1M token model for compaction errors | `/model` then `/compact` |
+| `/compact` for same-task phase transitions | Pair with `Compact Instructions` section in CLAUDE.md to preserve priorities |
+| `/clear` when unrelated task starts | Cheaper than compaction; starts fresh context window |
 
 ---
 
@@ -51,6 +54,7 @@
 | `/rewind` (Esc Esc) when Claude goes off-track | Undo instead of fixing in-context |
 | `/fork` conversation into new session | Branch off exploration |
 | `/btw` for side-chain questions | Ask without polluting main context |
+| **HANDOFF.md pattern**: before ending session, ask Claude to write `HANDOFF.md` | Captures progress, what worked, what failed, next steps. Next session reads it instead of relying on compression |
 
 ---
 
@@ -62,6 +66,7 @@
 | Agent Teams with tmux + git worktrees | Parallel development |
 | `/loop` for recurring monitoring (up to 3 days) | Poll deployments, babysit PRs, check builds |
 | Use `isolation: "worktree"` for parallel agents | Avoid git conflicts |
+| **Ctrl+B** sends long Bash commands to background | Agent checks result via BashOutput when ready. Frees main context |
 
 ---
 

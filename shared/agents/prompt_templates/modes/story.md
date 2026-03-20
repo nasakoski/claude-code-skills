@@ -20,6 +20,13 @@ You are reviewing a validated Story and its implementation Tasks against the act
 
 Given these goals, articulate in your report's Goal section what specific risk YOU will prioritize and why — this is your refinement of the caller's goals, not a replacement. Focus your analysis on the areas most relevant to your primary focus while still covering the review goal.
 
+## Research Focus Areas
+When reviewing technical decisions, validate against:
+- Industry standards (RFC, OWASP, OpenAPI) — Story references specific standard numbers?
+- Library versions — pinned and current (LTS preferred)?
+- Architecture patterns — matches domain-standard patterns?
+- Source quality: official docs > vendor docs > community. Avoid blog posts > 2 years old.
+
 ## Instructions
 1. Access the Story and Tasks using the references above (Linear URLs or local file paths)
 2. If you cannot access Linear — use local alternatives: check `docs/tasks/` directory, `git log`, `git diff`, README.md. Produce your review based on available information. Note what you could not access in your output.

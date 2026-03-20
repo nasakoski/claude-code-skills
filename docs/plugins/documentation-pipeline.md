@@ -8,7 +8,7 @@
 # This plugin only
 /plugin add levnikolaevich/claude-code-skills --plugin documentation-pipeline
 
-# Full suite (all 6 plugins)
+# Full suite
 /plugin add levnikolaevich/claude-code-skills
 ```
 

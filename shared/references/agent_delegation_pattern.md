@@ -173,7 +173,7 @@ Phase 8: REPORT
 **MANDATORY READ:** Load `shared/references/agent_review_workflow.md` "Step: Health Check" (disabled flags check + agent probe).
 
 **HARD RULES:**
-1. **Check `docs/environment_state.json` disabled flags BEFORE running health-check.** Disabled agents are never probed.
+1. **Check `docs/environment_state.json` disabled flags BEFORE running health-check.** Disabled agents are never probed. **File not found → proceed with all agents (default=enabled).**
 2. **ALWAYS execute the EXACT command** `node shared/agents/agent_runner.mjs --health-check` — no modifications, no substitutions.
 3. **Do NOT invent alternative checks** (e.g., `where`, `which`, `--version`, PATH lookup). ONLY the command above is valid.
 4. **Only command output determines availability.** Do NOT reason about file existence, environment, or installation — run the command and read its output.
@@ -182,6 +182,7 @@ Phase 8: REPORT
 | Situation | Impact |
 |-----------|--------|
 | >=1 agent OK (not disabled, health check passed) | Run agents, return suggestions |
+| `environment_state.json` not found | Proceed with all agents (default=enabled, no exclusions) |
 | All agents disabled (environment_state.json) | Return `{verdict: "SKIPPED", reason: "all agents disabled"}` |
 | All agents UNAVAILABLE (health check) | Return `{verdict: "SKIPPED", reason: "no agents available"}` |
 | Command error/not found | Same as UNAVAILABLE |

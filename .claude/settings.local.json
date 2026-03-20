@@ -3,7 +3,9 @@
     "allow": [
       "mcp__Ref",
       "mcp__context7",
-      "mcp__hashline-edit",
+      "mcp__hex-line",
+      "mcp__hex-ssh",
+      "mcp__hex-graph",
       "WebSearch",
       "Web Fetch",
       "Read",
@@ -19,6 +21,44 @@
     "ask": [],
     "defaultMode": "bypassPermissions"
   },
-  "disableAllHooks": true,
-  "outputStyle": "Explanatory"
+  "disableAllHooks": false,
+  "outputStyle": "Explanatory",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node mcp/hex-line-mcp/hook.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|Grep|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node mcp/hex-line-mcp/hook.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node mcp/hex-line-mcp/hook.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
 }
