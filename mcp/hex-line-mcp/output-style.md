@@ -1,6 +1,6 @@
 ---
 name: hex-line
-description: Prefer hex-line MCP tools over built-in Read/Edit/Write/Grep
+description: hex-line MCP tool preferences + explanatory coding style with insights
 keep-coding-instructions: true
 ---
 
@@ -25,3 +25,17 @@ NEVER read a large file in full — outline+targeted read saves 75% tokens.
 
 Bash OK for: npm/node/git/docker/curl, pipes, compound commands.
 **Exceptions** (use built-in Read): images, PDFs, Jupyter notebooks.
+
+# Explanatory Style
+
+Provide educational insights about the codebase alongside task completion. When providing insights, you may exceed typical length constraints, but remain focused and relevant.
+
+## Insights
+
+Before and after writing code, provide brief educational explanations about implementation choices using:
+
+"`\u2736 Insight \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`
+[2-3 key educational points]
+`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`"
+
+Focus on insights specific to the codebase or the code just written, not general programming concepts.

@@ -5,14 +5,19 @@ allowed-tools: "Read,Glob,Grep,Bash,Agent,mcp__hex-line__read_file,mcp__hex-line
 
 # Cross-Pollinate Hex MCP Servers
 
-Audit hex-line-mcp, hex-ssh-mcp, and hex-graph-mcp for feature parity. Report gaps and suggest cross-pollination.
+Audit hex-line-mcp, hex-ssh-mcp, and hex-graph-mcp for feature parity. Report gaps and fix them.
 
+| Server | Directory | Tools | Role |
+|--------|-----------|-------|------|
+| hex-line-mcp | `mcp/hex-line-mcp/` | 11 | File ops (reference implementation) |
+| hex-ssh-mcp | `mcp/hex-ssh-mcp/` | 6 | SSH remote ops |
+| hex-graph-mcp | `mcp/hex-graph-mcp/` | 7 | Code knowledge graph |
 
-## Step 0: Session Investigation
+---
 
-Before auditing code, mine real-world tool errors from agent sessions (last 7 days).
+### 1. Session Investigation
 
-### Search locations
+Mine real-world tool errors from agent sessions (last 7 days).
 
 | Agent | Path | Format |
 |-------|------|--------|
@@ -20,54 +25,20 @@ Before auditing code, mine real-world tool errors from agent sessions (last 7 da
 | Codex | `~/.codex/archived_sessions/rollout-*.jsonl` | JSONL |
 | Gemini | `~/.gemini/antigravity/conversations/` | Protobuf/JSON |
 
-### Error patterns to search
-
 ```bash
-# Search Claude sessions (most recent 10 transcripts)
 CLAUDE_DIR="$HOME/.claude/projects/d--Development-LevNikolaevich-claude-code-skills"
 for f in $(ls -t "$CLAUDE_DIR"/*.jsonl 2>/dev/null | head -10); do
   grep -c 'tool_use_error\|NOOP_EDIT\|out of range\|mismatch\|TEXT_NOT_FOUND\|FILE_NOT_FOUND\|HASH_HINT\|DANGEROUS\|Obligatory use\|cancelled.*parallel' "$f" && echo "$f"
 done
-
-# Search Codex sessions (all archived)
-CODEX_DIR="$HOME/.codex/archived_sessions"
-for f in $(ls -t "$CODEX_DIR"/rollout-*.jsonl 2>/dev/null | head -10); do
-  grep -c 'error\|tool_use_error\|blocked' "$f" && echo "$f"
-done
-
-# Search Gemini (check if conversations directory has parseable files)
-GEMINI_DIR="$HOME/.gemini/antigravity/conversations"
-ls "$GEMINI_DIR" 2>/dev/null
 ```
 
-### Output format
+Output: table of Agent / Sessions / Errors / Top Pattern / Self-Healing. Feed into step 3.
 
-```markdown
-## Session Investigation Report
+### 2. Read all servers
 
-| Agent | Sessions Checked | Errors Found | Top Error Pattern | Self-Healing? |
-|-------|-----------------|-------------|-------------------|---------------|
-| Claude | N | M | pattern | yes/no |
-| Codex | N | M | pattern | yes/no |
-| Gemini | N | M | pattern | yes/no |
+Read all three `server.mjs` files and `lib/` directories. Map features per server.
 
-Prioritized issues for audit:
-1. [most frequent error] — affects [tool], [frequency]x
-2. ...
-```
-
-Feed these findings into the Feature Checklist audit as prioritized issues.
-## Instructions
-
-1. Read all three `server.mjs` files and `lib/` directories
-2. Compare features using the checklist below
-3. Output a markdown table with findings
-4. Fix any gaps found (create missing files, add missing patterns)
-5. Run `npm run lint` on all three servers (0 errors required, warnings OK)
-6. Run `npm run check` (syntax check) on all three servers
-7. Run `npm test` on servers that have tests
-
-## Feature Checklist
+### 3. Feature Checklist
 
 | Feature | Check |
 |---------|-------|
@@ -79,61 +50,154 @@ Feed these findings into the Feature Checklist audit as prioritized issues.
 | **eslint.config.mjs** | Linting config present |
 | **test/smoke.mjs** | Business logic tests (hash, coerce, normalize), NOT framework-level |
 | **package.json scripts** | start, test, lint, lint:fix, check scripts defined |
-| **Lint clean** | `npm run lint` returns 0 errors (warnings OK) |
-| **Syntax clean** | `npm run check` passes for all entry points |
 
-## Description Audit
+Output: gap table per server. Fix any gaps found.
 
-For each tool in each server:
+### 4. Description Audit
 
-1. **Correctness**: Read the tool description, then read the actual handler + lib code. Verify every claim:
-   - Does the tool actually do what the description says?
-   - Are there features described that were removed or changed?
-   - Are there undocumented behaviors the description should mention?
-2. **Token efficiency**: Description ≤40 words, param descriptions ≤15 words. Pattern: WHEN to use, not WHAT it does
-3. **Factual accuracy**: No outdated extension lists, no removed features, no wrong defaults
-4. **Consistency**: Same behavior described the same way across servers (e.g. hash format, checksum format)
+For each tool in each server, verify description against actual code:
 
-Output a separate table:
+1. **Correctness** — does the tool do what the description says? Undocumented behaviors?
+2. **Token efficiency** — description ≤40 words, param descriptions ≤15 words
+3. **Factual accuracy** — no outdated extension lists, removed features, wrong defaults
+4. **Consistency** — same behavior described the same way across servers
+
+Output:
 
 | Tool | Issue | Severity | Fix |
 |------|-------|----------|-----|
-| edit_file | Description says X but code does Y | CRITICAL | Updated |
 
-
-## Hook Hints Audit
+### 5. Hook Hints Audit
 
 For each entry in `TOOL_HINTS` in `hook.mjs`:
 
-1. **Accuracy**: Does the hint point to the correct hex-line tool?
-2. **Cross-tool awareness**: If blocking Read, does hint mention write_file? If blocking Edit, does hint mention read_file dependency?
-3. **Parameter accuracy**: Do "with offset/limit" claims match actual tool params?
-4. **Completeness**: Do "not X" lists match all commands redirected to this hint in BASH_REDIRECTS?
-5. **Consistency**: Are similar hints worded the same way across entries?
+1. **Accuracy** — does the hint point to the correct hex-line tool?
+2. **Cross-tool awareness** — blocking Read mentions write_file? Blocking Edit mentions read_file?
+3. **Parameter accuracy** — do "with offset/limit" claims match actual tool params?
+4. **Completeness** — do "not X" lists match all commands in BASH_REDIRECTS for this hint?
+5. **Consistency** — similar hints worded the same way?
 
-Output table:
+Output:
 
 | Hint Key | Tool Pointed To | Accurate? | Cross-refs? | Fix |
 |----------|----------------|-----------|-------------|-----|
-## README Audit
+
+### 6. Tool Value Audit (hex-line only)
+
+For each tool, compare with the built-in it replaces. Only tools with REAL VALUE should exist.
+
+**Flow comparison:**
+
+| Flow | Built-in steps | hex-line steps | Metric |
+|------|---------------|----------------|--------|
+| Read→Edit→Verify | Read + Edit + Read(re-check) | read_file + edit_file(anchor) + verify | Token count |
+| Explore→Read | Read(whole file) | outline + read_file(range) | Lines returned |
+| Search→Edit | Grep + Read + Edit | grep_search + edit_file(anchor) | Steps eliminated |
+| Rename | Grep + N×(Read+Edit) | bulk_replace | Calls count |
+
+**Per-tool checklist:**
+1. What built-in does it replace?
+2. What value does hex-line add?
+3. Can the built-in do the same thing? YES → DELETE
+4. Does it duplicate another hex-line tool? YES → merge or DELETE
+
+Output:
+
+| Tool | Replaces | Value Added | Verdict |
+|------|----------|-------------|---------|
+
+Verdicts: KEEP / DELETE / RESTRICT / MERGE.
+
+### 7. Benchmark Validation (hex-line only)
+
+Run benchmarks to validate tool value with real numbers:
+
+```bash
+cd mcp/hex-line-mcp && node benchmark.mjs
+```
+
+Focus on **Workflow Scenarios (W1-W4)**, not atomic operations. Atomic savings (read, grep) vary by file size and are misleading in isolation. Workflow savings reflect real agent usage patterns.
+
+| Workflow savings | Verdict |
+|-----------------|----------|
+| ≥50% | KEEP — clear value |
+| 20-49% | REVIEW — check if pattern is common enough |
+| <20% | DELETE candidate — no workflow value over built-in |
+
+Cross-reference with step 6 theoretical analysis. If workflow shows <20% but step 6 identified safety value (e.g. hash mismatch prevention, edit rejection) → KEEP with justification.
+
+Output:
+
+| Workflow | Built-in | hex-line | Savings | Ops | Verdict |
+|----------|----------|----------|---------|-----|---------|
+
+**Gate:** Any tool not covered by a workflow with ≥50% savings and no safety justification → remove from server.mjs.
+
+### 8. Hook Redirect Correctness Audit (hex-line only)
+
+For each entry in `BASH_REDIRECTS` in `hook.mjs`, verify the redirect is correct:
+
+1. **Can hex-line FULLY replace the command?** (e.g. `tail -f` → NO, no follow mode)
+2. **Does the regex over-match?** (e.g. `/^find\s+/` catches `find -exec rm`)
+3. **Compound bypass consistency?** (`cat file` → BLOCKED, `cat file | grep x` → PASSES)
+
+Test script:
+
+```bash
+test_commands=(
+  "cat file.txt:SHOULD_BLOCK:read_file"
+  "head -20 file.txt:SHOULD_BLOCK:read_file"
+  "tail -f /var/log/app.log:SHOULD_PASS:no_follow_mode"
+  "tail -20 file.txt:SHOULD_BLOCK:read_file"
+  "ls -la dir/:SHOULD_BLOCK:directory_tree"
+  "find . -name *.md:SHOULD_BLOCK:directory_tree"
+  "find . -exec rm {}:SHOULD_PASS:no_exec_support"
+  "du -sh .:SHOULD_PASS:no_size_support"
+  "stat file:SHOULD_BLOCK:get_file_info"
+  "wc -l file:SHOULD_BLOCK:get_file_info"
+  "grep -r pattern dir/:SHOULD_BLOCK:grep_search"
+  "sed -i s/a/b/ file:SHOULD_BLOCK:edit_file"
+  "diff file1 file2:SHOULD_PASS:changes_is_git_only"
+)
+for entry in "${test_commands[@]}"; do
+  IFS=: read -r cmd expected reason <<< "$entry"
+  echo "$cmd → $expected ($reason)"
+done
+```
+
+Compare expected vs actual. Mismatches are bugs.
+
+Output:
+
+| Command Pattern | hex-line Tool | Can Replace? | Hook Status | Verdict |
+|----------------|--------------|-------------|-------------|---------|
+
+### 9. README Audit
 
 For each server's README.md:
 
-1. **Tool count**: Does README match actual tool count in server.mjs?
-2. **Parameter tables**: Do params in README match inputSchema in server.mjs?
-3. **Examples**: Do usage examples reflect current API (param names, behavior)?
-4. **Installation**: Are install commands correct and tested?
-5. **Version**: Does README version match package.json version?
+1. **Tool count** — matches actual count in server.mjs?
+2. **Parameter tables** — params match inputSchema?
+3. **Examples** — reflect current API?
+4. **Installation** — commands correct?
+5. **Version** — matches package.json?
 
-Output findings as a table, fix any discrepancies found.
+Output findings as a table, fix discrepancies.
 
-## Servers
+### 10. Lint + check + test
 
-- `mcp/hex-line-mcp/` — 11 tools, file ops (reference implementation)
-- `mcp/hex-ssh-mcp/` — 6 tools, SSH remote ops
-- `mcp/hex-graph-mcp/` — 7 tools, code knowledge graph
+```bash
+for pkg in hex-line-mcp hex-ssh-mcp hex-graph-mcp; do
+  echo "=== $pkg ==="
+  cd mcp/$pkg && npm run check && npm run lint && npm test && cd ../..
+done
+```
 
-## Output Format
+**Gate:** 0 errors on all 3 servers.
+
+### 11. Cross-Pollination Report
+
+Output:
 
 ```markdown
 ## Cross-Pollination Report
@@ -143,4 +207,4 @@ Output findings as a table, fix any discrepancies found.
 | coerce.mjs | OK | OK/MISSING | OK/MISSING | Created/N/A |
 ```
 
-After the table, list any files created or modified.
+After the table, list all files created or modified.

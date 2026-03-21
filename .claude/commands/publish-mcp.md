@@ -28,6 +28,9 @@ git tag -l "${TAG_PREFIX}*" --sort=-v:refname | head -1
 # Commits since last tag touching this package
 git log ${LAST_TAG}..HEAD --oneline -- mcp/${PKG}/
 
+# Unstaged changes (not yet committed)
+git diff --stat -- mcp/${PKG}/
+
 # Local version
 node -e "console.log(require('./mcp/${PKG}/package.json').version)"
 
@@ -35,14 +38,16 @@ node -e "console.log(require('./mcp/${PKG}/package.json').version)"
 npm view @levnikolaevich/${PKG} version 2>/dev/null || echo "not published"
 ```
 
+A package **needs release** if it has commits since tag OR unstaged changes.
+
 Display summary table:
 
 ```
-| Package       | Local  | npm    | Commits since tag | Status         |
-|---------------|--------|--------|-------------------|----------------|
-| hex-line-mcp  | 1.0.0  | 1.0.0  | 7                 | needs release  |
-| hex-ssh-mcp   | 1.0.0  | 1.0.0  | 2                 | needs release  |
-| hex-graph-mcp | 0.1.0  | 0.1.0  | 0                 | up to date     |
+| Package       | Local  | npm    | Commits | Unstaged | Status         |
+|---------------|--------|--------|---------|----------|----------------|
+| hex-line-mcp  | 1.1.1  | 1.1.1  | 2       | 6 files  | needs release  |
+| hex-graph-mcp | 0.2.1  | 0.2.1  | 0       | 3 files  | needs release  |
+| hex-ssh-mcp   | 1.1.1  | 1.1.1  | 0       | 0        | up to date     |
 ```
 
 If no packages need release → report "All packages up to date" and stop.
@@ -79,33 +84,42 @@ AskUserQuestion with the recommendation marked "(Recommended)":
 - **minor** (X.Y.Z → X.Y+1.0): new features, new tools
 - **major** (X.Y.Z → X+1.0.0): breaking changes
 
-### 5. Bump version + auto-sync server.mjs
+### 5. Pre-publish checks
 
-Step A — bump package.json:
 ```bash
-cd mcp/${PKG} && npm version ${BUMP_TYPE} --no-git-tag-version
+cd mcp/${PKG} && npm run check && npm run lint && npm test
 ```
 
-Step B — read new version:
+**Gate:** All 3 must pass (syntax check, eslint, smoke tests). If any fails — fix before proceeding.
+
+### 5b. Benchmark (hex-line only)
+
 ```bash
+cd mcp/hex-line-mcp && node benchmark.mjs
+```
+
+Focus on **Workflow Scenarios (W1-W4)**, not atomic operations. Atomic savings (read, grep) vary by file size and are misleading in isolation. Workflow savings reflect real agent usage patterns.
+
+**Review:** If any workflow scenario shows <50% savings or regression — investigate before publishing.
+
+### 6. Bump version
+
+```bash
+cd mcp/${PKG} && npm version ${BUMP_TYPE} --no-git-tag-version
 node -e "console.log(require('./mcp/${PKG}/package.json').version)"
 ```
 
-Step C — auto-sync server.mjs (two locations):
+### 7. Sync version in server.mjs (two locations)
+
 1. Replace version in McpServer constructor: search for `new McpServer(` in `mcp/${PKG}/server.mjs`
 2. Replace version in checkForUpdates call: search for `checkForUpdates(` in `mcp/${PKG}/server.mjs`
-```
-old: version: "OLD_VERSION"  /  , "OLD_VERSION")
-new: version: "NEW_VERSION"  /  , "NEW_VERSION")
-```
 
-Step D — verify sync:
+Verify all three match:
 ```bash
 grep -n 'version:\|checkForUpdates' mcp/${PKG}/server.mjs | head -5
 ```
-Confirm package.json, McpServer version, and checkForUpdates version all match.
 
-### 6. Commit + tag + push
+### 8. Commit + tag + push
 
 ```bash
 git add mcp/${PKG}/package.json mcp/${PKG}/server.mjs
@@ -114,7 +128,7 @@ git tag ${TAG_PREFIX}${NEW_VERSION}
 git push origin master --tags
 ```
 
-### 7. Verify publish
+### 9. Verify publish
 
 Wait ~30s, then:
 ```bash
@@ -122,6 +136,6 @@ gh run list --limit 1
 npm view ${PKG_NAME} version
 ```
 
-### 8. Report
+### 10. Report
 
 Display: package name, old → new version, npm URL (`https://www.npmjs.com/package/${PKG_NAME}`), GitHub Actions run status.

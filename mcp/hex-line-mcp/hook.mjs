@@ -62,17 +62,14 @@ const TOOL_HINTS = {
 const BASH_REDIRECTS = [
     { regex: /^cat\s+\S+/, key: "cat" },
     { regex: /^head\s+/, key: "head" },
-    { regex: /^tail\s+/, key: "tail" },
+    { regex: /^tail\s+(?!-[fF])/, key: "tail" },
     { regex: /^(less|more)\s+/, key: "cat" },
     { regex: /^(ls|dir)(\s+-\S+)*\s+/, key: "ls" },
     { regex: /^tree\s+/, key: "ls" },
     { regex: /^find\s+/, key: "ls" },
-    { regex: /^du\s+/, key: "ls" },
     { regex: /^(stat|wc)\s+/, key: "stat" },
-    { regex: /^file\s+/, key: "stat" },
     { regex: /^(grep|rg)\s+/, key: "grep" },
     { regex: /^sed\s+-i/, key: "sed" },
-    { regex: /^diff\s+/, key: "diff" },
 ];
 
 const TOOL_REDIRECT_MAP = {
@@ -211,8 +208,16 @@ function handlePreToolUse(data) {
             }
         }
 
-        // Skip compound commands — pipes, redirects, chains are intentional
+        // Compound commands: check first command in pipe before skipping
         if (COMPOUND_OPERATORS.test(command)) {
+            const firstCmd = command.split(/\s*[|;&>]\s*/)[0].trim();
+            for (const { regex, key } of BASH_REDIRECTS) {
+                if (regex.test(firstCmd)) {
+                    const hint = TOOL_HINTS[key];
+                    const toolName2 = hint.split(" (")[0];
+                    block(`Use ${toolName2} instead of piped command`, hint);
+                }
+            }
             process.exit(0);
         }
 

@@ -103,6 +103,14 @@ After hex-line registration, install Output Style via `mcp__hex-line__setup_hook
 2. Sets `outputStyle: "hex-line"` in `~/.claude/settings.json` if no style is active
 3. If another style is active — preserves it, reports to user
 
+### Phase 3c: Graph Indexing
+
+After hex-graph registration + connected status:
+1. `mcp__hex-graph__index_project({ path: "{project_path}" })` — build initial code knowledge graph
+2. `mcp__hex-graph__watch_project({ path: "{project_path}" })` — enable live incremental updates on file changes
+
+Skip if hex-graph not registered or not connected.
+
 ### Phase 4: Grant Permissions
 
 For each **configured** MCP server, add `mcp__{name}` to `~/.claude/settings.json` → `permissions.allow[]`.

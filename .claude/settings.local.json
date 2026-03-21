@@ -20,6 +20,5 @@
     "ask": [],
     "defaultMode": "bypassPermissions"
   },
-  "disableAllHooks": false,
-  "outputStyle": "Explanatory"
+  "disableAllHooks": false
 }

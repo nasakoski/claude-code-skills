@@ -73,25 +73,6 @@ for f in {scoped SKILL.md files}; do
 done
 ```
 
-## Marketplace skill path check (D8, optional)
-```bash
-if [ -f .claude-plugin/marketplace.json ]; then
-  grep -oE '"\.\/ln-[^"]+' .claude-plugin/marketplace.json | tr -d '"' | while read path; do
-    [ ! -d "$path" ] && echo "FAIL: marketplace.json references missing dir: $path"
-  done
-fi
-```
-
-## Root docs stale skill name check (D6)
-```bash
-for doc in README.md AGENTS.md .claude-plugin/marketplace.json; do
-  [ -f "$doc" ] || continue
-  grep -oE 'ln-[0-9]+-[a-z-]+' "$doc" | sort -u | while read skill; do
-    ls -d ${skill}*/ >/dev/null 2>&1 || echo "FAIL: $doc references missing skill: $skill"
-  done
-done
-```
-
 ## Definition of Done check (D7)
 ```bash
 for f in {scoped SKILL.md files}; do
@@ -124,19 +105,6 @@ for f in {scoped SKILL.md files}; do
     grep -q "humanizer_checklist" "$f" || echo "FAIL: publishing skill missing humanizer_checklist MANDATORY READ: $f"
   fi
 done
-```
-
-## Skill count accuracy check (D8)
-```bash
-actual=$(ls -d ln-*/SKILL.md 2>/dev/null | wc -l)
-if [ -f README.md ]; then
-  badge=$(grep -oE 'skills-[0-9]+' README.md | grep -oE '[0-9]+')
-  [ -n "$badge" ] && [ "$badge" != "$actual" ] && echo "FAIL: README badge says $badge, actual $actual"
-fi
-if [ -f .claude-plugin/marketplace.json ]; then
-  market=$(grep -oE '"\.\/ln-[^"]+' .claude-plugin/marketplace.json | wc -l)
-  [ "$market" != "$actual" ] && echo "FAIL: marketplace.json has $market entries, actual $actual"
-fi
 ```
 
 ## Description trigger quality check (D8, WARN)

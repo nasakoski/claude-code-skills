@@ -89,7 +89,7 @@ describe("edit business logic", () => {
         const tmp = "d:/tmp/hex-test-noop.js";
         fs.writeFileSync(tmp, "const x = 1;\n");
         try {
-            editFile(tmp, [{ replace: { old_text: "const x = 1;", new_text: "const x = 1;" } }]);
+            editFile(tmp, [{ replace: { old_text: "const x = 1;", new_text: "const x = 1;", all: true } }]);
             assert.fail("Should have thrown NOOP_EDIT");
         } catch (e) {
             assert.ok(e.message.includes("NOOP_EDIT"));
@@ -100,7 +100,7 @@ describe("edit business logic", () => {
 
     it("replace_lines preserves boundary content (no strip)", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
         const tmp = "d:/tmp/hex-test-boundary.js";
         const content = "function foo() {\n    const x = 1;\n    return x;\n}\n";
         fs.writeFileSync(tmp, content);
@@ -108,11 +108,13 @@ describe("edit business logic", () => {
             const lines = content.split("\n");
             const startTag = lineTag(fnv1a(lines[1]));
             const endTag = lineTag(fnv1a(lines[2]));
+            const rc = rangeChecksum([fnv1a(lines[1]), fnv1a(lines[2])], 2, 3);
             editFile(tmp, [{
                 replace_lines: {
                     start_anchor: `${startTag}.2`,
                     end_anchor: `${endTag}.3`,
-                    new_text: "    const x = 1;\n    const y = 2;\n    return x;"
+                    new_text: "    const x = 1;\n    const y = 2;\n    return x;",
+                    range_checksum: rc
                 }
             }]);
             const written = fs.readFileSync(tmp, "utf-8");
@@ -146,7 +148,7 @@ describe("edit business logic", () => {
         const tmp = "d:/tmp/hex-test-notfound.js";
         fs.writeFileSync(tmp, "const a = 1;\nconst b = 2;\n");
         try {
-            editFile(tmp, [{ replace: { old_text: "nonexistent text", new_text: "x" } }]);
+            editFile(tmp, [{ replace: { old_text: "nonexistent text", new_text: "x", all: true } }]);
             assert.fail("Should have thrown");
         } catch (e) {
             assert.ok(e.message.includes("TEXT_NOT_FOUND"));
@@ -161,7 +163,7 @@ describe("edit business logic", () => {
         const tmp = "d:/tmp/hex-test-regex.js";
         fs.writeFileSync(tmp, "arr.filter((x) => x > 0);\n");
         try {
-            editFile(tmp, [{ replace: { old_text: "arr.filter((x) => x > 0)", new_text: "arr.filter((x) => x >= 0)" } }]);
+            editFile(tmp, [{ replace: { old_text: "arr.filter((x) => x > 0)", new_text: "arr.filter((x) => x >= 0)", all: true } }]);
             const written = fs.readFileSync(tmp, "utf-8");
             assert.ok(written.includes("x >= 0"), "Regex chars handled safely");
         } finally {
@@ -191,7 +193,7 @@ describe("edit business logic", () => {
         const tmp = "d:/tmp/hex-test-noop2.js";
         fs.writeFileSync(tmp, "const x = 1;\n");
         try {
-            editFile(tmp, [{ replace: { old_text: "const x = 1;", new_text: "const x = 1;" } }]);
+            editFile(tmp, [{ replace: { old_text: "const x = 1;", new_text: "const x = 1;", all: true } }]);
             assert.fail("Should have thrown");
         } catch (e) {
             assert.ok(e.message.includes("already contains"), "New message");

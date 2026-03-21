@@ -10,7 +10,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { diffLines } from "diff";
-import { fnv1a, lineTag } from "./hash.mjs";
+import { fnv1a, lineTag, rangeChecksum } from "./hash.mjs";
 import { validatePath } from "./security.mjs";
 import { getGraphDB, blastRadius, getRelativePath } from "./graph-enrich.mjs";
 
@@ -242,6 +242,9 @@ function textReplace(content, oldText, newText, all) {
     const normOld = oldText.replace(/\r\n/g, "\n");
     const normNew = newText.replace(/\r\n/g, "\n");
 
+    if (!all) {
+        throw new Error("replace requires all:true (rename-all mode). For single replacements, use set_line or replace_lines with hash anchors.");
+    }
     let idx = norm.indexOf(normOld);
     let confusableMatch = false;
     if (idx === -1) {
@@ -267,72 +270,23 @@ function textReplace(content, oldText, newText, all) {
     // Determine the match length in original content (same as normOld.length for both paths)
     const matchLen = normOld.length;
 
-    if (all) {
-        if (confusableMatch) {
-            // Replace all via normalized matching
-            const normContent = normalizeConfusables(norm);
-            const normSearch = normalizeConfusables(normOld);
-            let result = "";
-            let pos = 0;
-            let searchIdx = normContent.indexOf(normSearch, pos);
-            while (searchIdx !== -1) {
-                result += norm.slice(pos, searchIdx) + normNew;
-                pos = searchIdx + matchLen;
-                searchIdx = normContent.indexOf(normSearch, pos);
-            }
-            result += norm.slice(pos);
-            return result;
-        }
-        return norm.split(normOld).join(normNew);
-    }
-
-    // Check for multiple matches — return hash-hint instead of opaque error
-    const positions = [];
     if (confusableMatch) {
+        // Replace all via normalized matching
         const normContent = normalizeConfusables(norm);
         const normSearch = normalizeConfusables(normOld);
-        let searchPos = 0;
-        while ((searchPos = normContent.indexOf(normSearch, searchPos)) !== -1) {
-            positions.push(searchPos);
-            searchPos += normSearch.length;
+        let result = "";
+        let pos = 0;
+        let searchIdx = normContent.indexOf(normSearch, pos);
+        while (searchIdx !== -1) {
+            result += norm.slice(pos, searchIdx) + normNew;
+            pos = searchIdx + matchLen;
+            searchIdx = normContent.indexOf(normSearch, pos);
         }
-    } else {
-        let searchPos = 0;
-        while ((searchPos = norm.indexOf(normOld, searchPos)) !== -1) {
-            positions.push(searchPos);
-            searchPos += normOld.length;
-        }
+        result += norm.slice(pos);
+        return result;
     }
-
-    if (positions.length > 1) {
-        const allLines = norm.split("\n");
-        const matchLineCount = normOld.split("\n").length;
-        const snippets = positions.map((charPos, i) => {
-            let cumLen = 0, matchLine = 0;
-            for (let l = 0; l < allLines.length; l++) {
-                cumLen += allLines[l].length + 1;
-                if (cumLen > charPos) { matchLine = l; break; }
-            }
-            const start = Math.max(0, matchLine - 1);
-            const end = Math.min(allLines.length, matchLine + matchLineCount + 1);
-            const lines = allLines.slice(start, end).map((line, j) => {
-                const num = start + j + 1;
-                const tag = lineTag(fnv1a(line));
-                return `${tag}.${num}\t${line}`;
-            });
-            return `Match ${i + 1} (lines ${start + 1}-${end}):\n${lines.join("\n")}`;
-        });
-
-        throw new Error(
-            `HASH_HINT: Found ${positions.length} match(es) for replace. Use anchor-based edit for precision.\n\n` +
-            snippets.join("\n\n") +
-            `\n\nRetry with: [{"set_line":{"anchor":"XX.NN","new_text":"..."}}] or [{"replace_lines":{"start_anchor":"XX.NN","end_anchor":"YY.MM","new_text":"..."}}]`
-        );
-    }
-
-    return norm.slice(0, idx) + normNew + norm.slice(idx + matchLen);
+    return norm.split(normOld).join(normNew);
 }
-
 
 
 /**
@@ -390,6 +344,17 @@ export function editFile(filePath, edits, opts = {}) {
             const en = parseRef(e.replace_lines.end_anchor);
             const si = findLine(lines, s.line, s.tag, hashIndex);
             const ei = findLine(lines, en.line, en.tag, hashIndex);
+
+            // Range checksum verification (mandatory)
+            const rc = e.replace_lines.range_checksum;
+            if (!rc) throw new Error("range_checksum required for replace_lines. Read the range first via read_file, then pass its checksum.");
+            const rcHex = rc.includes(":") ? rc.split(":")[1] : rc;
+            const lineHashes = [];
+            for (let i = si; i <= ei; i++) lineHashes.push(fnv1a(lines[i]));
+            const actual = rangeChecksum(lineHashes, s.line, en.line);
+            const actualHex = actual.split(":")[1];
+            if (rcHex !== actualHex) throw new Error(`Range checksum mismatch: expected ${rc}, got ${actual}. File changed \u2014 re-read lines ${s.line}-${en.line}.`);
+
             const txt = e.replace_lines.new_text;
             if (!txt && txt !== 0) {
                 lines.splice(si, ei - si + 1);
