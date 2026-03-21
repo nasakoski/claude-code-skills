@@ -1,11 +1,11 @@
 ---
-description: Create a GitHub release with auto-generated notes from CHANGELOG
+description: Create a GitHub release — audits commits, updates CHANGELOG, builds release notes
 allowed-tools: Read, Bash, Grep, AskUserQuestion
 ---
 
 # Create Release
 
-Create a tagged GitHub release with structured release notes. Reads version from README badge and changelog from CHANGELOG.md, builds release notes, asks for confirmation, then publishes.
+Create a tagged GitHub release with structured release notes. Audits commits since last release, updates CHANGELOG.md, builds release notes, asks for confirmation, then publishes.
 
 ## Prerequisites
 
@@ -36,19 +36,33 @@ gh release view "v${VERSION}" 2>&1
 
 If release already exists, stop and inform the user. Do NOT overwrite.
 
-### 3. Extract Changelog Entries
+### 3. Audit Commits Since Last Release
 
-Read CHANGELOG.md. Extract all bullet points under the **most recent** `## YYYY-MM-DD` heading (stop at the next `## ` or `---`).
+CHANGELOG is a summary, **commits are the source of truth**. Always verify.
 
-Transform each bullet into a highlights list for the release notes.
-### 4. Build Release Notes
+```bash
+gh release list --limit 1                                    # find last release tag
+git log {LAST_TAG}..HEAD --oneline                           # overview
+git log {LAST_TAG}..HEAD --format="%h %s%n%b" --no-merges    # full bodies
+```
 
-Assemble release notes in this structure:
+Collect all changes from commits — not just what CHANGELOG says.
+
+### 4. Update CHANGELOG.md
+
+Compare commits vs existing CHANGELOG entries:
+- If CHANGELOG is missing items or inaccurate — update it with bullet points derived from commits
+- Max 5 bullets per entry (per CHANGELOG scope comment)
+- Use `## YYYY-MM-DD` heading format
+
+### 5. Build Release Notes
+
+Assemble release notes from the **updated** CHANGELOG:
 
 ````markdown
 ## What's New in v{VERSION}
 
-{bullets extracted from CHANGELOG, reformatted as list}
+{bullets from updated CHANGELOG}
 
 ### Install
 
@@ -57,7 +71,7 @@ Assemble release notes in this structure:
 **All plugins & docs:** [README.md](README.md)
 ````
 
-### 5. Confirm with User
+### 6. Confirm with User
 Present the assembled release notes and version tag to the user via AskUserQuestion:
 
 - Show: `Release: v{VERSION}`
@@ -66,7 +80,7 @@ Present the assembled release notes and version tag to the user via AskUserQuest
 
 Do NOT proceed without explicit confirmation.
 
-### 6. Create Release
+### 7. Create Release
 
 ```bash
 gh release create "v${VERSION}" --title "v${VERSION}" --notes "${RELEASE_NOTES}"

@@ -6,8 +6,11 @@
 
 ## 2026-03-20
 
-Merged ln-001-standards-researcher and ln-002-best-practices-researcher into ln-310 and ln-220 via shared layer. Extracted research methodology and documentation creation rules to `shared/references/research_methodology.md` and `shared/references/documentation_creation.md`. Inlined research execution in ln-310 Phase 3 Step 2 and ln-220 Phase 2. Added inline agent_runner command template to ln-310 Phase 2 step 4. Deleted ln-001 and ln-002 skill directories. Refactored 01X series: deleted ln-004, ln-005, ln-015; created ln-010 (L2 coordinator) with 4 workers — ln-011 (agent installer), ln-012 (MCP configurator), ln-013 (config syncer), ln-014 (instructions auditor). Renamed ln-003→ln-001. Extracted setup-environment plugin (7th) with 6 skills from agile-workflow.
-
+- **hex MCP family** — 3 npm MCP servers: hex-line (hash-verified file editing, 10 tools), hex-ssh (remote file ops over SSH, 6 tools), hex-graph (code knowledge graph, 7 tools); rebranded from sharpline
+- **hex MCP v2** — output style system, hash-hint fallback, anchor-based editing, benchmark v3 (91-98% savings on multi-step workflows); hex-line v1.1.0, hex-ssh v1.1.0, hex-graph v0.2.0 published to npm
+- **Setup Environment plugin** — 7th plugin extracted from agile-workflow: ln-010 coordinator + 4 workers (agent installer, MCP configurator, config syncer, instructions auditor)
+- **Research skills consolidated** — ln-001 and ln-002 merged into ln-310 and ln-220 via shared layer; research methodology and docs creation extracted to shared references
+- **Best practice guides** — MCP Tool Design, Hook Design, Prompt Caching; hooks redesigned with dangerous command blocker
 ## 2026-03-19
 
 - **hex MCP family** — 3 bundled MCP servers: hex-line (hash-verified file editing, 10 tools), hex-ssh (remote file ops over SSH, 6 tools), hex-graph (code knowledge graph with tree-sitter AST, 7 tools); FNV-1a hashing, security boundaries; npm publishable
