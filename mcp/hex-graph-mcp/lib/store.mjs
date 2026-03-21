@@ -519,21 +519,25 @@ export function getContext(symbol) {
     if (d.qualified_name) lines.push(`**Qualified:** ${d.qualified_name}`);
     lines.push("");
 
+    const MAX_REFS = 50;
     if (ctx.callers.length > 0) {
         lines.push(`### Callers (${ctx.callers.length})`);
-        for (const c of ctx.callers) lines.push(`- ${c.name} (${c.file}:${c.line})`);
+        for (const c of ctx.callers.slice(0, MAX_REFS)) lines.push(`- ${c.name} (${c.file}:${c.line})`);
+        if (ctx.callers.length > MAX_REFS) lines.push(`  ... (${ctx.callers.length - MAX_REFS} more callers)`);
         lines.push("");
     }
 
     if (ctx.callees.length > 0) {
         lines.push(`### Callees (${ctx.callees.length})`);
-        for (const c of ctx.callees) lines.push(`- ${c.name} (${c.file}:${c.line})`);
+        for (const c of ctx.callees.slice(0, MAX_REFS)) lines.push(`- ${c.name} (${c.file}:${c.line})`);
+        if (ctx.callees.length > MAX_REFS) lines.push(`  ... (${ctx.callees.length - MAX_REFS} more callees)`);
         lines.push("");
     }
 
     if (ctx.siblings.length > 0) {
         lines.push(`### Siblings in same file (${ctx.siblings.length})`);
-        for (const s of ctx.siblings) lines.push(`- ${s.name} (${s.kind}, L${s.line_start})`);
+        for (const s of ctx.siblings.slice(0, MAX_REFS)) lines.push(`- ${s.name} (${s.kind}, L${s.line_start})`);
+        if (ctx.siblings.length > MAX_REFS) lines.push(`  ... (${ctx.siblings.length - MAX_REFS} more siblings)`);
         lines.push("");
     }
 

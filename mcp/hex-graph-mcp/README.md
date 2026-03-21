@@ -2,6 +2,9 @@
 
 Code knowledge graph MCP server. Indexes codebases into a SQLite graph via tree-sitter AST parsing.
 
+[![npm](https://img.shields.io/npm/v/@levnikolaevich/hex-graph-mcp)](https://www.npmjs.com/package/@levnikolaevich/hex-graph-mcp)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 ## Features
 
 | Tool | Description | Key Feature |
@@ -148,6 +151,26 @@ hex-graph-mcp/
 | Codebase overview | `get_architecture` | First call after `index_project` |
 | Continuous sync | `watch_project` | Start once, graph stays current |
 
+
+## Benchmark
+
+Built-in grep/read vs hex-graph (50 files, 422 symbols indexed):
+
+| # | Scenario | Built-in | Hex-graph | Savings | Ops | Steps |
+|---|----------|----------|-----------|---------|-----|-------|
+| 1 | Search symbols | 5,800 chars | 196 chars | 97% | 1→1 | 1→1 |
+| 2 | Get context (360°) | 38,611 chars | 1,274 chars | 97% | 4→1 | 4→1 |
+| 3 | Get impact (blast radius) | 969 chars | 2,590 chars | -167% | 6→1 | 3→1 |
+| 4 | Trace calls (callers) | 12,716 chars | 477 chars | 96% | 4→1 | 3→1 |
+| 5 | Architecture overview | 389,523 chars | 2,941 chars | 99% | 50→1 | 50→1 |
+
+**Average:** 44% tokens | 65→5 ops | 61→5 steps
+
+TEST 3 shows -167%: hex-graph returns MORE data because CTE recursively expands the full blast radius (depth 3), while grep finds only surface matches. This demonstrates completeness, not inefficiency.
+
+Index cost: 8ms for 52 files. Break-even: 1 query.
+
+Reproduce: `node benchmark.mjs --repo /path/to/repo`
 ## Dependencies
 
 | Package | Purpose |
@@ -159,6 +182,36 @@ hex-graph-mcp/
 | `zod` | Input schema validation |
 
 Requires Node.js >= 20.0.0.
+
+## FAQ
+
+<details>
+<summary><b>How large a codebase can it handle?</b></summary>
+
+Tested up to ~50K lines across hundreds of files. SQLite FTS5 indexing keeps queries fast regardless of size. Re-indexing skips unchanged files, so incremental updates are near-instant.
+
+</details>
+
+<details>
+<summary><b>Does it support monorepos?</b></summary>
+
+Yes. Point `index_project` at the monorepo root or at individual packages. Use `get_architecture` with a `path` parameter to scope analysis to a subdirectory.
+
+</details>
+
+<details>
+<summary><b>Where is the database stored?</b></summary>
+
+A single `.hex-graph.db` file is created in the project root (next to package.json or the directory passed to `index_project`). Add it to `.gitignore` -- it is regenerated on demand.
+
+</details>
+
+<details>
+<summary><b>Does watch_project survive server restarts?</b></summary>
+
+No. The file watcher runs in-process and stops when the MCP server stops. Call `watch_project` again after restart -- it is idempotent (singleton per project path).
+
+</details>
 
 ## License
 

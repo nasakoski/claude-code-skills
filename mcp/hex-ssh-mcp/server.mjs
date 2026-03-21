@@ -29,6 +29,7 @@ import { diffLines } from "diff";
 import { fnv1a, lineTag, rangeChecksum, parseChecksum } from "./lib/hash.mjs";
 import { executeCommand, validateRemotePath } from "./lib/ssh-client.mjs";
 import { deduplicateLines, smartTruncate, normalizeOutput } from "./lib/normalize.mjs";
+import { coerceParams } from "./lib/coerce.mjs";
 import { checkForUpdates } from "./lib/update-check.mjs";
 
 // --- SDK ---
@@ -83,6 +84,13 @@ function errResult(msg) {
 }
 
 /**
+ * Structured error with code and recovery hint.
+ */
+function sshError(code, message, recovery) {
+    return { content: [{ type: "text", text: `${code}: ${message}\nRecovery: ${recovery}` }], isError: true };
+}
+
+/**
  * Standard success response.
  */
 function okResult(text) {
@@ -102,7 +110,8 @@ server.registerTool("remote-ssh", {
         command: z.string().describe("Shell command to execute"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-}, async (args) => {
+}, async (rawArgs) => {
+    const args = coerceParams(rawArgs);
     try {
         if (!args.host || !args.user || !args.command) {
             return errResult("Required: host, user, command");
@@ -139,7 +148,8 @@ server.registerTool("ssh-read-lines", {
         plain: flexBool().describe("Omit hashes (lineNum|content)"),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async (args) => {
+}, async (rawArgs) => {
+    const args = coerceParams(rawArgs);
     try {
         if (!args.host || !args.user || !args.filePath) {
             return errResult("Required: host, user, filePath");
@@ -163,7 +173,7 @@ server.registerTool("ssh-read-lines", {
         const result = await sshExec(args, check);
 
         if (result.exitCode !== 0 || result.output === "FILE_NOT_FOUND") {
-            return errResult(`File not found: ${args.filePath}`);
+            return sshError("FILE_NOT_FOUND", `${args.filePath} does not exist`, "Check path exists");
         }
 
         const outputLines = result.output.split("\n");
@@ -175,29 +185,53 @@ server.registerTool("ssh-read-lines", {
             ? Math.min(args.endLine, totalLines)
             : Math.min(startLine + contentLines.length - 1, totalLines);
 
-        // Hash-annotate lines
+        // Hash-annotate lines with character cap
+        const MAX_OUTPUT_CHARS = 80000;
         const lineHashes = [];
-        const formatted = contentLines.map((line, i) => {
+        const formatted = [];
+        let charCount = 0;
+        let cappedAtLine = 0;
+
+        for (let i = 0; i < contentLines.length; i++) {
+            const line = contentLines[i];
             const num = startLine + i;
             const hash32 = fnv1a(line);
-            lineHashes.push(hash32);
-            if (plain) return `${num}|${line}`;
-            return `${lineTag(hash32)}.${num}\t${line}`;
-        });
+            const entry = plain
+                ? `${num}|${line}`
+                : `${lineTag(hash32)}.${num}\t${line}`;
 
-        // Range checksum
-        const cs = rangeChecksum(lineHashes, startLine, actualEnd);
+            if (charCount + entry.length > MAX_OUTPUT_CHARS && formatted.length > 0) {
+                cappedAtLine = num;
+                break;
+            }
+            lineHashes.push(hash32);
+            formatted.push(entry);
+            charCount += entry.length + 1;
+        }
+
+        // Update actual end to lines shown
+        const shownEnd = formatted.length > 0
+            ? startLine + formatted.length - 1
+            : startLine;
+
+        // Range checksum (only for lines actually shown)
+        const cs = rangeChecksum(lineHashes, startLine, shownEnd);
 
         // Header
         let header = `File: ${args.filePath} (${totalLines} lines)`;
-        if (startLine > 1 || actualEnd < totalLines) {
-            header += ` [showing ${startLine}-${actualEnd}]`;
+        if (startLine > 1 || shownEnd < totalLines) {
+            header += ` [showing ${startLine}-${shownEnd}]`;
         }
-        if (actualEnd < totalLines) {
-            header += ` (${totalLines - actualEnd} more below)`;
+        if (shownEnd < totalLines) {
+            header += ` (${totalLines - shownEnd} more below)`;
         }
 
-        const text = `${header}\n\n\`\`\`\n${formatted.join("\n")}\n\nchecksum: ${cs}\n\`\`\``;
+        let text = `${header}\n\n\`\`\`\n${formatted.join("\n")}\n\nchecksum: ${cs}\n\`\`\``;
+
+        if (cappedAtLine) {
+            text += `\n\nOUTPUT_CAPPED at line ${cappedAtLine} (${MAX_OUTPUT_CHARS} char limit). Use startLine=${cappedAtLine} to continue.`;
+        }
+
         return okResult(text);
     } catch (e) {
         return errResult(e.message);
@@ -210,22 +244,32 @@ server.registerTool("ssh-read-lines", {
 server.registerTool("ssh-edit-block", {
     title: "SSH Edit File",
     description:
-        "Edit text blocks in remote files with optional hash verification. " +
-        "If checksum is provided, verifies file hasn't changed before applying edit. " +
-        "Use ssh-read-lines first to get checksums. Returns diff of changes.",
+        "Edit text blocks in remote files with hash-verified anchors or text replacement. " +
+        "Anchor-based: provide anchor/startAnchor/endAnchor from ssh-read-lines for precise edits. " +
+        "Text-based: provide oldText/newText (hash-hint returned if multiple matches). " +
+        "Use ssh-read-lines first to get hash anchors and checksums.",
     inputSchema: {
         ...connProps,
         filePath: z.string().describe("Path to file on remote server"),
-        oldText: z.string().describe("Text to find and replace"),
-        newText: z.string().describe("Replacement text"),
+        oldText: z.string().optional().describe("Text to find and replace (for text-based editing)"),
+        newText: z.string().optional().describe("Replacement text"),
         checksum: z.string().optional().describe("Range checksum from ssh-read-lines (e.g. '1-50:f7e2a1b0'). If provided, verifies file unchanged before edit."),
         expectedReplacements: flexNum().describe("Expected number of replacements (default: 1)"),
+        anchor: z.string().optional().describe("Hash anchor 'ab.42' to set single line (from ssh-read-lines)"),
+        startAnchor: z.string().optional().describe("Start hash anchor 'ab.42' for range replace"),
+        endAnchor: z.string().optional().describe("End hash anchor 'cd.45' for range replace"),
+        insertAfter: z.string().optional().describe("Hash anchor 'ab.42' to insert after"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-}, async (args) => {
+}, async (rawArgs) => {
+    const args = coerceParams(rawArgs);
     try {
-        if (!args.host || !args.user || !args.filePath || args.oldText === undefined || args.newText === undefined) {
-            return errResult("Required: host, user, filePath, oldText, newText");
+        if (!args.host || !args.user || !args.filePath) {
+            return errResult("Required: host, user, filePath");
+        }
+        const hasAnchor = args.anchor || args.startAnchor || args.insertAfter;
+        if (!hasAnchor && (args.oldText === undefined || args.newText === undefined)) {
+            return errResult("Required: oldText + newText (text-based) or anchor/startAnchor/insertAfter (anchor-based)");
         }
 
         validateRemotePath(args.filePath);
@@ -237,7 +281,7 @@ server.registerTool("ssh-edit-block", {
             const readResult = await sshExec(args, readCmd);
 
             if (readResult.exitCode !== 0) {
-                return errResult(`Cannot read ${args.filePath} for verification`);
+                return sshError("FILE_NOT_FOUND", `Cannot read ${args.filePath} for verification`, "Check path exists");
             }
 
             const currentLines = readResult.output.split("\n");
@@ -246,17 +290,136 @@ server.registerTool("ssh-edit-block", {
             const currentHex = currentCs.split(":")[1];
 
             if (currentHex !== parsed.hex) {
-                return errResult(
-                    `Stale checksum: expected ${args.checksum}, current ${currentCs}. ` +
-                    `File changed since last read. Re-read with ssh-read-lines.`
+                return sshError(
+                    "STALE_CHECKSUM",
+                    `expected ${args.checksum}, current ${currentCs}. File changed since last read.`,
+                    "Re-read with ssh-read-lines"
                 );
             }
         }
 
-        // Read current content, apply replacement, write back
+        // Anchor-based editing (preferred path)
+        if (args.anchor || args.startAnchor || args.insertAfter) {
+            // Parse anchor ref: "ab.42" -> { tag: "ab", line: 42 }
+            function parseRef(ref) {
+                const m = ref.trim().match(/^([a-z2-7]{2})\.(\d+)$/);
+                if (!m) return errResult(`Bad anchor: "${ref}". Expected "ab.42"`);
+                return { tag: m[1], line: parseInt(m[2], 10) };
+            }
+
+            // Read current content with line context
+            const readResult = await sshExec(args, `cat "${args.filePath}"`);
+            if (readResult.exitCode !== 0) {
+                return sshError("FILE_NOT_FOUND", `Cannot read ${args.filePath}`, "Check path exists");
+            }
+            const allLines = readResult.output.replace(/\r\n/g, "\n").split("\n");
+
+            // Verify anchor hash matches
+            function verifyAnchor(ref) {
+                const { tag, line, content: errContent } = parseRef(ref);
+                if (errContent) return parseRef(ref); // error result
+                const idx = line - 1;
+                if (idx < 0 || idx >= allLines.length) {
+                    const start = idx >= allLines.length
+                        ? Math.max(0, allLines.length - 10) : 0;
+                    const end = idx >= allLines.length
+                        ? allLines.length : Math.min(allLines.length, 10);
+                    const snippet = allLines.slice(start, end).map((l, i) => {
+                        const n = start + i + 1;
+                        return `${lineTag(fnv1a(l))}.${n}\t${l}`;
+                    }).join("\n");
+                    return errResult(
+                        `Line ${line} out of range (1-${allLines.length}).\n\n` +
+                        `Current content (lines ${start + 1}-${end}):\n${snippet}\n\n` +
+                        `Tip: Re-read with ssh-read-lines for updated hashes.`
+                    );
+                }
+                const actual = lineTag(fnv1a(allLines[idx]));
+                if (actual !== tag) {
+                    // Fuzzy +/-5
+                    for (let d = 1; d <= 5; d++) {
+                        for (const off of [d, -d]) {
+                            const c = idx + off;
+                            if (c >= 0 && c < allLines.length && lineTag(fnv1a(allLines[c])) === tag) {
+                                return { idx: c };
+                            }
+                        }
+                    }
+                    // Build snippet for retry
+                    const start = Math.max(0, idx - 3);
+                    const end = Math.min(allLines.length, idx + 4);
+                    const snippet = allLines.slice(start, end).map((l, i) => {
+                        const n = start + i + 1;
+                        return `${lineTag(fnv1a(l))}.${n}\t${l}`;
+                    }).join("\n");
+                    return errResult(
+                        `Hash mismatch line ${line}: expected ${tag}, got ${actual}.\n\n` +
+                        `Current (lines ${start + 1}-${end}):\n${snippet}\n\n` +
+                        `Tip: Re-read with ssh-read-lines for updated hashes.`
+                    );
+                }
+                return { idx };
+            }
+
+            let updated;
+            if (args.anchor) {
+                const v = verifyAnchor(args.anchor);
+                if (v.content) return v; // error
+                const newLines = (args.newText || "").split("\n");
+                updated = [...allLines];
+                updated.splice(v.idx, 1, ...newLines);
+            } else if (args.startAnchor && args.endAnchor) {
+                const vs = verifyAnchor(args.startAnchor);
+                if (vs.content) return vs;
+                const ve = verifyAnchor(args.endAnchor);
+                if (ve.content) return ve;
+                const newLines = (args.newText || "").split("\n");
+                updated = [...allLines];
+                updated.splice(vs.idx, ve.idx - vs.idx + 1, ...newLines);
+            } else if (args.insertAfter) {
+                const v = verifyAnchor(args.insertAfter);
+                if (v.content) return v;
+                const insertLines = (args.newText || "").split("\n");
+                updated = [...allLines];
+                updated.splice(v.idx + 1, 0, ...insertLines);
+            }
+
+            const updatedContent = updated.join("\n");
+            const marker = "HEX_SSH_EOF_" + Date.now();
+            const writeCmd = `cat > "${args.filePath}" << '${marker}'\n${updatedContent}\n${marker}`;
+            const writeResult = await sshExec(args, writeCmd);
+            if (writeResult.exitCode !== 0) {
+                return sshError("WRITE_FAILED", `Write to ${args.filePath} failed: ${writeResult.error || "unknown"}`, "Check permissions and disk space");
+            }
+
+            // Diff
+            const original = allLines.join("\n") + "\n";
+            const parts = diffLines(original, updatedContent + "\n");
+            const diffParts = [];
+            let oldNum = 1, newNum = 1;
+            for (const part of parts) {
+                const pLines = part.value.replace(/\n$/, "").split("\n");
+                if (part.added || part.removed) {
+                    for (const line of pLines) {
+                        if (part.removed) { diffParts.push(`-${oldNum}| ${line}`); oldNum++; }
+                        else { diffParts.push(`+${newNum}| ${line}`); newNum++; }
+                    }
+                } else {
+                    oldNum += pLines.length; newNum += pLines.length;
+                }
+            }
+
+            let msg = `Updated ${args.filePath} (anchor-based edit)`;
+            if (diffParts.length > 0) {
+                msg += `\n\n\`\`\`diff\n${diffParts.slice(0, 40).join("\n")}\n\`\`\``;
+            }
+            return okResult(msg);
+        }
+
+        // Text-based editing path
         const readResult = await sshExec(args, `cat "${args.filePath}"`);
         if (readResult.exitCode !== 0) {
-            return errResult(`Cannot read ${args.filePath}: ${readResult.error || "unknown error"}`);
+            return sshError("FILE_NOT_FOUND", `Cannot read ${args.filePath}: ${readResult.error || "unknown error"}`, "Check path exists");
         }
 
         const original = readResult.output;
@@ -273,17 +436,75 @@ server.registerTool("ssh-edit-block", {
         }
 
         if (count === 0) {
-            return errResult(
-                `Pattern not found in ${args.filePath}. ` +
-                `Searched for: "${oldNorm.slice(0, 120)}${oldNorm.length > 120 ? "..." : ""}"`
+            // Find nearest content via longest common substring
+            const sampleLen = Math.min(oldNorm.length, 100);
+            const sample = oldNorm.slice(0, sampleLen);
+            let bestPos = 0, bestLen = 0;
+            for (let i = 0; i < contentNorm.length && bestLen < sample.length; i++) {
+                let len = 0;
+                for (let j = 0; j < sample.length && i + len < contentNorm.length; j++) {
+                    if (contentNorm[i + len] === sample[j]) len++;
+                    else { if (len > bestLen) { bestLen = len; bestPos = i; } len = 0; }
+                }
+                if (len > bestLen) { bestLen = len; bestPos = i; }
+            }
+
+            // Build hash-annotated snippet around nearest match
+            const allLines = contentNorm.split("\n");
+            let cumLen = 0, targetLine = 0;
+            const anchor = bestLen > 3 ? bestPos : Math.floor(contentNorm.length / 2);
+            for (let i = 0; i < allLines.length; i++) {
+                cumLen += allLines[i].length + 1;
+                if (cumLen > anchor) { targetLine = i; break; }
+            }
+            const start = Math.max(0, targetLine - 3);
+            const end = Math.min(allLines.length, targetLine + 4);
+            const snippet = allLines.slice(start, end).map((line, j) => {
+                const num = start + j + 1;
+                const tag = lineTag(fnv1a(line));
+                return `${tag}.${num}\t${line}`;
+            }).join("\n");
+
+            return sshError(
+                "TEXT_NOT_FOUND",
+                `"${oldNorm.slice(0, 100)}${oldNorm.length > 100 ? "..." : ""}" not found in ${args.filePath}.\n\n` +
+                `Nearest content (lines ${start + 1}-${end}):\n${snippet}`,
+                "Use ssh-read-lines for full hashes, then ssh-edit-block with anchors"
             );
         }
 
         const expected = args.expectedReplacements || 1;
         if (count !== expected && expected > 0) {
+            // Build hash-hint showing all match locations
+            const allLines = contentNorm.split("\n");
+            const positions = [];
+            let searchPos = 0;
+            while ((searchPos = contentNorm.indexOf(oldNorm, searchPos)) !== -1) {
+                positions.push(searchPos);
+                searchPos += oldNorm.length;
+            }
+
+            const matchLineCount = oldNorm.split("\n").length;
+            const snippets = positions.map((charPos, i) => {
+                let cumLen = 0, matchLine = 0;
+                for (let l = 0; l < allLines.length; l++) {
+                    cumLen += allLines[l].length + 1;
+                    if (cumLen > charPos) { matchLine = l; break; }
+                }
+                const start = Math.max(0, matchLine - 1);
+                const end = Math.min(allLines.length, matchLine + matchLineCount + 1);
+                const lines = allLines.slice(start, end).map((line, j) => {
+                    const num = start + j + 1;
+                    const tag = lineTag(fnv1a(line));
+                    return `${tag}.${num}\t${line}`;
+                });
+                return `Match ${i + 1} (lines ${start + 1}-${end}):\n${lines.join("\n")}`;
+            });
+
             return errResult(
-                `Found ${count} occurrences, expected ${expected}. ` +
-                `Provide more context for unique match or set expectedReplacements=${count}.`
+                `HASH_HINT: Found ${count} match(es), expected ${expected}. Use anchor-based edit.\n\n` +
+                snippets.join("\n\n") +
+                `\n\nUse ssh-read-lines to get full hashes, then ssh-edit-block with exact context.`
             );
         }
 
@@ -302,7 +523,7 @@ server.registerTool("ssh-edit-block", {
         const writeResult = await sshExec(args, writeCmd);
 
         if (writeResult.exitCode !== 0) {
-            return errResult(`Write failed: ${writeResult.error || "unknown error"}`);
+            return sshError("WRITE_FAILED", `Write to ${args.filePath} failed: ${writeResult.error || "unknown error"}`, "Check permissions and disk space");
         }
 
         // Build compact diff with context (Myers via `diff` package)
@@ -367,7 +588,8 @@ server.registerTool("ssh-search-code", {
         contextLines: flexNum().describe("Context lines around matches (default: 0)"),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async (args) => {
+}, async (rawArgs) => {
+    const args = coerceParams(rawArgs);
     try {
         if (!args.host || !args.user || !args.path || !args.pattern) {
             return errResult("Required: host, user, path, pattern");
@@ -395,16 +617,27 @@ server.registerTool("ssh-search-code", {
         const result = await sshExec(args, cmd);
 
         if (result.output === "DIR_NOT_FOUND") {
-            return errResult(`Directory not found: ${args.path}`);
+            return sshError("DIR_NOT_FOUND", `${args.path} does not exist`, "Check directory path");
         }
 
         if (!result.output || result.output.trim() === "") {
             return okResult(`No matches for "${args.pattern}" in ${args.path}`);
         }
 
-        // Deduplicate results
+        // Hash-annotate and deduplicate results
         const rawLines = result.output.split("\n");
-        const deduped = deduplicateLines(rawLines);
+        const matchRe = /^(.+?):(\d+):(.*)$/;
+        const annotated = [];
+        for (const rl of rawLines) {
+            const m = matchRe.exec(rl);
+            if (m) {
+                const tag = lineTag(fnv1a(m[3]));
+                annotated.push(`${m[1]}:>>${tag}.${m[2]}\t${m[3]}`);
+            } else {
+                annotated.push(rl);
+            }
+        }
+        const deduped = deduplicateLines(annotated);
 
         // Truncate to maxResults
         const limited = deduped.slice(0, maxResults);
@@ -436,7 +669,8 @@ server.registerTool("ssh-write-chunk", {
         mode: z.enum(["rewrite", "append"]).optional().describe("Write mode (default: rewrite)"),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-}, async (args) => {
+}, async (rawArgs) => {
+    const args = coerceParams(rawArgs);
     try {
         if (!args.host || !args.user || !args.filePath || args.content === undefined) {
             return errResult("Required: host, user, filePath, content");
@@ -459,7 +693,7 @@ server.registerTool("ssh-write-chunk", {
         const result = await sshExec(args, cmd);
 
         if (result.exitCode !== 0) {
-            return errResult(`Write failed: ${result.error || "unknown error"}`);
+            return sshError("WRITE_FAILED", `Write to ${args.filePath} failed: ${result.error || "unknown error"}`, "Check permissions and disk space");
         }
 
         const lineCount = args.content.split("\n").length;
@@ -483,7 +717,8 @@ server.registerTool("ssh-verify", {
         checksums: z.string().describe('JSON array of checksum strings, e.g. ["1-50:f7e2a1b0", "51-100:abcd1234"]'),
     },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async (args) => {
+}, async (rawArgs) => {
+    const args = coerceParams(rawArgs);
     try {
         if (!args.host || !args.user || !args.filePath || !args.checksums) {
             return errResult("Required: host, user, filePath, checksums");
@@ -512,7 +747,7 @@ server.registerTool("ssh-verify", {
         const result = await sshExec(args, readCmd);
 
         if (result.exitCode !== 0 || result.output === "FILE_NOT_FOUND") {
-            return errResult(`File not found: ${args.filePath}`);
+            return sshError("FILE_NOT_FOUND", `${args.filePath} does not exist`, "Check path exists");
         }
 
         const outputLines = result.output.split("\n");

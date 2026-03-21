@@ -23,6 +23,8 @@ export function bulkReplace(rootDir, globPattern, replacements, opts = {}) {
 
     const results = [];
     let changed = 0, skipped = 0, errors = 0;
+    const MAX_OUTPUT = 80000;
+    let totalChars = 0;
 
     for (const file of files) {
         try {
@@ -44,6 +46,12 @@ export function bulkReplace(rootDir, globPattern, replacements, opts = {}) {
             const relPath = file.replace(abs, "").replace(/^[/\\]/, "");
             results.push(`--- ${relPath}\n${diff || "(no visible diff)"}`);
             changed++;
+            totalChars += results[results.length - 1].length;
+            if (totalChars > MAX_OUTPUT) {
+                const remaining = files.length - files.indexOf(file) - 1;
+                if (remaining > 0) results.push(`OUTPUT_CAPPED: ${remaining} more files not shown. Output exceeded ${MAX_OUTPUT} chars.`);
+                break;
+            }
         } catch (e) {
             results.push(`ERROR: ${file}: ${e.message}`);
             errors++;

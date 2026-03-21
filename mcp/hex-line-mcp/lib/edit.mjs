@@ -65,7 +65,23 @@ function buildHashIndex(lines) {
 function findLine(lines, lineNum, expectedTag, hashIndex) {
     const idx = lineNum - 1;
     if (idx < 0 || idx >= lines.length) {
-        throw new Error(`Line ${lineNum} out of range (1-${lines.length})`);
+        const start = idx >= lines.length
+            ? Math.max(0, lines.length - 10)
+            : 0;
+        const end = idx >= lines.length
+            ? lines.length
+            : Math.min(lines.length, 10);
+        const snippet = lines.slice(start, end).map((line, i) => {
+            const num = start + i + 1;
+            const tag = lineTag(fnv1a(line));
+            return `${tag}.${num}\t${line}`;
+        }).join("\n");
+
+        throw new Error(
+            `Line ${lineNum} out of range (1-${lines.length}).\n\n` +
+            `Current content (lines ${start + 1}-${end}):\n${snippet}\n\n` +
+            `Tip: Use updated hashes above for retry.`
+        );
     }
 
     const actual = lineTag(fnv1a(lines[idx]));
@@ -212,7 +228,8 @@ function buildSnippet(norm, charPos) {
     const end = Math.min(lines.length, start + 10);
     const snippetLines = [];
     for (let i = start; i < end; i++) {
-        snippetLines.push(`  ${i + 1}| ${lines[i]}`);
+        const tag = lineTag(fnv1a(lines[i]));
+        snippetLines.push(`${tag}.${i + 1}\t${lines[i]}`);
     }
     return { start: start + 1, end, text: snippetLines.join("\n") };
 }
@@ -242,7 +259,7 @@ function textReplace(content, oldText, newText, all) {
             throw new Error(
                 `TEXT_NOT_FOUND: "${normOld.slice(0, 100)}..." not found.\n\n` +
                 `Nearest content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
-                `Tip: Re-read file or adjust old_text to match actual content.`
+                `Tip: Use hashes above for anchor-based edit, or adjust old_text.`
             );
         }
     }
@@ -269,37 +286,54 @@ function textReplace(content, oldText, newText, all) {
         return norm.split(normOld).join(normNew);
     }
 
-    // Check for multiple matches
+    // Check for multiple matches — return hash-hint instead of opaque error
+    const positions = [];
     if (confusableMatch) {
         const normContent = normalizeConfusables(norm);
         const normSearch = normalizeConfusables(normOld);
-        if (normContent.indexOf(normSearch, idx + 1) !== -1) {
-            throw new Error("MULTIPLE_MATCHES: Found multiple occurrences. Use all:true or add more context for unique match.");
+        let searchPos = 0;
+        while ((searchPos = normContent.indexOf(normSearch, searchPos)) !== -1) {
+            positions.push(searchPos);
+            searchPos += normSearch.length;
         }
-    } else if (norm.indexOf(normOld, idx + 1) !== -1) {
-        throw new Error("MULTIPLE_MATCHES: Found multiple occurrences. Use all:true or add more context for unique match.");
+    } else {
+        let searchPos = 0;
+        while ((searchPos = norm.indexOf(normOld, searchPos)) !== -1) {
+            positions.push(searchPos);
+            searchPos += normOld.length;
+        }
+    }
+
+    if (positions.length > 1) {
+        const allLines = norm.split("\n");
+        const matchLineCount = normOld.split("\n").length;
+        const snippets = positions.map((charPos, i) => {
+            let cumLen = 0, matchLine = 0;
+            for (let l = 0; l < allLines.length; l++) {
+                cumLen += allLines[l].length + 1;
+                if (cumLen > charPos) { matchLine = l; break; }
+            }
+            const start = Math.max(0, matchLine - 1);
+            const end = Math.min(allLines.length, matchLine + matchLineCount + 1);
+            const lines = allLines.slice(start, end).map((line, j) => {
+                const num = start + j + 1;
+                const tag = lineTag(fnv1a(line));
+                return `${tag}.${num}\t${line}`;
+            });
+            return `Match ${i + 1} (lines ${start + 1}-${end}):\n${lines.join("\n")}`;
+        });
+
+        throw new Error(
+            `HASH_HINT: Found ${positions.length} match(es) for replace. Use anchor-based edit for precision.\n\n` +
+            snippets.join("\n\n") +
+            `\n\nRetry with: [{"set_line":{"anchor":"XX.NN","new_text":"..."}}] or [{"replace_lines":{"start_anchor":"XX.NN","end_anchor":"YY.MM","new_text":"..."}}]`
+        );
     }
 
     return norm.slice(0, idx) + normNew + norm.slice(idx + matchLen);
 }
 
-/**
- * Strip boundary echo lines from replacement text.
- * Agents often echo the start/end anchor lines in their replacement — strip them
- * to avoid duplicating boundary content.
- */
-function stripBoundaryEcho(lines, startIdx, endIdx, newLines) {
-    let result = [...newLines];
-    // Strip start boundary echo
-    if (result.length > 0 && lines[startIdx].trim() === result[0].trim()) {
-        result = result.slice(1);
-    }
-    // Strip end boundary echo
-    if (result.length > 0 && lines[endIdx].trim() === result[result.length - 1].trim()) {
-        result = result.slice(0, -1);
-    }
-    return result;
-}
+
 
 /**
  * Apply edits to a file.
@@ -347,7 +381,8 @@ export function editFile(filePath, edits, opts = {}) {
                 lines.splice(idx, 1);
             } else {
                 const origLine = [lines[idx]];
-                const newLines = restoreIndent(origLine, String(txt).split("\n"));
+                const raw = String(txt).split("\n");
+                const newLines = opts.restoreIndent ? restoreIndent(origLine, raw) : raw;
                 lines.splice(idx, 1, ...newLines);
             }
         } else if (e.replace_lines) {
@@ -360,14 +395,16 @@ export function editFile(filePath, edits, opts = {}) {
                 lines.splice(si, ei - si + 1);
             } else {
                 const origLines = lines.slice(si, ei + 1);
-                let newLines = stripBoundaryEcho(lines, si, ei, String(txt).split("\n"));
-                newLines = restoreIndent(origLines, newLines);
+                let newLines = String(txt).split("\n");
+                if (opts.restoreIndent) newLines = restoreIndent(origLines, newLines);
                 lines.splice(si, ei - si + 1, ...newLines);
             }
         } else if (e.insert_after) {
             const { tag, line } = parseRef(e.insert_after.anchor);
             const idx = findLine(lines, line, tag, hashIndex);
-            lines.splice(idx + 1, 0, ...e.insert_after.text.split("\n"));
+            let insertLines = e.insert_after.text.split("\n");
+            if (opts.restoreIndent) insertLines = restoreIndent([lines[idx]], insertLines);
+            lines.splice(idx + 1, 0, ...insertLines);
         }
     }
 
@@ -379,10 +416,13 @@ export function editFile(filePath, edits, opts = {}) {
     }
 
     if (original === content) {
-        throw new Error("NOOP_EDIT: All edits produced identical content. File unchanged. Re-read to verify current state.");
+        throw new Error("NOOP_EDIT: File already contains the desired content. No changes needed.");
     }
 
-    const diff = simpleDiff(origLines, content.split("\n"));
+    let diff = simpleDiff(origLines, content.split("\n"));
+    if (diff && diff.length > 80000) {
+        diff = diff.slice(0, 80000) + `\n... (diff truncated, ${diff.length} chars total)`;
+    }
 
     if (opts.dryRun) {
         let msg = `Dry run: ${filePath} would change (${content.split("\n").length} lines)`;

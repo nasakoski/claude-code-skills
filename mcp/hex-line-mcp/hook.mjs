@@ -24,6 +24,9 @@
  */
 
 import { deduplicateLines, smartTruncate } from "./lib/normalize.mjs";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { homedir } from "node:os";
 
 // ---- Constants ----
 
@@ -37,18 +40,18 @@ const BINARY_EXT = new Set([
 ]);
 
 const TOOL_HINTS = {
-    Read:  "mcp__hex-line__read_file (not Read, not cat/head/tail)",
-    Edit:  "mcp__hex-line__edit_file (not Edit, not sed -i)",
-    Write: "mcp__hex-line__write_file (not Write)",
+    Read:  "mcp__hex-line__read_file (not Read). For writing: write_file (no prior Read needed)",
+    Edit:  "mcp__hex-line__edit_file (not Edit, not sed -i). read_file first for hashes",
+    Write: "mcp__hex-line__write_file (not Write). No prior Read needed",
     Grep:  "mcp__hex-line__grep_search (not Grep, not grep/rg)",
-    cat:   "mcp__hex-line__read_file (not cat)",
-    head:  "mcp__hex-line__read_file with offset/limit (not head)",
-    tail:  "mcp__hex-line__read_file with offset (not tail)",
-    ls:    "mcp__hex-line__directory_tree (not ls/find/tree)",
-    stat:  "mcp__hex-line__get_file_info (not stat/wc -l)",
+    cat:   "mcp__hex-line__read_file (not cat/head/tail/less/more)",
+    head:  "mcp__hex-line__read_file with limit param (not head)",
+    tail:  "mcp__hex-line__read_file with offset param (not tail)",
+    ls:    "mcp__hex-line__directory_tree with pattern param (not ls/find/tree). E.g. pattern='*-mcp' type='dir'",
+    stat:  "mcp__hex-line__get_file_info (not stat/wc/file)",
     grep:  "mcp__hex-line__grep_search (not grep/rg)",
-    sed:   "mcp__hex-line__edit_file (not sed -i)",
-    diff:  "mcp__hex-line__changes (not diff)",
+    sed:   "mcp__hex-line__edit_file (not sed -i). read_file first for hashes",
+    diff:  "mcp__hex-line__changes (not diff). Git-based semantic diff",
     outline: "mcp__hex-line__outline (before reading large code files)",
     verify:  "mcp__hex-line__verify (staleness check without re-read)",
     changes: "mcp__hex-line__changes (semantic AST diff)",
@@ -60,10 +63,13 @@ const BASH_REDIRECTS = [
     { regex: /^cat\s+\S+/, key: "cat" },
     { regex: /^head\s+/, key: "head" },
     { regex: /^tail\s+/, key: "tail" },
+    { regex: /^(less|more)\s+/, key: "cat" },
     { regex: /^(ls|dir)(\s+-\S+)*\s+/, key: "ls" },
     { regex: /^tree\s+/, key: "ls" },
-    { regex: /^find\s+.*-name/, key: "ls" },
-    { regex: /^(stat|wc\s+-l)\s+/, key: "stat" },
+    { regex: /^find\s+/, key: "ls" },
+    { regex: /^du\s+/, key: "ls" },
+    { regex: /^(stat|wc)\s+/, key: "stat" },
+    { regex: /^file\s+/, key: "stat" },
     { regex: /^(grep|rg)\s+/, key: "grep" },
     { regex: /^sed\s+-i/, key: "sed" },
     { regex: /^diff\s+/, key: "diff" },
@@ -135,8 +141,16 @@ function detectCommandType(cmd) {
     return "generic";
 }
 
-function block(reason) {
-    process.stdout.write(JSON.stringify({ decision: "block", reason }));
+function block(reason, context) {
+    const output = {
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: reason,
+        }
+    };
+    if (context) output.hookSpecificOutput.additionalContext = context;
+    process.stdout.write(JSON.stringify(output));
     process.exit(2);
 }
 
@@ -167,8 +181,11 @@ function handlePreToolUse(data) {
             process.exit(0);
         }
 
-        // Block with redirect
-        block("Obligatory use " + TOOL_HINTS[hintKey]);
+        // Block with redirect — include extracted path for instant retry
+        const hint = TOOL_HINTS[hintKey];
+        const toolName2 = hint.split(" (")[0];
+        const pathNote = filePath ? ` with path="${filePath}"` : "";
+        block(`Use ${toolName2}${pathNote}`, hint);
     }
 
     // Bash tool checks
@@ -184,7 +201,8 @@ function handlePreToolUse(data) {
         for (const { regex, reason } of DANGEROUS_PATTERNS) {
             if (regex.test(command)) {
                 block(
-                    `DANGEROUS: ${reason}. Ask user to confirm, then retry with: # hex-confirmed`
+                    `DANGEROUS: ${reason}. Ask user to confirm, then retry with: # hex-confirmed`,
+                    `Original command: ${command.slice(0, 100)}`
                 );
             }
         }
@@ -194,10 +212,14 @@ function handlePreToolUse(data) {
             process.exit(0);
         }
 
-        // Simple command redirect
+        // Simple command redirect — extract args for instant retry
         for (const { regex, key } of BASH_REDIRECTS) {
             if (regex.test(command)) {
-                block("Obligatory use " + TOOL_HINTS[key]);
+                const hint = TOOL_HINTS[key];
+                const toolName2 = hint.split(" (")[0];
+                const args = command.split(/\s+/).slice(1).join(" ");
+                const argsNote = args ? ` — args: "${args}"` : "";
+                block(`Use ${toolName2}${argsNote}`, hint);
             }
         }
     }
@@ -262,6 +284,27 @@ function handlePostToolUse(data) {
 // ---- SessionStart: inject tool preferences ----
 
 function handleSessionStart() {
+    // Check if hex-line output style is active (skip full hints if so)
+    const settingsFiles = [
+        resolve(process.cwd(), ".claude/settings.local.json"),
+        resolve(process.cwd(), ".claude/settings.json"),
+        resolve(homedir(), ".claude/settings.json"),
+    ];
+    let styleActive = false;
+    for (const f of settingsFiles) {
+        try {
+            const config = JSON.parse(readFileSync(f, "utf-8"));
+            if (config.outputStyle === "hex-line") { styleActive = true; break; }
+            if (config.outputStyle) break; // another style overrides
+        } catch { /* file missing or invalid */ }
+    }
+
+    if (styleActive) {
+        process.stdout.write(JSON.stringify({ systemMessage: "hex-line Output Style active." }));
+        process.exit(0);
+    }
+
+    // Full hints when output style is not active
     const seen = new Set();
     const lines = [];
     for (const hint of Object.values(TOOL_HINTS)) {

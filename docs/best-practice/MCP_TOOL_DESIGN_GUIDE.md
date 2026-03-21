@@ -33,6 +33,8 @@ Rule: if a tool can return >100 lines, it MUST support truncation or a compact m
 | `GREP_ERROR` | ripgrep non-zero | Forward stderr, suggest pattern fix |
 | `PATH_OUTSIDE_ROOT` | Path escapes allowed root | Show resolved vs allowed root |
 | `FILE_TOO_LARGE` | Exceeds size limit | Suggest `outline` then ranged `read_file` |
+| `NOOP_EDIT` | Edit produced identical content | Inform file already has desired content |
+| `OUT_OF_RANGE` | Line number exceeds file length | Show boundary snippet with hashes |
 
 Anti-pattern: raw stack traces. Agents cannot act on `Error: ENOENT` -- they need recovery actions.
 

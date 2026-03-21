@@ -31,7 +31,7 @@ Install the full suite or pick only the plugins you need. Each works independent
 /plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
 /plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
 /plugin add levnikolaevich/claude-code-skills --plugin community-engagement
-/plugin add levnikolaevich/claude-code-skills --plugin dev-environment
+/plugin add levnikolaevich/claude-code-skills --plugin setup-environment
 ```
 
 | Plugin | Description |
@@ -42,7 +42,7 @@ Install the full suite or pick only the plugins you need. Each works independent
 | **project-bootstrap** | CREATE or TRANSFORM projects to production-ready Clean Architecture |
 | **optimization-suite** | Performance optimization, Dependency upgrades, Code modernization |
 | **community-engagement** | GitHub community management: triage, announcements, RFCs, responses |
-| **dev-environment** | Install CLI agents, configure MCP servers, sync settings, audit instruction files |
+| **setup-environment** | Install CLI agents, configure MCP servers, sync settings, audit instruction files |
 
 Browse and discover individual skills at [skills.sh](https://skills.sh/LevNikolaevich/claude-code-skills).
 
@@ -322,7 +322,7 @@ git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/ski
 | Scaffold a new project or restructure existing | `project-bootstrap` |
 | Optimize performance, dependencies, bundle size | `optimization-suite` |
 | Manage GitHub community (triage, announcements, RFCs) | `community-engagement` |
-| Set up multi-agent dev environment | `dev-environment` |
+| Set up multi-agent dev environment | `setup-environment` |
 | Everything | `/plugin add levnikolaevich/claude-code-skills` (all 7) |
 
 Each plugin works independently — install only what you need.
@@ -558,12 +558,12 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-914-community-responder/    # Respond to unanswered discussions/issues
 |
 |  └──────────────────────────────────────────────┘
-|  ┌─ Plugin: dev-environment ──────────────────────┐
+|  ┌─ Plugin: setup-environment ──────────────────────┐
 |
 |-- ln-001-push-all/                   # Commit and push all changes in one command
-|-- ln-0XX-*/                          # DEV ENVIRONMENT SETUP
+|-- ln-0XX-*/                          # SETUP ENVIRONMENT
 |   |-- ln-010-dev-environment-setup/  # L2: Full environment setup coordinator
-|   |-- ln-011-agent-installer/        # Install/update Codex & Gemini CLI
+|   |-- ln-011-agent-installer/        # Install/update Codex, Gemini & Claude CLI
 |   |-- ln-012-mcp-configurator/       # MCP server setup & budget analysis
 |   |-- ln-013-config-syncer/          # Sync settings to Gemini/Codex
 |   |-- ln-014-agent-instructions-auditor/ # Audit CLAUDE.md/AGENTS.md/GEMINI.md

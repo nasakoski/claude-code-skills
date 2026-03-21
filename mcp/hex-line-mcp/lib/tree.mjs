@@ -6,11 +6,25 @@
  */
 
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
-import { resolve, basename, join } from "node:path";
+import { resolve, basename, join, relative } from "node:path";
 
 const SKIP_DIRS = new Set([
     "node_modules", ".git", "dist", "build", "__pycache__", ".next", "coverage",
 ]);
+
+/**
+ * Convert a simple glob pattern to a RegExp.
+ * Supports: * (any non-slash), ** (any), ? (single char).
+ */
+function globToRegex(pat) {
+    return new RegExp(
+        "^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$&")
+                  .replace(/\*\*/g, "\0")
+                  .replace(/\*/g, "[^/]*")
+                  .replace(/\0/g, ".*")
+                  .replace(/\?/g, ".") + "$"
+    );
+}
 
 /**
  * Parse .gitignore into match functions.
@@ -29,15 +43,11 @@ function parseGitignore(content) {
         // Strip trailing /
         const dirOnly = pat.endsWith("/");
         if (dirOnly) pat = pat.slice(0, -1);
-        // Convert glob to regex
-        const re = new RegExp(
-            "^" + pat.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\0").replace(/\*/g, "[^/]*").replace(/\0/g, ".*").replace(/\?/g, ".") + "$"
-        );
+        const re = globToRegex(pat);
         patterns.push({ re, negate, dirOnly });
     }
     return patterns;
 }
-
 function isIgnored(name, isDir, patterns) {
     let ignored = false;
     for (const { re, negate, dirOnly } of patterns) {
@@ -54,12 +64,77 @@ function formatSize(bytes) {
 }
 
 /**
- * Build directory tree recursively.
+ * Find files/dirs by glob pattern. Returns flat list of relative paths.
+ * @param {string} dirPath - Root directory to search
+ * @param {object} opts - { pattern, type, max_depth, gitignore }
+ * @returns {string} Formatted match list
+ */
+function findByPattern(dirPath, opts) {
+    const re = globToRegex(opts.pattern);
+    const filterType = opts.type || "all";
+    const maxDepth = opts.max_depth ?? 20;
+    const useGitignore = opts.gitignore ?? true;
+
+    const normalized = (process.platform === "win32" && /^\/[a-zA-Z]\//.test(dirPath))
+        ? dirPath[1] + ":" + dirPath.slice(2) : dirPath;
+    const abs = resolve(normalized);
+    if (!existsSync(abs)) throw new Error(`DIRECTORY_NOT_FOUND: ${abs}`);
+    if (!statSync(abs).isDirectory()) throw new Error(`Not a directory: ${abs}`);
+
+    let patterns = [];
+    if (useGitignore) {
+        const gi = join(abs, ".gitignore");
+        if (existsSync(gi)) {
+            try { patterns = parseGitignore(readFileSync(gi, "utf-8")); } catch { /* skip */ }
+        }
+    }
+
+    const matches = [];
+
+    function walk(dir, depth) {
+        if (depth > maxDepth) return;
+        let entries;
+        try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+
+        for (const entry of entries) {
+            const isDir = entry.isDirectory();
+            if (SKIP_DIRS.has(entry.name) && isDir) continue;
+            if (isIgnored(entry.name, isDir, patterns)) continue;
+
+            const full = join(dir, entry.name);
+
+            if (re.test(entry.name)) {
+                if (filterType === "all" ||
+                    (filterType === "dir" && isDir) ||
+                    (filterType === "file" && !isDir)) {
+                    const rel = relative(abs, full).replace(/\\/g, "/");
+                    matches.push(isDir ? rel + "/" : rel);
+                }
+            }
+
+            if (isDir) walk(full, depth + 1);
+        }
+    }
+
+    walk(abs, 1);
+    matches.sort();
+
+    const rootName = basename(abs);
+    if (matches.length === 0) {
+        return `No matches for "${opts.pattern}" in ${rootName}/`;
+    }
+    return `Found ${matches.length} match${matches.length === 1 ? "" : "es"} for "${opts.pattern}" in ${rootName}/\n\n${matches.join("\n")}`;
+}
+
+/**
+ * Build directory tree recursively, or find by pattern.
  * @param {string} dirPath - Absolute directory path
- * @param {object} opts - { max_depth, gitignore, format }
- * @returns {string} Formatted tree
+ * @param {object} opts - { max_depth, gitignore, format, pattern, type }
+ * @returns {string} Formatted tree or match list
  */
 export function directoryTree(dirPath, opts = {}) {
+    if (opts.pattern) return findByPattern(dirPath, opts);
+
     const compact = opts.format === "compact";
     const maxDepth = compact ? 1 : (opts.max_depth ?? 3);
     const useGitignore = opts.gitignore ?? true;

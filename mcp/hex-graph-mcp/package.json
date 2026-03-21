@@ -15,7 +15,10 @@
   ],
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test test/"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "node --test test/",
+    "check": "node --check server.mjs"
   },
   "engines": {
     "node": ">=20.0.0"

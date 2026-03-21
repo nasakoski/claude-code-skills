@@ -12,7 +12,8 @@
     "hook.mjs",
     "benchmark.mjs",
     "lib/",
-    "README.md"
+    "README.md",
+    "output-style.md"
   ],
   "scripts": {
     "start": "node server.mjs",

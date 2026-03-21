@@ -4,35 +4,29 @@
  */
 
 const ALIASES = {
-    // read_file
+    // index_project / watch_project / get_architecture
+    root: "path",
+    project: "path",
+    dir: "path",
+    directory: "path",
     file_path: "path",
     filePath: "path",
-    file: "path",
+    langs: "languages",
 
-    // grep_search
-    query: "pattern",
-    search: "pattern",
+    // search_symbols
+    search: "query",
+    name: "query",
+    pattern: "query",
+    type: "kind",
     max_results: "limit",
     maxResults: "limit",
-    maxMatches: "limit",
-    max_matches: "limit",
-    contextLines: "context",
-    context_lines: "context",
-    ignoreCase: "case_insensitive",
-    ignore_case: "case_insensitive",
 
-    // edit_file
-    dryRun: "dry_run",
-    "dry-run": "dry_run",
-    restoreIndent: "restore_indent",
-    "restore-indent": "restore_indent",
-
-    // directory_tree
-    maxDepth: "max_depth",
-    depth: "max_depth",
-    name: "pattern",
-    filter: "pattern",
-    entry_type: "type",
+    // get_impact / trace_calls / get_context
+    symbol_name: "symbol",
+    fn: "symbol",
+    function_name: "symbol",
+    max_depth: "depth",
+    maxDepth: "depth",
 };
 
 export function coerceParams(params) {

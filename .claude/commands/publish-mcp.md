@@ -1,13 +1,13 @@
 ---
-description: Publish MCP server to npm (hex-line-mcp, hex-ssh-mcp, or hex-graph-mcp). Bumps version, tags, pushes → GitHub Actions publishes.
+description: "Publish MCP server to npm (hex-line-mcp, hex-ssh-mcp, or hex-graph-mcp). Auto-detects unpublished changes, suggests bump type, syncs server.mjs version."
 allowed-tools: Read, Edit, Bash, Grep, AskUserQuestion
 ---
 
 # Publish MCP Server
 
-Publishes one of the bundled MCP servers to npm.
+Publishes one of the bundled MCP servers to npm. Tag push triggers GitHub Actions → `npm publish --provenance`.
 
-## Available MCP Servers
+## Package Registry
 
 | Package | Directory | Tag Pattern | CI Workflow |
 |---------|-----------|-------------|-------------|
@@ -17,64 +17,111 @@ Publishes one of the bundled MCP servers to npm.
 
 ## Workflow
 
-### 1. Ask which MCP to publish
+### 1. Scan all packages for unpublished changes
 
-Ask user: "Which MCP server to publish?" → hex-line-mcp / hex-ssh-mcp / hex-graph-mcp
+For each of the 3 packages above, run in parallel:
+
+```bash
+# Last tag for this package
+git tag -l "${TAG_PREFIX}*" --sort=-v:refname | head -1
+
+# Commits since last tag touching this package
+git log ${LAST_TAG}..HEAD --oneline -- mcp/${PKG}/
+
+# Local version
+node -e "console.log(require('./mcp/${PKG}/package.json').version)"
+
+# npm registry version
+npm view @levnikolaevich/${PKG} version 2>/dev/null || echo "not published"
+```
+
+Display summary table:
+
+```
+| Package       | Local  | npm    | Commits since tag | Status         |
+|---------------|--------|--------|-------------------|----------------|
+| hex-line-mcp  | 1.0.0  | 1.0.0  | 7                 | needs release  |
+| hex-ssh-mcp   | 1.0.0  | 1.0.0  | 2                 | needs release  |
+| hex-graph-mcp | 0.1.0  | 0.1.0  | 0                 | up to date     |
+```
+
+If no packages need release → report "All packages up to date" and stop.
+
+### 2. Choose package
+
+AskUserQuestion: "Which MCP server to publish?" — list only packages with commits > 0. If only one needs release, suggest it as default.
 
 Set variables:
-- `PKG_DIR` = `mcp/{selection}/`
-- `TAG_PREFIX` = `hex-line-v` or `hex-ssh-v` or `hex-graph-v`
-- `PKG_NAME` = package name from package.json
+- `PKG` = selected package name (e.g. `hex-line-mcp`)
+- `PKG_DIR` = `mcp/${PKG}/`
+- `TAG_PREFIX` = `hex-line-v` | `hex-ssh-v` | `hex-graph-v`
+- `PKG_NAME` = `@levnikolaevich/${PKG}`
+- `LAST_TAG` = most recent tag for this package
 
-### 2. Check current state
+### 3. Show changes since last release
 
 ```bash
-cd $PKG_DIR && node -e "console.log(JSON.parse(require('fs').readFileSync('package.json','utf8')).version)"
-npm view $PKG_NAME version 2>/dev/null || echo "not published yet"
+git log ${LAST_TAG}..HEAD --oneline -- mcp/${PKG}/
+git diff --stat ${LAST_TAG}..HEAD -- mcp/${PKG}/
 ```
 
-### 3. Determine new version
+Display the output to the user.
 
-Ask user what kind of bump:
-- **patch** (1.0.0 → 1.0.1): bug fixes, minor tweaks
-- **minor** (1.0.0 → 1.1.0): new features, new tools
-- **major** (1.0.0 → 2.0.0): breaking changes (format, API)
+### 4. Suggest bump type
 
-### 4. Bump version
+Analyze the diff and commit messages:
+- Only existing file modifications, `fix:` commits → suggest **patch**
+- New files, new exports, `feat:` commits → suggest **minor**
+- Removed/renamed public API, `BREAKING CHANGE` or `!:` → suggest **major**
 
+AskUserQuestion with the recommendation marked "(Recommended)":
+- **patch** (X.Y.Z → X.Y.Z+1): bug fixes, tweaks
+- **minor** (X.Y.Z → X.Y+1.0): new features, new tools
+- **major** (X.Y.Z → X+1.0.0): breaking changes
+
+### 5. Bump version + auto-sync server.mjs
+
+Step A — bump package.json:
 ```bash
-cd $PKG_DIR && npm version {patch|minor|major} --no-git-tag-version
+cd mcp/${PKG} && npm version ${BUMP_TYPE} --no-git-tag-version
 ```
 
-Also update `version` in `server.mjs` McpServer constructor to match.
+Step B — read new version:
+```bash
+node -e "console.log(require('./mcp/${PKG}/package.json').version)"
+```
 
-### 5. Commit + tag + push
+Step C — auto-sync server.mjs:
+Use Edit tool to replace the old version string in the McpServer constructor:
+```
+old: version: "OLD_VERSION"
+new: version: "NEW_VERSION"
+```
+Search for `new McpServer(` in `mcp/${PKG}/server.mjs` to find the exact line.
+
+Step D — verify sync:
+```bash
+grep -n 'version:' mcp/${PKG}/server.mjs | head -3
+```
+Confirm package.json and server.mjs show the same version.
+
+### 6. Commit + tag + push
 
 ```bash
-git add $PKG_DIR/package.json $PKG_DIR/server.mjs
-git commit -m "release: $PKG_NAME vX.Y.Z"
-git tag ${TAG_PREFIX}X.Y.Z
+git add mcp/${PKG}/package.json mcp/${PKG}/server.mjs
+git commit -m "release: ${PKG_NAME} v${NEW_VERSION}"
+git tag ${TAG_PREFIX}${NEW_VERSION}
 git push origin master --tags
 ```
 
-### 6. Verify publish
+### 7. Verify publish
 
 Wait ~30s, then:
 ```bash
 gh run list --limit 1
-npm view $PKG_NAME version
+npm view ${PKG_NAME} version
 ```
-
-### 7. Post-publish: update MCP config
-
-If publishing for the first time or after path change:
-```bash
-claude mcp remove hex-ssh
-claude mcp add -s user hex-ssh -- npx -y @levnikolaevich/hex-ssh-mcp
-```
-
-Set `MCP_SSH_ALLOWED_HOSTS` env var if needed.
 
 ### 8. Report
 
-Display: package name, version, npm URL, GitHub Actions status.
+Display: package name, old → new version, npm URL (`https://www.npmjs.com/package/${PKG_NAME}`), GitHub Actions run status.

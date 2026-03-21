@@ -41,38 +41,23 @@ If release already exists, stop and inform the user. Do NOT overwrite.
 Read CHANGELOG.md. Extract all bullet points under the **most recent** `## YYYY-MM-DD` heading (stop at the next `## ` or `---`).
 
 Transform each bullet into a highlights list for the release notes.
-
 ### 4. Build Release Notes
 
 Assemble release notes in this structure:
 
-```markdown
-## Claude Code Skills v{VERSION}
+````markdown
+## What's New in v{VERSION}
 
-Production-ready plugin suite for Claude Code:
-
-| Plugin | What it does |
-|--------|-------------|
-| **agile-workflow** | Scope decomposition, Story/Task management, Execution, Quality gates, Pipeline orchestration |
-| **documentation-pipeline** | Full project docs with auto-detection (backend/frontend/devops) |
-| **codebase-audit-suite** | Security, Code quality, Tests, Architecture, Persistence performance |
-| **project-bootstrap** | CREATE or TRANSFORM projects to production-ready Clean Architecture |
-| **optimization-suite** | Performance profiling, Dependency upgrades, Code modernization |
-| **community-engagement** | GitHub triage, Announcements, RFC debates, Response automation |
+{bullets extracted from CHANGELOG, reformatted as list}
 
 ### Install
 
 /plugin add levnikolaevich/claude-code-skills
 
-### What's New
-
-{bullets extracted from CHANGELOG, reformatted as list}
-
-**Full changelog:** [CHANGELOG.md](CHANGELOG.md)
-```
+**All plugins & docs:** [README.md](README.md)
+````
 
 ### 5. Confirm with User
-
 Present the assembled release notes and version tag to the user via AskUserQuestion:
 
 - Show: `Release: v{VERSION}`
@@ -110,4 +95,4 @@ Report the release URL to the user.
 - [CHANGELOG.md](CHANGELOG.md) -- release notes source
 
 ---
-**Last Updated:** 2026-03-17
+**Last Updated:** 2026-03-21

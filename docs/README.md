@@ -19,7 +19,7 @@ docs/
 │   ├── project-bootstrap.md
 │   ├── optimization-suite.md
 │   ├── community-engagement.md
-│   └── dev-environment.md
+│   └── setup-environment.md
 ├── standards/                       # How to write documentation
 │   ├── DOCUMENTATION_STANDARDS.md   # 90 requirements for project docs
 │   └── GITHUB_README_BEST_PRACTICES.md # README writing guidelines
@@ -36,7 +36,7 @@ docs/
 | [project-bootstrap](plugins/project-bootstrap.md) | CREATE or TRANSFORM projects to Clean Architecture with Docker, CI/CD |
 | [optimization-suite](plugins/optimization-suite.md) | Performance profiling, dependency upgrades, code modernization |
 | [community-engagement](plugins/community-engagement.md) | GitHub triage, announcements, RFC debates, response automation |
-| [dev-environment](plugins/dev-environment.md) | Install CLI agents, configure MCP servers, sync settings, audit instruction files |
+| [setup-environment](plugins/setup-environment.md) | Install CLI agents, configure MCP servers, sync settings, audit instruction files |
 
 ## Responsibility Boundaries
 

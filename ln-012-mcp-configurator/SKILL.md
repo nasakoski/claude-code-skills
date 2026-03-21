@@ -1,6 +1,6 @@
 ---
 name: ln-012-mcp-configurator
-description: "Installs MCP server npm packages and registers them in Claude Code. Use when MCP servers need setup or reconfiguration."
+description: "Installs MCP servers, registers them in Claude Code, and grants user-level permissions. Use when MCP servers need setup or reconfiguration."
 license: MIT
 ---
 
@@ -11,7 +11,7 @@ license: MIT
 **Type:** L3 Worker
 **Category:** 0XX Shared
 
-Configures MCP servers in Claude Code: audits current state, registers missing servers via `claude mcp add`, analyzes token budget impact.
+Configures MCP servers in Claude Code: audits current state, registers missing servers via `claude mcp add`, grants user-level permissions, analyzes token budget impact.
 
 ---
 
@@ -43,16 +43,13 @@ Two transport types: **stdio** (local process) and **HTTP** (cloud endpoint).
 
 ## Workflow
 
-```
-Audit  -->  Configure  -->  Register  -->  Budget Analysis  -->  Report
-```
+Audit  -->  Configure  -->  Register  -->  Permissions  -->  Budget  -->  Report
 
 ### Phase 1: Audit Current MCP State
 
-1. Read Claude configs (two locations, merge):
-   - `~/.claude.json` (primary, app state)
-   - `~/.claude/settings.json` (fallback, user settings)
-   - Merge: primary overrides fallback by server name
+1. Run `claude mcp list` — canonical source of truth for configured servers
+   - Parse output: server name, transport type, connection status
+   - Fallback if `claude` CLI unavailable: read `~/.claude.json` + `~/.claude/settings.json`, merge by server name
 2. Build table of configured vs missing servers (compare against registry)
 3. Check for deprecated servers and flag for removal:
 
@@ -87,7 +84,7 @@ Registration commands by server and source:
 | Ref | `claude mcp add -s user --transport http Ref https://api.ref.tools/mcp` |
 | linear | `claude mcp add -s user --transport http linear-server https://mcp.linear.app/mcp` |
 
-**Post-registration verification:** After each `claude mcp add`, run `claude mcp list` and confirm the server shows connected status. If not connected, report as failed with the error detail.
+**Post-registration verification:** After ALL servers are registered, run `claude mcp list` once. For each hex MCP (hex-line, hex-ssh, hex-graph): verify status is `Connected`. If any shows disconnected or missing — retry `claude mcp add`, then re-check. Report failures explicitly.
 
 **Error handling:**
 
@@ -98,7 +95,35 @@ Registration commands by server and source:
 | Connection failed after add | WARN, report detail from `claude mcp list` |
 | API key missing (Ref) | Prompt user for key, skip if declined |
 
-### Phase 4: Budget Analysis
+### Phase 3b: Install Output Style
+
+After hex-line registration, install Output Style via `mcp__hex-line__setup_hooks(agent="claude")`. This:
+1. Copies `output-style.md` to `~/.claude/output-styles/hex-line.md`
+2. Sets `outputStyle: "hex-line"` in `~/.claude/settings.json` if no style is active
+3. If another style is active — preserves it, reports to user
+
+### Phase 4: Grant Permissions
+
+For each **configured** MCP server, add `mcp__{name}` to `~/.claude/settings.json` → `permissions.allow[]`.
+
+| Server | Permission entry |
+|---|---|
+| hex-line | `mcp__hex-line` |
+| hex-ssh | `mcp__hex-ssh` |
+| hex-graph | `mcp__hex-graph` |
+| context7 | `mcp__context7` |
+| Ref | `mcp__Ref` |
+| linear | `mcp__linear-server` |
+
+1. Read `~/.claude/settings.json` (create if missing: `{"permissions":{"allow":[]}}`)
+2. For each configured server: check if `mcp__{name}` already in `allow[]`
+3. Missing → append
+4. Write back (2-space indent JSON)
+5. Report: `"Granted N permissions (M already present)"`
+
+**Idempotent:** existing entries skipped.
+
+### Phase 5: Budget Analysis
 
 | Metric | Formula | Threshold |
 |--------|---------|-----------|
@@ -114,24 +139,24 @@ Budget warnings:
 | 6-8 | WARN | "Consider disabling unused MCP servers to reduce context overhead" |
 | >8 | WARN | "Significant context impact — review which servers are actively used" |
 
-### Phase 5: Report
+### Phase 6: Report
 
 ```
 MCP Configuration:
-| Server    | Transport | Status        | Detail                  |
-|-----------|-----------|---------------|-------------------------|
-| hex-line  | stdio     | configured    | local server.mjs        |
-| hex-ssh   | stdio     | added         | local server.mjs        |
-| context7  | HTTP      | configured    | mcp.context7.com        |
-| Ref       | HTTP      | configured    | api.ref.tools (key set) |
-| linear    | HTTP      | skipped       | user declined           |
+| Server    | Transport | Status        | Permission | Detail                  |
+|-----------|-----------|---------------|------------|-------------------------|
+| hex-line  | stdio     | configured    | granted    | local server.mjs        |
+| hex-ssh   | stdio     | added         | granted    | local server.mjs        |
+| context7  | HTTP      | configured    | granted    | mcp.context7.com        |
+| Ref       | HTTP      | configured    | granted    | api.ref.tools (key set) |
+| linear    | HTTP      | skipped       | skipped    | user declined           |
 
 Budget: 4 servers ~ 20K tokens (10.0% of context) — OK
 ```
 
 ---
 
-### Phase 6: Token Efficiency Benchmark
+### Phase 7: Token Efficiency Benchmark
 
 After hex-line is configured, run benchmark on user's repo:
 
@@ -158,7 +183,7 @@ If benchmark shows >50% savings on outline+read → recommend adding hex-line ho
 3. **Ask before optional servers.** Linear requires explicit user consent
 4. **Prefer local source.** For hex-line/hex-ssh, use local `server.mjs` when available
 5. **Remove deprecated servers.** Clean up servers no longer in the registry
-6. **Idempotent.** Safe to run multiple times. Already-configured servers are skipped
+6. **Grant permissions.** After registration, add `mcp__{server}` to user `~/.claude/settings.json`
 
 ## Anti-Patterns
 
@@ -174,15 +199,16 @@ If benchmark shows >50% savings on outline+read → recommend adding hex-line ho
 
 ## Definition of Done
 
-- [ ] Current MCP state audited (both Claude config locations)
+- [ ] Current MCP state audited (via `claude mcp list`)
 - [ ] Deprecated servers flagged for removal
 - [ ] Missing required servers registered via `claude mcp add`
 - [ ] Each registered server verified via `claude mcp list`
 - [ ] Token budget calculated and warnings shown if applicable
 - [ ] Final status table displayed with all servers
-- [ ] Token efficiency benchmark run and results shown to user
+- [ ] Permissions granted for all configured servers in user settings
+- [ ] Token efficiency benchmark run and results shown
 
 ---
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Last Updated:** 2026-03-20

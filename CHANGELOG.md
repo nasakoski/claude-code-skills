@@ -6,11 +6,11 @@
 
 ## 2026-03-20
 
-Merged ln-001-standards-researcher and ln-002-best-practices-researcher into ln-310 and ln-220 via shared layer. Extracted research methodology and documentation creation rules to `shared/references/research_methodology.md` and `shared/references/documentation_creation.md`. Inlined research execution in ln-310 Phase 3 Step 2 and ln-220 Phase 2. Added inline agent_runner command template to ln-310 Phase 2 step 4. Deleted ln-001 and ln-002 skill directories. Refactored 01X series: deleted ln-004, ln-005, ln-015; created ln-010 (L2 coordinator) with 4 workers — ln-011 (agent installer), ln-012 (MCP configurator), ln-013 (config syncer), ln-014 (instructions auditor). Renamed ln-003→ln-001. Extracted dev-environment plugin (7th) with 6 skills from agile-workflow.
+Merged ln-001-standards-researcher and ln-002-best-practices-researcher into ln-310 and ln-220 via shared layer. Extracted research methodology and documentation creation rules to `shared/references/research_methodology.md` and `shared/references/documentation_creation.md`. Inlined research execution in ln-310 Phase 3 Step 2 and ln-220 Phase 2. Added inline agent_runner command template to ln-310 Phase 2 step 4. Deleted ln-001 and ln-002 skill directories. Refactored 01X series: deleted ln-004, ln-005, ln-015; created ln-010 (L2 coordinator) with 4 workers — ln-011 (agent installer), ln-012 (MCP configurator), ln-013 (config syncer), ln-014 (instructions auditor). Renamed ln-003→ln-001. Extracted setup-environment plugin (7th) with 6 skills from agile-workflow.
 
 ## 2026-03-19
 
-- **hex-line-mcp** — bundled MCP server for hash-verified file editing with AST outline (6 tools: read, edit, write, grep, outline, verify); FNV-1a hashing, security boundaries, tree-sitter WASM; npm publishable
+- **hex MCP family** — 3 bundled MCP servers: hex-line (hash-verified file editing, 10 tools), hex-ssh (remote file ops over SSH, 6 tools), hex-graph (code knowledge graph with tree-sitter AST, 7 tools); FNV-1a hashing, security boundaries; npm publishable
 - **Agent runner overhaul** — Windows spawn fix (whichSync PATHEXT), heartbeat removed (log-based monitoring), registry 4→2 agents with focus_hint, `--approval-mode yolo` ⚠️ BREAKING
 - **Python → Node.js ESM** — all runtime scripts (.py) replaced with .mjs: agent_runner, 3 hooks, analyze_test_logs; Python dependency eliminated ⚠️ BREAKING
 - **ln-1000 redesign** — TeamCreate/heartbeat replaced with sequential Skill() calls; quality gate (ln-500) and test planning (ln-520) can no longer be skipped ⚠️ BREAKING

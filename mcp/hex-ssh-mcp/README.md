@@ -2,6 +2,9 @@
 
 Token-efficient SSH MCP server with hash-verified remote file editing.
 
+[![npm](https://img.shields.io/npm/v/@levnikolaevich/hex-ssh-mcp)](https://www.npmjs.com/package/@levnikolaevich/hex-ssh-mcp)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 Every remote file read returns FNV-1a hash-annotated lines and range checksums. Edits verify those checksums before applying changes -- preventing stale-context corruption across SSH boundaries. Command output is normalized and deduplicated for minimal token usage.
 
 ## Features
@@ -244,6 +247,36 @@ checksum: 1-50:f7e2a1b0
 ```
 
 FNV-1a accumulator over all line hashes in the range (little-endian byte feed). Detects changes to any line, even ones not being edited.
+
+## FAQ
+
+<details>
+<summary><b>Does it support password authentication?</b></summary>
+
+No. Key-only authentication (RSA, ED25519, ECDSA). This is a security design decision -- passwords in agent prompts are a leak risk. Configure SSH keys via `SSH_PRIVATE_KEY` env var or default paths (~/.ssh/).
+
+</details>
+
+<details>
+<summary><b>Can I connect to multiple servers in one session?</b></summary>
+
+Yes. Each tool call specifies `host` and `user` independently. There is no persistent connection -- each call opens a new SSH session. This avoids stale connection issues but adds ~1s overhead per call.
+
+</details>
+
+<details>
+<summary><b>How does output normalization differ from hex-line's RTK?</b></summary>
+
+Same concept, different trigger. hex-ssh normalizes inside the `remote-ssh` tool itself (always active). hex-line's RTK is a PostToolUse hook that filters Bash output (only triggers above 50 lines). Both use the same normalization patterns.
+
+</details>
+
+<details>
+<summary><b>What if ALLOWED_HOSTS is not set?</b></summary>
+
+All hosts are permitted. Setting `ALLOWED_HOSTS` is recommended for production use -- it restricts which remote servers the agent can connect to, preventing lateral movement if prompts are manipulated.
+
+</details>
 
 ## License
 

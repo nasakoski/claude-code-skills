@@ -2,13 +2,33 @@
  * Setup hex-line hooks for CLI agents.
  *
  * Idempotent: re-running with same config produces no changes.
- * Supports: claude (hooks in settings.local.json), gemini, codex (info only).
+ * Supports: claude (hooks in ~/.claude/settings.json global), gemini, codex (info only).
+ * Cleanup: removes old per-project hooks from .claude/settings.local.json.
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 
-const HOOK_COMMAND = "node mcp/hex-line-mcp/hook.mjs";
+// Resolve absolute path to hook.mjs at module load time.
+// setup.mjs is in lib/, hook.mjs is one level up (sibling of lib/).
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const HOOK_SCRIPT = resolve(__dirname, "..", "hook.mjs").replace(/\\/g, "/");
+const HOOK_COMMAND = `node ${HOOK_SCRIPT}`;
+
+// Legacy relative command — needed to find and remove old per-project hooks.
+const OLD_HOOK_COMMAND = "node mcp/hex-line-mcp/hook.mjs";
+
+// Substring that identifies any hex-line hook command (old relative or new absolute).
+const HOOK_SIGNATURE = "hex-line-mcp/hook.mjs";
+
+const NPX_MARKERS = ["_npx", "npx-cache", ".npm/_npx"];
+
+function isEphemeralInstall(scriptPath) {
+    return NPX_MARKERS.some((m) => scriptPath.includes(m));
+}
 
 const CLAUDE_HOOKS = {
     SessionStart: {
@@ -38,21 +58,21 @@ function writeJson(filePath, data) {
 }
 
 /**
- * Find existing hook entry index by command substring.
- * @param {Array} entries - Array of {matcher, hooks[]} objects
- * @param {string} command - Command string to match
- * @returns {number} Index or -1
+ * Find existing hook entry index by hex-line signature substring.
+ * Catches both old relative ("node mcp/hex-line-mcp/hook.mjs") and
+ * new absolute ("node d:/.../hex-line-mcp/hook.mjs") commands.
  */
-function findEntryByCommand(entries, command) {
+function findEntryByCommand(entries) {
     return entries.findIndex(
-        (e) => Array.isArray(e.hooks) && e.hooks.some((h) => h.command === command)
+        (e) => Array.isArray(e.hooks) && e.hooks.some((h) =>
+            typeof h.command === "string" && h.command.includes(HOOK_SIGNATURE)
+        )
     );
 }
 
-// ---- Agent configurators ----
+// ---- Core: write hooks to a settings file ----
 
-function setupClaude() {
-    const settingsPath = resolve(process.cwd(), ".claude/settings.local.json");
+function writeHooksToFile(settingsPath, label) {
     const config = readJson(settingsPath) || {};
 
     if (!config.hooks || typeof config.hooks !== "object") {
@@ -67,17 +87,17 @@ function setupClaude() {
         }
 
         const entries = config.hooks[event];
-        const idx = findEntryByCommand(entries, HOOK_COMMAND);
+        const idx = findEntryByCommand(entries);
 
         if (idx >= 0) {
-            // Entry exists — check if matcher and timeout match
             const existing = entries[idx];
             if (existing.matcher === desired.matcher &&
                 existing.hooks.length === desired.hooks.length &&
+                existing.hooks[0].command === HOOK_COMMAND &&
                 existing.hooks[0].timeout === desired.hooks[0].timeout) {
                 continue; // Already configured exactly
             }
-            // Update in place
+            // Update in place (path changed or config updated)
             entries[idx] = { matcher: desired.matcher, hooks: [...desired.hooks] };
             changed = true;
         } else {
@@ -92,11 +112,108 @@ function setupClaude() {
     }
 
     if (!changed) {
-        return "Claude: already configured, no changes";
+        return `Claude (${label}): already configured`;
     }
 
     writeJson(settingsPath, config);
-    return "Claude: PreToolUse + PostToolUse -> mcp/hex-line-mcp/hook.mjs OK";
+    return `Claude (${label}): hooks -> ${HOOK_SCRIPT} OK`;
+}
+
+// ---- Cleanup: remove hex-line hooks from per-project file ----
+
+function cleanLocalHooks() {
+    const localPath = resolve(process.cwd(), ".claude/settings.local.json");
+    const config = readJson(localPath);
+
+    if (!config || !config.hooks || typeof config.hooks !== "object") {
+        return "local: clean";
+    }
+
+    let changed = false;
+
+    for (const event of Object.keys(CLAUDE_HOOKS)) {
+        if (!Array.isArray(config.hooks[event])) continue;
+
+        const entries = config.hooks[event];
+        const idx = findEntryByCommand(entries);
+
+        if (idx >= 0) {
+            entries.splice(idx, 1);
+            changed = true;
+        }
+
+        // Remove empty arrays
+        if (entries.length === 0) {
+            delete config.hooks[event];
+        }
+    }
+
+    // Remove empty hooks object
+    if (Object.keys(config.hooks).length === 0) {
+        delete config.hooks;
+    }
+
+    if (!changed) {
+        return "local: clean";
+    }
+
+    writeJson(localPath, config);
+    return "local: removed old hex-line hooks";
+}
+
+// ---- Output Style installer ----
+
+function installOutputStyle() {
+    const source = resolve(dirname(fileURLToPath(import.meta.url)), "..", "output-style.md");
+    const target = resolve(homedir(), ".claude", "output-styles", "hex-line.md");
+
+    // Copy output-style.md to ~/.claude/output-styles/
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, readFileSync(source, "utf-8"), "utf-8");
+
+    // Check outputStyle in all scopes (Local > Project > User)
+    const scopes = [
+        { path: resolve(process.cwd(), ".claude/settings.local.json"), label: "local" },
+        { path: resolve(process.cwd(), ".claude/settings.json"), label: "project" },
+        { path: resolve(homedir(), ".claude/settings.json"), label: "user" },
+    ];
+
+    for (const scope of scopes) {
+        const config = readJson(scope.path);
+        if (config && config.outputStyle) {
+            return `Output style 'hex-line' installed to ~/.claude/output-styles/. Current style '${config.outputStyle}' preserved (scope: ${scope.label}). Switch via /config > Output style`;
+        }
+    }
+
+    // No outputStyle set anywhere — activate hex-line at user level
+    const userSettings = resolve(homedir(), ".claude/settings.json");
+    const config = readJson(userSettings) || {};
+    config.outputStyle = "hex-line";
+    writeJson(userSettings, config);
+    return "Output style 'hex-line' installed and activated in ~/.claude/settings.json";
+}
+
+// ---- Agent configurators ----
+
+function setupClaude() {
+    if (isEphemeralInstall(HOOK_SCRIPT)) {
+        return "Claude: SKIPPED — hook.mjs is in npx cache (ephemeral). " +
+            "Install permanently: npm i -g @levnikolaevich/hex-line-mcp, then re-run setup_hooks.";
+    }
+
+    const results = [];
+
+    // Phase A: write hooks to global ~/.claude/settings.json
+    const globalPath = resolve(homedir(), ".claude/settings.json");
+    results.push(writeHooksToFile(globalPath, "global"));
+
+    // Phase B: remove hex-line hooks from per-project settings.local.json
+    results.push(cleanLocalHooks());
+
+    // Phase C: install Output Style
+    results.push(installOutputStyle());
+
+    return results.join(" | ");
 }
 
 function setupGemini() {
@@ -113,6 +230,7 @@ const AGENTS = { claude: setupClaude, gemini: setupGemini, codex: setupCodex };
 
 /**
  * Configure hex-line hooks for one or all supported agents.
+ * Claude: writes to ~/.claude/settings.json (global), cleans per-project hooks.
  * @param {string} [agent="all"] - "claude", "gemini", "codex", or "all"
  * @returns {string} Status report
  */

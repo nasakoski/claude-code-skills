@@ -29,6 +29,7 @@ function relativeTime(date) {
 }
 
 const DEFAULT_LIMIT = 2000;
+const MAX_OUTPUT_CHARS = 80000;
 
 /**
  * Read a file with hash-annotated lines.
@@ -67,32 +68,44 @@ export function readFile(filePath, opts = {}) {
 
     const parts = [];
 
+    let cappedAtLine = 0;
+
     for (const range of ranges) {
         const selected = lines.slice(range.start - 1, range.end);
         const lineHashes = [];
+        const formatted = [];
+        let charCount = 0;
 
-        let formatted;
-        if (opts.plain) {
-            formatted = selected.map((line, i) => {
-                const num = range.start + i;
-                lineHashes.push(fnv1a(line));
-                return `${num}|${line}`;
-            }).join("\n");
-        } else {
-            formatted = selected.map((line, i) => {
-                const num = range.start + i;
-                const hash32 = fnv1a(line);
-                lineHashes.push(hash32);
-                const tag = lineTag(hash32);
-                return `${tag}.${num}\t${line}`;
-            }).join("\n");
+        for (let i = 0; i < selected.length; i++) {
+            const line = selected[i];
+            const num = range.start + i;
+            const hash32 = fnv1a(line);
+            const entry = opts.plain
+                ? `${num}|${line}`
+                : `${lineTag(hash32)}.${num}\t${line}`;
+
+            if (charCount + entry.length > MAX_OUTPUT_CHARS && formatted.length > 0) {
+                cappedAtLine = num;
+                break;
+            }
+            lineHashes.push(hash32);
+            formatted.push(entry);
+            charCount += entry.length + 1;
         }
 
-        parts.push(formatted);
+        // Update range end to actual lines shown
+        const actualEnd = formatted.length > 0
+            ? range.start + formatted.length - 1
+            : range.start;
+        range.end = actualEnd;
 
-        // Range checksum
-        const cs = rangeChecksum(lineHashes, range.start, range.end);
+        parts.push(formatted.join("\n"));
+
+        // Range checksum (only for lines actually shown)
+        const cs = rangeChecksum(lineHashes, range.start, actualEnd);
         parts.push(`\nchecksum: ${cs}`);
+
+        if (cappedAtLine) break;
     }
 
     // Header
@@ -125,5 +138,17 @@ export function readFile(filePath, opts = {}) {
         }
     }
 
-    return `${header}${graphLine}\n\n\`\`\`\n${parts.join("\n")}\n\`\`\``;
+    let result = `${header}${graphLine}\n\n\`\`\`\n${parts.join("\n")}\n\`\`\``;
+
+    // Auto-hint for large files read from start without offset
+    if (total > 200 && (!opts.offset || opts.offset <= 1) && !cappedAtLine) {
+        result += `\n\n\u26A1 Tip: This file has ${total} lines. Use outline first, then read_file with offset/limit for 75% fewer tokens.`;
+    }
+
+    // Character cap notice
+    if (cappedAtLine) {
+        result += `\n\nOUTPUT_CAPPED at line ${cappedAtLine} (${MAX_OUTPUT_CHARS} char limit). Use offset=${cappedAtLine} to continue reading.`;
+    }
+
+    return result;
 }

@@ -2,6 +2,9 @@
 
 Hash-verified file editing MCP + token efficiency hook for AI coding agents.
 
+[![npm](https://img.shields.io/npm/v/@levnikolaevich/hex-line-mcp)](https://www.npmjs.com/package/@levnikolaevich/hex-line-mcp)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 Every line carries an FNV-1a content hash. Every edit must present those hashes back -- proving the agent is editing what it thinks it's editing. No stale context, no silent corruption.
 
 ## Features
@@ -68,29 +71,45 @@ Or manual — add to `.claude/settings.local.json`:
 }
 ```
 
+### Output Style
+
+Optional: install a persistent Output Style that embeds tool preferences directly in Claude's system prompt. Reduces hook firings by making Claude prefer hex-line tools from the start.
+
+```
+mcp__hex-line__setup_hooks(agent="claude")
+```
+
+The `setup_hooks` tool automatically installs the output style to `~/.claude/output-styles/hex-line.md` and activates it if no other style is set. To activate manually: `/config` > Output style > hex-line.
+
 ## Token Efficiency
 
-Benchmark v3 (46 code files, 9,134 lines, 18 scenarios):
+Benchmark v3 (21 code files, 4,801 lines, 18 scenarios):
 
-| Scenario | Without | With Hex-line | Savings |
-|----------|---------|---------------|--------|
-| Read full (any size) | raw | hash-annotated | 6-8% |
-| Outline+read (200-500L) | 10,723 ch | 3,347 ch | **69%** |
-| Outline+read (500L+) | 39,617 ch | 9,531 ch | **76%** |
-| Edit x5 sequential | 2,581 ch | 1,529 ch | **41%** |
-| Verify checksums | 8,295 ch | 93 ch | **99%** |
-| Directory tree | 80,853 ch | 22,120 ch | **73%** |
-| File info | 368 ch | 195 ch | **47%** |
-| bulk_replace (5 files) | 2,795 ch | 1,706 ch | **39%** |
-| Changes (semantic diff) | 830 ch | 133 ch | **84%** |
-| FILE_NOT_FOUND recovery | 2,020 ch | 283 ch | **86%** |
-| Hash mismatch recovery | 8,918 ch | 423 ch | **95%** |
-| Bash redirects (cat+ls+stat) | 54,658 ch | 25,153 ch | **54%** |
-| Grep search | 3,938 ch | 4,091 ch | -4% |
+| # | Scenario | Baseline | Hex-line | Savings | Ops | Steps |
+|---|----------|----------|----------|---------|-----|-------|
+| 1 | Read full (<50L) | 1,837 ch | 1,676 ch | 9% | 1→1 | 1→1 |
+| 1 | Read full (50-200L) | 4,976 ch | 4,609 ch | 7% | 1→1 | 1→1 |
+| 1 | Read full (200-500L) | 11,702 ch | 10,796 ch | 8% | 1→1 | 1→1 |
+| 1 | Read full (500L+) | 76,079 ch | 71,578 ch | 6% | 1→1 | 1→1 |
+| 2 | Outline+read (200-500L) | 11,702 ch | 3,620 ch | **69%** | 1→2 | 1→2 |
+| 2 | Outline+read (500L+) | 76,079 ch | 19,020 ch | **75%** | 1→2 | 1→2 |
+| 3 | Grep search | 2,816 ch | 2,926 ch | -4% | 1→1 | 1→1 |
+| 4 | Directory tree | 1,967 ch | 699 ch | **64%** | 1→1 | 1→1 |
+| 5 | File info | 371 ch | 197 ch | **47%** | 1→1 | 1→1 |
+| 6 | Create file (200L) | 113 ch | 85 ch | **25%** | 1→1 | 1→1 |
+| 7 | Edit x5 sequential | 2,581 ch | 1,529 ch | **41%** | 5→5 | 5→5 |
+| 8 | Verify checksums (4 ranges) | 8,295 ch | 93 ch | **99%** | 4→1 | 4→1 |
+| 9 | Multi-file read (2 files) | 3,674 ch | 3,358 ch | 9% | 2→1 | 1→1 |
+| 10 | bulk_replace dry_run (5 files) | 2,795 ch | 1,706 ch | **39%** | 5→1 | 5→1 |
+| 11 | Changes (semantic diff) | 830 ch | 271 ch | **67%** | 1→1 | 1→1 |
+| 12 | FILE_NOT_FOUND recovery | 2,071 ch | 101 ch | **95%** | 3→1 | 3→1 |
+| 13 | Hash mismatch recovery | 8,918 ch | 423 ch | **95%** | 3→1 | 3→1 |
+| 14 | Bash redirects (cat+ls+stat) | 5,602 ch | 4,695 ch | **16%** | 3→3 | 1→1 |
+| 15 | HASH_HINT multi-match recovery | 8,888 ch | 653 ch | **93%** | 3→2 | 3→1 |
 
-**Average savings: 46%.** Break-even: ~50 lines. Hash overhead: negligible.
+**Average savings: 45% (flat) / 52% (weighted) | 39→28 ops (28% fewer) | 36→25 steps.**
 
-Reproduce: `node benchmark.mjs` or `node benchmark.mjs --repo /path/to/repo`
+Reproduce: `node benchmark.mjs` or `node benchmark.mjs --with-graph --repo /path/to/repo`
 
 ## Tools Reference
 
@@ -123,6 +142,7 @@ Edit using hash-verified anchors or text replacement. Returns a unified diff.
 | `path` | string | yes | File to edit |
 | `edits` | string | yes | JSON array of edit operations (see below) |
 | `dry_run` | boolean | no | Preview changes without writing |
+| `restore_indent` | boolean | no | Auto-fix indentation to match anchor context (default: false) |
 
 Edit operations (JSON array):
 
@@ -287,6 +307,43 @@ FNV-1a accumulator over all line hashes in the range (little-endian byte feed). 
 | Path security | Canonicalization + binary detection, no ALLOWED_DIRS | Explicit ALLOWED_DIRS allowlist |
 | Transport | stdio only | stdio |
 | Outline | tree-sitter WASM (15+ languages) | tree-sitter WASM |
+
+## FAQ
+
+<details>
+<summary><b>Does it work without Claude Code?</b></summary>
+
+Yes. hex-line-mcp is a standard MCP server (stdio transport). It works with any MCP-compatible client -- Claude Code, Gemini CLI, Codex CLI, or custom integrations. Hooks are Claude/Gemini/Codex-specific.
+
+</details>
+
+<details>
+<summary><b>What happens if a hash is stale?</b></summary>
+
+The edit is rejected with an error showing which lines changed since the last read. The agent must re-read the affected range and retry. This prevents silent overwrites from stale context.
+
+</details>
+
+<details>
+<summary><b>Is outline available for all file types?</b></summary>
+
+Outline works on code files only (15+ languages via tree-sitter WASM). For markdown, JSON, YAML, and text files use `read_file` directly -- these formats don't benefit from structural outline.
+
+</details>
+
+<details>
+<summary><b>How does the RTK filter reduce tokens?</b></summary>
+
+The PostToolUse hook normalizes Bash output (replaces UUIDs, timestamps, IPs with placeholders), deduplicates identical lines, and truncates to first 12 + last 12 lines. Average savings: 45% (flat) / 52% (weighted) across 18 benchmark scenarios.
+
+</details>
+
+<details>
+<summary><b>Can I disable the built-in tool blocking?</b></summary>
+
+Yes. Remove the PreToolUse hook from `.claude/settings.local.json`. The MCP tools will still work, but agents will be free to use built-in Read/Edit/Write/Grep alongside hex-line tools.
+
+</details>
 
 ## License
 

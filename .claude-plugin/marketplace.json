@@ -8,7 +8,7 @@
   },
 
   "metadata": {
-    "description": "Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization) + Community engagement (Announcements, RFC debates, Triage) + Dev environment (agent install, MCP config, settings sync).",
+    "description": "Agile workflow (Planning, Execution, Quality) + Documentation pipeline + Codebase audit suite + Project Bootstrap (scaffolding, Docker, CI/CD) + Optimization suite (Performance, Dependencies, Modernization) + Community engagement (Announcements, RFC debates, Triage) + Setup environment (agent install, MCP config, settings sync).",
     "version": "2026.03.19"
   },
   "plugins": [
@@ -182,8 +182,8 @@
     }
     ,
     {
-      "name": "dev-environment",
-      "description": "Dev environment setup: Install CLI agents (Codex, Gemini), configure MCP servers, sync settings across agents, audit instruction files. One-command setup for multi-agent workflows.",
+      "name": "setup-environment",
+      "description": "Setup environment: Install CLI agents (Codex, Gemini, Claude), configure MCP servers, sync settings across agents, audit instruction files. One-command setup for multi-agent workflows.",
       "source": "./",
       "strict": false,
       "skills": [

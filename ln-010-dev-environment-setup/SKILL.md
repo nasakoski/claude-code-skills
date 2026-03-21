@@ -65,8 +65,9 @@ Run all sub-checks before any modifications. Display scan table after.
 - If agent_runner.mjs not found: set both `available: false`
 
 **1b: Discover MCP Servers**
-- Read Claude configs (primary + fallback, merge by server name)
-- List configured servers with transport type (stdio/HTTP)
+- Run `claude mcp list` — canonical source of truth for configured servers
+- Parse output: server name, transport type (stdio/HTTP), connection status
+- Fallback if `claude` CLI unavailable: read `~/.claude.json` + `~/.claude/settings.json`, merge by server name
 
 **1c: MCP Token Budget**
 - Formula: `server_count * 5000` tokens
@@ -109,8 +110,8 @@ Pass scan results as delegation context. If agent `disabled: true`, pass flag so
 
 | Worker | Responsibility | Input |
 |--------|---------------|-------|
-| ln-011-agent-installer | Install/update Codex CLI, Gemini CLI | OS, disabled flags, dry_run |
-| ln-012-mcp-configurator | Register MCP servers in Claude Code | OS, MCP state, dry_run |
+| ln-011-agent-installer | Install/update Codex CLI, Gemini CLI, Claude Code | OS, disabled flags, dry_run |
+| ln-012-mcp-configurator | Configure MCP servers, permissions, and output style | OS, MCP state, dry_run |
 | ln-013-config-syncer | Sync Claude settings to Gemini/Codex | OS, disabled flags, targets, dry_run |
 | ln-014-agent-instructions-auditor | Audit instruction files for quality and consistency | Instruction file list, dry_run |
 

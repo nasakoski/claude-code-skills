@@ -1,4 +1,4 @@
-# Dev Environment
+# Setup Environment
 
 > One-command setup for multi-agent development workflows
 
@@ -6,7 +6,7 @@
 
 ```bash
 # This plugin only
-/plugin add levnikolaevich/claude-code-skills --plugin dev-environment
+/plugin add levnikolaevich/claude-code-skills --plugin setup-environment
 
 # Full suite
 /plugin add levnikolaevich/claude-code-skills
@@ -22,7 +22,7 @@ Sets up and maintains the multi-agent development environment. Installs CLI agen
 |-------|-------------|
 | ln-001-push-all | Commit and push all changes to remote |
 | ln-010-dev-environment-setup | Full environment setup coordinator |
-| ln-011-agent-installer | Install or update Codex CLI and Gemini CLI |
+| ln-011-agent-installer | Install or update Codex CLI, Gemini CLI, and Claude Code |
 | ln-012-mcp-configurator | Register MCP servers and analyze token budget |
 | ln-013-config-syncer | Sync settings from Claude to Gemini/Codex |
 | ln-014-agent-instructions-auditor | Audit CLAUDE.md/AGENTS.md/GEMINI.md for quality |

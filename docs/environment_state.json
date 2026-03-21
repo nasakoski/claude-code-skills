@@ -1,0 +1,94 @@
+{
+  "$schema": "environment_state_v2",
+  "scanned_at": "2026-03-20T15:30:00Z",
+  "agents": {
+    "codex": {
+      "available": true,
+      "version": "0.115.0",
+      "latest": "0.116.0",
+      "disabled": false
+    },
+    "gemini": {
+      "available": true,
+      "version": "0.34.0",
+      "disabled": false
+    }
+  },
+  "mcp_servers": {
+    "context7": {
+      "configured": true,
+      "source": "claude",
+      "detail": "HTTP https://mcp.context7.com/mcp"
+    },
+    "linear-server": {
+      "configured": true,
+      "source": "claude",
+      "detail": "HTTP https://mcp.linear.app/mcp"
+    },
+    "Ref": {
+      "configured": true,
+      "source": "claude",
+      "detail": "HTTP https://api.ref.tools/mcp"
+    },
+    "hex-line": {
+      "configured": true,
+      "source": "claude",
+      "detail": "stdio node mcp/hex-line-mcp/server.mjs"
+    },
+    "hex-graph": {
+      "configured": true,
+      "source": "claude",
+      "detail": "stdio node mcp/hex-graph-mcp/server.mjs"
+    },
+    "hex-ssh": {
+      "configured": true,
+      "source": "claude",
+      "detail": "stdio node mcp/hex-ssh-mcp/server.mjs"
+    }
+  },
+  "mcp_budget": {
+    "count": 6,
+    "estimated_tokens": 30000,
+    "percentage": 15.0,
+    "warning": "6 servers — above recommended 5, monitor token budget"
+  },
+  "hooks": {
+    "status": "ok",
+    "events": ["SessionStart", "PreToolUse", "PostToolUse"],
+    "scripts_found": 1,
+    "script": "mcp/hex-line-mcp/hook.mjs",
+    "rtk_enabled": true,
+    "dependencies": {
+      "node": "v24.12.0"
+    }
+  },
+  "claude_md": {
+    "exists": true,
+    "line_count": 80,
+    "has_timestamps": false,
+    "has_date_stamp": true,
+    "has_compact_instructions": true
+  },
+  "config_sync": {
+    "gemini": {
+      "synced": true,
+      "servers_count": 6,
+      "actions_taken": ["Added hex-ssh"]
+    },
+    "codex": {
+      "synced": true,
+      "servers_count": 6,
+      "actions_taken": ["Added hex-ssh"]
+    }
+  },
+  "best_practices": {
+    "score": "8/10",
+    "warnings": [
+      "MCP budget: 6 servers (30K tokens, 15%) — above 5-server threshold"
+    ],
+    "info": [
+      "No root package.json (skills repo, expected)",
+      "GEMINI.md Navigation table severely reduced (4 vs 11 entries in CLAUDE.md)"
+    ]
+  }
+}

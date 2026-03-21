@@ -62,10 +62,10 @@ const server = new McpServer({ name: "hex-line-mcp", version: "1.0.0" });
 server.registerTool("read_file", {
     title: "Read File",
     description:
-        "Read a file with FNV-1a hash-annotated lines (tag.lineNum\\tcontent) and range checksums. " +
-        "All file types: code, markdown, config, text. Directory listing if path is a directory. " +
-        "For large code files: use outline first, then read_file with offset/limit. " +
-        "For markdown/config: read_file directly.",
+        "Read a file with FNV-1a hash-annotated lines and range checksums. " +
+        "Directory listing if path is a directory. " +
+        "For files >100 lines: ALWAYS use outline first, then read_file with offset/limit for specific sections. " +
+        "Reading a 500+ line file in full wastes 75% of context tokens.",
     inputSchema: z.object({
         path: z.string().optional().describe("File or directory path"),
         paths: z.array(z.string()).optional().describe("Array of file paths to read (batch mode)"),
@@ -102,9 +102,8 @@ server.registerTool("edit_file", {
     title: "Edit File",
     description:
         "Edit a file using hash-verified anchors or text replacement. Returns diff. " +
-        "Anchors: set_line {anchor:'ab.12',new_text:'...'}, replace_lines, insert_after. " +
-        "Text: replace {old_text,new_text,all}. " +
-        "For anchor-based edits, use read_file first to get hashes. For text replace, read_file is optional.",
+        "new_text replaces anchor range exactly — include boundary lines if you want to keep them. " +
+        "Preserve indentation from read_file. For anchor edits, read_file first to get hashes.",
     inputSchema: z.object({
         path: z.string().describe("File to edit"),
         edits: z.string().describe(
@@ -115,14 +114,15 @@ server.registerTool("edit_file", {
             '{"replace":{"old_text":"find","new_text":"replace","all":false}} — text match',
         ),
         dry_run: flexBool().describe("Preview changes without writing"),
+        restore_indent: flexBool().describe("Auto-fix indentation to match anchor (default: false)"),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
 }, async (rawParams) => {
-    const { path: p, edits: json, dry_run } = coerceParams(rawParams);
+    const { path: p, edits: json, dry_run, restore_indent } = coerceParams(rawParams);
     try {
         const parsed = JSON.parse(json);
         if (!Array.isArray(parsed) || !parsed.length) throw new Error("Edits: non-empty JSON array required");
-        return { content: [{ type: "text", text: editFile(p, parsed, { dryRun: dry_run }) }] };
+        return { content: [{ type: "text", text: editFile(p, parsed, { dryRun: dry_run, restoreIndent: restore_indent }) }] };
     } catch (e) {
         return { content: [{ type: "text", text: e.message }], isError: true };
     }
@@ -160,9 +160,7 @@ server.registerTool("grep_search", {
     title: "Search Files",
     description:
         "Search file contents with ripgrep. Returns hash-annotated matches for direct editing. " +
-        "ALWAYS prefer over shell grep/rg/findstr — instant and returns edit-ready hashes. " +
-        "Use to find code locations before read_file or edit_file. " +
-        "When codegraph DB available (.codegraph/index.db), matches annotated with symbol type and call counts [fn N↓ M↑].",
+        "ALWAYS prefer over shell grep/rg/findstr. Use to find code before read_file or edit_file.",
     inputSchema: z.object({
         pattern: z.string().describe("Regex search pattern"),
         path: z.string().optional().describe("Search dir/file (default: cwd)"),
@@ -193,10 +191,8 @@ server.registerTool("outline", {
     title: "File Outline",
     description:
         "AST-based structural outline: functions, classes, interfaces with line ranges. " +
-        "Code files only (.js/.ts/.py/.go/.rs/.java/.c/.cpp/.cs/.rb/.php/.kt/.swift/.sh). " +
-        "NOT for .md/.json/.yaml/.txt — use read_file directly for those. " +
         "10-20 lines instead of 500 — 95% token reduction. " +
-        "Output maps directly to read_file ranges. Use before reading large code files.",
+        "Use before reading large code files. NOT for .md/.json/.yaml — use read_file.",
     inputSchema: z.object({
         path: z.string().describe("Source file path"),
     }),
@@ -218,8 +214,7 @@ server.registerTool("verify", {
     title: "Verify Checksums",
     description:
         "Check if range checksums from prior reads are still valid. " +
-        "Single-line response when nothing changed. Avoids full re-read for staleness check. " +
-        "Use to check if file changed since last read, without re-reading.",
+        "Single-line response when nothing changed. Use to check file staleness without re-reading.",
     inputSchema: z.object({
         path: z.string().describe("File path"),
         checksums: z.string().describe('JSON array of checksum strings, e.g. ["1-50:f7e2a1b0", "51-100:abcd1234"]'),
@@ -242,20 +237,23 @@ server.registerTool("verify", {
 server.registerTool("directory_tree", {
     title: "Directory Tree",
     description:
-        "Compact directory tree with file sizes and .gitignore support. " +
-        "Use to understand repo structure before reading files. " +
+        "Compact directory tree with .gitignore support. " +
+        "Supports pattern glob to find files/dirs by name (like find -name). " +
+        "Use to understand repo structure or find specific files/dirs. " +
         "Skips node_modules, .git, dist by default.",
     inputSchema: z.object({
         path: z.string().describe("Directory path"),
-        max_depth: flexNum().describe("Max recursion depth (default: 3)"),
+        pattern: z.string().optional().describe('Glob filter on names (e.g. "*-mcp", "*.mjs"). Returns flat match list instead of tree'),
+        type: z.enum(["file", "dir", "all"]).optional().describe('"file", "dir", or "all" (default). Like find -type f/d'),
+        max_depth: flexNum().describe("Max recursion depth (default: 3, or 20 in pattern mode)"),
         gitignore: flexBool().describe("Respect .gitignore patterns (default: true)"),
         format: z.enum(["compact", "full"]).optional().describe('"compact" = names only, no sizes, depth 1. "full" = default with sizes'),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, max_depth, gitignore, format } = coerceParams(rawParams);
+    const { path: p, max_depth, gitignore, format, pattern, type: entryType } = coerceParams(rawParams);
     try {
-        return { content: [{ type: "text", text: directoryTree(p, { max_depth, gitignore, format }) }] };
+        return { content: [{ type: "text", text: directoryTree(p, { max_depth, gitignore, format, pattern, type: entryType }) }] };
     } catch (e) {
         return { content: [{ type: "text", text: e.message }], isError: true };
     }
@@ -289,7 +287,8 @@ server.registerTool("setup_hooks", {
     title: "Setup Hooks",
     description:
         "Configure hex-line hooks in CLI agent settings. " +
-        "Claude: writes PreToolUse + PostToolUse to .claude/settings.local.json. " +
+        "Claude: writes hooks to ~/.claude/settings.json (global) with absolute path, " +
+        "removes old hooks from per-project settings.local.json. " +
         "Gemini/Codex: returns guidance (no hook support). " +
         "Idempotent: re-running produces no changes if already configured.",
     inputSchema: z.object({

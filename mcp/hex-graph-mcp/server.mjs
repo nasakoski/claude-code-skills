@@ -10,6 +10,17 @@
 
 import { z } from "zod";
 import { checkForUpdates } from "./lib/update-check.mjs";
+import { coerceParams } from "./lib/coerce.mjs";
+
+// LLM clients may send booleans/numbers as strings. Safe coercion.
+const flexBool = () => z.preprocess(
+    v => typeof v === "string" ? v === "true" : v,
+    z.boolean().optional()
+);
+const flexNum = () => z.preprocess(
+    v => typeof v === "string" ? Number(v) : v,
+    z.number().optional()
+);
 
 // --- SDK ---
 
@@ -45,7 +56,8 @@ server.registerTool("index_project", {
         languages: z.array(z.string()).optional().describe('Filter languages (e.g. ["javascript","python"]). Default: all supported'),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async ({ path: projectPath, languages }) => {
+}, async (rawParams) => {
+    const { path: projectPath, languages } = coerceParams(rawParams);
     try {
         const { indexProject } = await import("./lib/indexer.mjs");
         const result = await indexProject(projectPath, { languages });
@@ -66,10 +78,11 @@ server.registerTool("search_symbols", {
     inputSchema: z.object({
         query: z.string().describe("Symbol name or partial name to search"),
         kind: z.string().optional().describe('Filter by kind: "function", "class", "method", "variable", "import"'),
-        limit: z.coerce.number().optional().describe("Max results (default: 20)"),
+        limit: flexNum().describe("Max results (default: 20)"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async ({ query, kind, limit }) => {
+}, async (rawParams) => {
+    const { query, kind, limit } = coerceParams(rawParams);
     try {
         const { searchSymbols } = await import("./lib/store.mjs");
         const result = searchSymbols(query, { kind, limit });
@@ -90,11 +103,12 @@ server.registerTool("get_impact", {
         "Use BEFORE refactoring to understand consequences.",
     inputSchema: z.object({
         symbol: z.string().describe("Symbol name to analyze"),
-        depth: z.coerce.number().optional().describe("Max traversal depth (default: 3)"),
-        limit: z.coerce.number().optional().describe("Max results (default: 50)"),
+        depth: flexNum().describe("Max traversal depth (default: 3)"),
+        limit: flexNum().describe("Max results (default: 50)"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async ({ symbol, depth, limit }) => {
+}, async (rawParams) => {
+    const { symbol, depth, limit } = coerceParams(rawParams);
     try {
         const { getImpact } = await import("./lib/store.mjs");
         const result = getImpact(symbol, { depth, limit });
@@ -117,11 +131,12 @@ server.registerTool("trace_calls", {
     inputSchema: z.object({
         symbol: z.string().describe("Symbol name to trace"),
         direction: z.enum(["callers", "callees"]).optional().describe('Traversal direction (default: "callers")'),
-        depth: z.coerce.number().optional().describe("Max traversal depth (default: 3)"),
-        limit: z.coerce.number().optional().describe("Max results (default: 50)"),
+        depth: flexNum().describe("Max traversal depth (default: 3)"),
+        limit: flexNum().describe("Max results (default: 50)"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async ({ symbol, direction, depth, limit }) => {
+}, async (rawParams) => {
+    const { symbol, direction, depth, limit } = coerceParams(rawParams);
     try {
         const { traceCalls } = await import("./lib/store.mjs");
         const result = traceCalls(symbol, { direction, depth, limit });
@@ -145,7 +160,8 @@ server.registerTool("get_context", {
         symbol: z.string().describe("Symbol name to inspect"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async ({ symbol }) => {
+}, async (rawParams) => {
+    const { symbol } = coerceParams(rawParams);
     try {
         const { getContext } = await import("./lib/store.mjs");
         const result = getContext(symbol);
@@ -168,7 +184,8 @@ server.registerTool("get_architecture", {
         path: z.string().optional().describe("Scope to subdirectory (default: entire indexed project)"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async ({ path: scopePath }) => {
+}, async (rawParams) => {
+    const { path: scopePath } = coerceParams(rawParams);
     try {
         const { getArchitecture } = await import("./lib/store.mjs");
         const result = getArchitecture(scopePath);
@@ -191,7 +208,8 @@ server.registerTool("watch_project", {
         path: z.string().describe("Project root directory to watch"),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-}, async ({ path: projectPath }) => {
+}, async (rawParams) => {
+    const { path: projectPath } = coerceParams(rawParams);
     try {
         const { watchProject } = await import("./lib/watcher.mjs");
         const result = watchProject(projectPath);
