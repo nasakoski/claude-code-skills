@@ -36,7 +36,7 @@ try {
     process.exit(1);
 }
 
-const server = new McpServer({ name: "hex-graph-mcp", version: "0.1.0" });
+const server = new McpServer({ name: "hex-graph-mcp", version: "0.2.0" });
 
 // --- Error helper (MCP_TOOL_DESIGN_GUIDE Rule 3) ---
 function graphError(code, message, recovery) {

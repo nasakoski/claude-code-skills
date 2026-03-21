@@ -1,6 +1,6 @@
 {
   "name": "@levnikolaevich/hex-ssh-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Token-efficient SSH MCP server with hash-verified file operations. 6 tools: remote-ssh, ssh-read-lines, ssh-edit-block, ssh-search-code, ssh-write-chunk, ssh-verify.",
   "type": "module",
   "main": "server.mjs",

@@ -1,6 +1,6 @@
 {
   "name": "@levnikolaevich/hex-graph-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Code knowledge graph MCP server. Indexes codebases into SQLite graph via tree-sitter AST. 7 tools: index_project, search_symbols, get_impact, trace_calls, get_context, get_architecture, watch_project.",
   "main": "server.mjs",
