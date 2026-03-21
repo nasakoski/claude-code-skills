@@ -43,13 +43,8 @@ PreToolUse also intercepts simple Bash commands: cat, head, tail, ls, tree, find
 ### MCP Server
 
 ```bash
-claude mcp add -s user hex-line -- node path/to/mcp/hex-line-mcp/server.mjs
-```
-
-Then install dependencies:
-
-```bash
-cd mcp/hex-line-mcp && npm install
+npm i -g @levnikolaevich/hex-line-mcp
+claude mcp add -s user hex-line -- hex-line-mcp
 ```
 
 ### Hooks
@@ -60,16 +55,7 @@ Automatic setup (run once after MCP install):
 mcp__hex-line__setup_hooks(agent="claude")
 ```
 
-Or manual — add to `.claude/settings.local.json`:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [{"matcher": "Read|Edit|Write|Grep|Bash", "hooks": [{"type": "command", "command": "node mcp/hex-line-mcp/hook.mjs", "timeout": 5}]}],
-    "PostToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "node mcp/hex-line-mcp/hook.mjs", "timeout": 10}]}]
-  }
-}
-```
+Hooks are written to global `~/.claude/settings.json` with absolute path to `hook.mjs` from the global npm install. Manual configuration is not needed.
 
 ### Output Style
 

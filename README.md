@@ -118,13 +118,16 @@ Skills use MCP servers for research, documentation lookup, file editing, and tas
 **CLI setup:**
 ```bash
 # hex-line — hash-verified file editing (bundled)
-claude mcp add -s user hex-line -- npx -y @levnikolaevich/hex-line-mcp
+npm i -g @levnikolaevich/hex-line-mcp
+claude mcp add -s user hex-line -- hex-line-mcp
 
 # hex-ssh — token-efficient SSH with hash verification (bundled)
-claude mcp add -s user hex-ssh -- npx -y @levnikolaevich/hex-ssh-mcp
+npm i -g @levnikolaevich/hex-ssh-mcp
+claude mcp add -s user hex-ssh -- hex-ssh-mcp
 
 # hex-graph — code knowledge graph (bundled)
-claude mcp add -s user hex-graph -- npx -y @levnikolaevich/hex-graph-mcp
+npm i -g @levnikolaevich/hex-graph-mcp
+claude mcp add -s user hex-graph -- hex-graph-mcp
 
 # Context7 — library documentation (HTTP, optional API key)
 claude mcp add -s user --transport http --header "CONTEXT7_API_KEY: YOUR_KEY" context7 https://mcp.context7.com/mcp

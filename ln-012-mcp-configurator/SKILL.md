@@ -30,14 +30,14 @@ Two transport types: **stdio** (local process) and **HTTP** (cloud endpoint).
 
 | Server | Transport | Source | Required | API Key |
 |--------|-----------|--------|----------|---------|
-| hex-line | stdio | local `mcp/hex-line-mcp/server.mjs` OR `npx -y @levnikolaevich/hex-line-mcp` | Yes | No |
-| hex-ssh | stdio | local `mcp/hex-ssh-mcp/server.mjs` OR `npx -y @levnikolaevich/hex-ssh-mcp` | No | No |
-| hex-graph | stdio | local `mcp/hex-graph-mcp/server.mjs` | No | No |
+| hex-line | stdio | `npm i -g @levnikolaevich/hex-line-mcp` → `hex-line-mcp` | Yes | No |
+| hex-ssh | stdio | `npm i -g @levnikolaevich/hex-ssh-mcp` → `hex-ssh-mcp` | No | No |
+| hex-graph | stdio | `npm i -g @levnikolaevich/hex-graph-mcp` → `hex-graph-mcp` | No | No |
 | context7 | HTTP | `https://mcp.context7.com/mcp` | Yes | Optional |
 | Ref | HTTP | `https://api.ref.tools/mcp` | Yes | Yes (prompt user) |
 | linear | HTTP | `https://mcp.linear.app/mcp` | Ask user | No (OAuth) |
 
-**hex-line/hex-ssh/hex-graph source selection:** Prefer local path if skills repo is cloned and `mcp/` directory exists. Otherwise use `npx -y {pkg}` (not available for hex-graph yet).
+**hex-line/hex-ssh/hex-graph source selection:** Prefer global install (`npm i -g`). Hooks require stable absolute path — `npx` cache is ephemeral and rejected by `setup_hooks`. Use local `node {repo}/mcp/*/server.mjs` only for active MCP development.
 
 ---
 
@@ -75,11 +75,12 @@ Registration commands by server and source:
 
 | Server | Command |
 |--------|---------|
-| hex-line (local) | `claude mcp add -s user hex-line -- node {repo}/mcp/hex-line-mcp/server.mjs` |
-| hex-line (npm) | `claude mcp add -s user hex-line -- npx -y @levnikolaevich/hex-line-mcp` |
-| hex-ssh (local) | `claude mcp add -s user hex-ssh -- node {repo}/mcp/hex-ssh-mcp/server.mjs` |
-| hex-ssh (npm) | `claude mcp add -s user hex-ssh -- npx -y @levnikolaevich/hex-ssh-mcp` |
-| hex-graph (local) | `claude mcp add -s user hex-graph -- node {repo}/mcp/hex-graph-mcp/server.mjs` |
+| hex-line (global) | `npm i -g @levnikolaevich/hex-line-mcp` then `claude mcp add -s user hex-line -- hex-line-mcp` |
+| hex-ssh (global) | `npm i -g @levnikolaevich/hex-ssh-mcp` then `claude mcp add -s user hex-ssh -- hex-ssh-mcp` |
+| hex-graph (global) | `npm i -g @levnikolaevich/hex-graph-mcp` then `claude mcp add -s user hex-graph -- hex-graph-mcp` |
+| hex-line (dev) | `claude mcp add -s user hex-line -- node {repo}/mcp/hex-line-mcp/server.mjs` |
+| hex-ssh (dev) | `claude mcp add -s user hex-ssh -- node {repo}/mcp/hex-ssh-mcp/server.mjs` |
+| hex-graph (dev) | `claude mcp add -s user hex-graph -- node {repo}/mcp/hex-graph-mcp/server.mjs` |
 | context7 | `claude mcp add -s user --transport http context7 https://mcp.context7.com/mcp` |
 | Ref | `claude mcp add -s user --transport http Ref https://api.ref.tools/mcp` |
 | linear | `claude mcp add -s user --transport http linear-server https://mcp.linear.app/mcp` |
@@ -145,8 +146,8 @@ Budget warnings:
 MCP Configuration:
 | Server    | Transport | Status        | Permission | Detail                  |
 |-----------|-----------|---------------|------------|-------------------------|
-| hex-line  | stdio     | configured    | granted    | local server.mjs        |
-| hex-ssh   | stdio     | added         | granted    | local server.mjs        |
+| hex-line  | stdio     | configured    | granted    | global npm (hex-line-mcp) |
+| hex-ssh   | stdio     | added         | granted    | global npm (hex-ssh-mcp)  |
 | context7  | HTTP      | configured    | granted    | mcp.context7.com        |
 | Ref       | HTTP      | configured    | granted    | api.ref.tools (key set) |
 | linear    | HTTP      | skipped       | skipped    | user declined           |
@@ -181,7 +182,7 @@ If benchmark shows >50% savings on outline+read → recommend adding hex-line ho
 1. **Claude configs are read-only.** Use `claude mcp add` CLI to register servers. Never write directly to Claude JSON files
 2. **Verify after add.** Always run `claude mcp list` after registration to confirm connection
 3. **Ask before optional servers.** Linear requires explicit user consent
-4. **Prefer local source.** For hex-line/hex-ssh, use local `server.mjs` when available
+4. **Prefer global install.** Use `npm i -g` for hex-line/hex-ssh/hex-graph — hooks need stable paths. Local only for active MCP development
 5. **Remove deprecated servers.** Clean up servers no longer in the registry
 6. **Grant permissions.** After registration, add `mcp__{server}` to user `~/.claude/settings.json`
 

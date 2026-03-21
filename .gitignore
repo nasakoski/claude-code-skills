@@ -101,3 +101,4 @@ wheels/
 .*.sw*
 NUL
 /docs/research
+/docs/environment_state.json

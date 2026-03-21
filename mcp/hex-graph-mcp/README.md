@@ -20,13 +20,8 @@ Code knowledge graph MCP server. Indexes codebases into a SQLite graph via tree-
 ## Install
 
 ```bash
-claude mcp add -s user hex-graph -- node path/to/mcp/hex-graph-mcp/server.mjs
-```
-
-Then install dependencies:
-
-```bash
-cd mcp/hex-graph-mcp && npm install
+npm i -g @levnikolaevich/hex-graph-mcp
+claude mcp add -s user hex-graph -- hex-graph-mcp
 ```
 
 Or add to `.claude/settings.json` directly:

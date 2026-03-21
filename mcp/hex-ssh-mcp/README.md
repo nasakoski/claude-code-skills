@@ -31,13 +31,8 @@ Built into `remote-ssh` and `ssh-search-code`. Pipeline:
 ## Install
 
 ```bash
-claude mcp add -s user hex-ssh -e ALLOWED_HOSTS=server1,server2 -- node path/to/mcp/hex-ssh-mcp/server.mjs
-```
-
-Then install dependencies:
-
-```bash
-cd mcp/hex-ssh-mcp && npm install
+npm i -g @levnikolaevich/hex-ssh-mcp
+claude mcp add -s user hex-ssh -e ALLOWED_HOSTS=server1,server2 -- hex-ssh-mcp
 ```
 
 Requires Node.js >= 18.0.0.
