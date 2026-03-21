@@ -30,6 +30,7 @@ export function grepSearch(pattern, opts = {}) {
         const plain = !!opts.plain;
 
         if (opts.caseInsensitive) args.push("-i");
+        else if (opts.smartCase) args.push("-S");
         if (opts.context && opts.context > 0) args.push("-C", String(opts.context));
         if (opts.glob) args.push("--glob", opts.glob);
         if (opts.type) args.push("--type", opts.type);

@@ -54,7 +54,7 @@ try {
     process.exit(1);
 }
 
-const server = new McpServer({ name: "hex-line-mcp", version: "1.1.2" });
+const server = new McpServer({ name: "hex-line-mcp", version: "1.2.0" });
 
 
 // ==================== read_file ====================
@@ -166,17 +166,18 @@ server.registerTool("grep_search", {
         path: z.string().optional().describe("Search dir/file (default: cwd)"),
         glob: z.string().optional().describe('Glob filter (e.g. "*.ts")'),
         type: z.string().optional().describe('File type (e.g. "js", "py")'),
-        case_insensitive: flexBool().describe("Ignore case"),
+        case_insensitive: flexBool().describe("Ignore case (-i)"),
+        smart_case: flexBool().describe("CI when pattern is all lowercase, CS if it has uppercase (-S)"),
         context: flexNum().describe("Context lines around matches"),
         limit: flexNum().describe("Max matches per file (default: 100)"),
         plain: flexBool().describe("Omit hash tags, return file:line:content"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { pattern, path: p, glob, type, case_insensitive, context, limit, plain } = coerceParams(rawParams);
+    const { pattern, path: p, glob, type, case_insensitive, smart_case, context, limit, plain } = coerceParams(rawParams);
     try {
         const result = await grepSearch(pattern, {
-            path: p, glob, type, caseInsensitive: case_insensitive, context, limit, plain,
+            path: p, glob, type, caseInsensitive: case_insensitive, smartCase: smart_case, context, limit, plain,
         });
         return { content: [{ type: "text", text: result }] };
     } catch (e) {
@@ -364,4 +365,4 @@ server.registerTool("bulk_replace", {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-void checkForUpdates("@levnikolaevich/hex-line-mcp", "1.1.2");
+void checkForUpdates("@levnikolaevich/hex-line-mcp", "1.2.0");

@@ -282,3 +282,26 @@ describe("read_file output", () => {
         }
     });
 });
+
+// ==================== grep_search ====================
+
+describe("grep_search case modes", () => {
+    it("default is case-sensitive", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        // server.mjs has 'Search' (uppercase) — lowercase 'search' should miss it in CS mode
+        const cs = await grepSearch("search", { path: CWD + "/server.mjs", plain: true });
+        const ci = await grepSearch("search", { path: CWD + "/server.mjs", plain: true, caseInsensitive: true });
+        const csCount = cs.split("\n").filter(l => l.trim()).length;
+        const ciCount = ci.split("\n").filter(l => l.trim()).length;
+        assert.ok(ciCount > csCount, `CI (${ciCount}) should find more than CS (${csCount})`);
+    });
+
+    it("smart_case: lowercase pattern is CI, uppercase pattern is CS", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        const lower = await grepSearch("search", { path: CWD + "/server.mjs", plain: true, smartCase: true });
+        const upper = await grepSearch("Search", { path: CWD + "/server.mjs", plain: true, smartCase: true });
+        const lowerCount = lower.split("\n").filter(l => l.trim()).length;
+        const upperCount = upper.split("\n").filter(l => l.trim()).length;
+        assert.ok(lowerCount > upperCount, `lowercase (${lowerCount}) should find more than uppercase (${upperCount})`);
+    });
+});
