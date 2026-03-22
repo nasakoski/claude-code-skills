@@ -12,12 +12,6 @@ const ALIASES = {
     // grep_search
     query: "pattern",
     search: "pattern",
-    max_results: "limit",
-    maxResults: "limit",
-    maxMatches: "limit",
-    max_matches: "limit",
-    contextLines: "context",
-    context_lines: "context",
     ignoreCase: "case_insensitive",
     ignore_case: "case_insensitive",
 

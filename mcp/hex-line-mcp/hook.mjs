@@ -23,7 +23,7 @@
  * Exit 2 = block (PreToolUse) or feedback via stderr (PostToolUse)
  */
 
-import { deduplicateLines, smartTruncate } from "./lib/normalize.mjs";
+import { normalizeOutput } from "./lib/normalize.mjs";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { homedir } from "node:os";
@@ -57,13 +57,13 @@ const TOOL_HINTS = {
     Read:  "mcp__hex-line__read_file (not Read). For writing: write_file (no prior Read needed)",
     Edit:  "mcp__hex-line__edit_file (not Edit, not sed -i). read_file first for hashes",
     Write: "mcp__hex-line__write_file (not Write). No prior Read needed",
-    Grep:  "mcp__hex-line__grep_search (not Grep). Params: case_insensitive, smart_case",
+    Grep:  "mcp__hex-line__grep_search (not Grep). Params: output, literal, context_before, context_after, multiline",
     cat:   "mcp__hex-line__read_file (not cat/head/tail/less/more)",
     head:  "mcp__hex-line__read_file with limit param (not head)",
     tail:  "mcp__hex-line__read_file with offset param (not tail)",
     ls:    "mcp__hex-line__directory_tree with pattern param (not ls/find/tree). E.g. pattern='*-mcp' type='dir'",
     stat:  "mcp__hex-line__get_file_info (not stat/wc/file)",
-    grep:  "mcp__hex-line__grep_search (not grep/rg). Params: case_insensitive, smart_case",
+    grep:  "mcp__hex-line__grep_search (not grep/rg). Params: output, literal, context_before, context_after, multiline",
     sed:   "mcp__hex-line__edit_file (not sed -i). read_file first for hashes",
     diff:  "mcp__hex-line__changes (not diff). Git-based semantic diff",
     outline: "mcp__hex-line__outline (before reading large code files)",
@@ -335,10 +335,8 @@ function handlePostToolUse(data) {
 
     const type = detectCommandType(command);
 
-    // Pipeline: deduplicate -> smart truncate
-    const deduped = deduplicateLines(lines);
-    const dedupedText = deduped.join("\n");
-    const filtered = smartTruncate(dedupedText, HEAD_LINES, TAIL_LINES);
+    // Pipeline: normalize -> deduplicate -> smart truncate
+    const filtered = normalizeOutput(lines.join("\n"), { headLines: HEAD_LINES, tailLines: TAIL_LINES });
     const filteredCount = filtered.split("\n").length;
 
     const header = `RTK FILTERED: ${type} (${originalCount} lines -> ${filteredCount} lines)`;
@@ -400,31 +398,36 @@ function handleSessionStart() {
 }
 
 // ---- Main: read stdin, route by hook_event_name ----
+// Guard: only run when executed directly, not when imported for testing
 
-let input = "";
-process.stdin.on("data", (chunk) => {
-    input += chunk;
-});
-process.stdin.on("end", () => {
-    try {
-        const data = JSON.parse(input);
-        const event = data.hook_event_name || "";
+import { fileURLToPath } from "node:url";
 
-        if (isHexLineDisabled()) {
-            // REVERSE MODE: block hex-line calls, approve everything else
-            if (event === "PreToolUse") handlePreToolUseReverse(data);
-            process.exit(0); // SessionStart, PostToolUse — silent exit
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    let input = "";
+    process.stdin.on("data", (chunk) => {
+        input += chunk;
+    });
+    process.stdin.on("end", () => {
+        try {
+            const data = JSON.parse(input);
+            const event = data.hook_event_name || "";
+
+            if (isHexLineDisabled()) {
+                // REVERSE MODE: block hex-line calls, approve everything else
+                if (event === "PreToolUse") handlePreToolUseReverse(data);
+                process.exit(0); // SessionStart, PostToolUse — silent exit
+            }
+
+            // NORMAL MODE
+            if (event === "SessionStart") handleSessionStart();
+            else if (event === "PreToolUse") handlePreToolUse(data);
+            else if (event === "PostToolUse") handlePostToolUse(data);
+            else process.exit(0);
+        } catch {
+            process.exit(0);
         }
-
-        // NORMAL MODE
-        if (event === "SessionStart") handleSessionStart();
-        else if (event === "PreToolUse") handlePreToolUse(data);
-        else if (event === "PostToolUse") handlePostToolUse(data);
-        else process.exit(0);
-    } catch {
-        process.exit(0);
-    }
-});
+    });
+}
 
 // ---- Exports for testing ----
 export { isHexLineDisabled, _resetHexLineDisabledCache };

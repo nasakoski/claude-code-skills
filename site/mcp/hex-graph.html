@@ -126,6 +126,44 @@
       max-width: 600px;
     }
 
+    /* -- INTRO -- */
+    .intro {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 720px;
+      line-height: 1.7;
+    }
+    .callout {
+      background: var(--bg-card);
+      border-left: 3px solid var(--accent);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-top: 24px;
+      font-style: italic;
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.7;
+      max-width: 720px;
+    }
+
+    /* -- SCENARIOS -- */
+    .scenario { margin-bottom: 32px; }
+    .scenario-title {
+      font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-primary);
+    }
+    .scenario-icon { font-size: 1.3rem; }
+    .scenario p { color: var(--text-secondary); font-size: 15px; line-height: 1.7; }
+    .scenario-result {
+      margin-top: 12px; padding: 12px 16px;
+      background: var(--bg-primary); border-left: 3px solid var(--green);
+      border-radius: 0 8px 8px 0; font-family: var(--font-mono); font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .scenario-result strong { color: var(--green); }
+    .scenario-result .note { color: var(--amber); }
+
     /* -- TABLE -- */
     .table-wrap {
       overflow-x: auto;
@@ -161,7 +199,6 @@
       white-space: nowrap;
     }
     .tool-desc { color: var(--text-secondary); }
-    .tool-feature { color: var(--text-muted); font-size: 13px; }
 
     /* -- WORKFLOW BLOCK -- */
     .workflow-block {
@@ -206,35 +243,25 @@
       font-weight: 700;
     }
 
-    /* -- BENCHMARK -- */
+    /* -- BENCHMARK (details/summary) -- */
+    details { margin-top: 24px; }
+    details summary {
+      cursor: pointer; font-weight: 600; font-size: 15px;
+      color: var(--accent-light); padding: 12px 0;
+    }
+    details summary:hover { color: #bfb3ff; }
+    details[open] summary { margin-bottom: 16px; }
+
     .savings-high { color: var(--green); font-weight: 700; }
     .savings-note { color: var(--amber); font-weight: 700; }
-    .benchmark-note {
-      margin-top: 16px;
-      padding: 12px 16px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-    }
-    .benchmark-note strong { color: var(--amber); }
+
     .summary-box {
-      margin-top: 24px;
-      padding: 20px 24px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-left: 4px solid var(--green);
-      border-radius: 10px;
-    }
-    .summary-box p {
-      font-size: 15px;
+      margin-top: 24px; padding: 16px 20px;
+      background: var(--bg-card); border-left: 3px solid var(--green);
+      border-radius: 0 8px 8px 0; font-family: var(--font-mono); font-size: 14px;
       color: var(--text-secondary);
-      line-height: 1.7;
     }
-    .summary-box strong { color: var(--text-primary); }
-    .summary-box .highlight { color: var(--green); font-weight: 700; }
+    .summary-box strong { color: var(--green); }
 
     /* -- HEX FAMILY -- */
     .npm-link {
@@ -293,51 +320,90 @@
     </div>
   </header>
 
-  <!-- TOOLS -->
+  <!-- INTRO -->
   <section>
     <div class="container">
-      <h2>Tools</h2>
-      <p class="section-desc">7 MCP tools for code knowledge graph operations.</p>
+      <p class="intro">Grep finds text. hex-graph understands code. It indexes your codebase into a SQLite knowledge graph via tree-sitter AST parsing &mdash; functions, classes, methods, imports, call edges. Then answers structural questions in milliseconds that would take an agent dozens of file reads.</p>
+      <div class="callout">The graph stores relationships, not just locations. When you ask &ldquo;who calls this function?&rdquo;, it doesn&rsquo;t grep &mdash; it walks edges.</div>
+    </div>
+  </section>
+
+  <!-- WHEN IT MATTERS -->
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>When it matters</h2>
+      <p class="section-desc">Real scenarios where a knowledge graph changes the game.</p>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#129300;</span> Understand an unfamiliar codebase</div>
+        <p>A new team member asks &ldquo;what does UserService do?&rdquo; An agent with grep reads the class definition, then searches for callers, then reads those files, then searches for their callers. Four separate tool calls, 38,611 characters of context. An agent with hex-graph calls <code>get_context("UserService")</code> &mdash; one request returns the definition, all callers, all callees, sibling methods, and file context. 1,274 characters.</p>
+        <div class="scenario-result">38,611 &rarr; 1,274 ch. <strong>97% savings.</strong> 4 tool calls &rarr; 1.</div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#128163;</span> Check blast radius before refactoring</div>
+        <p>&ldquo;What breaks if I change <code>calculateTotal</code>?&rdquo; Grep finds direct references but misses transitive dependencies &mdash; the function that calls the function that calls <code>calculateTotal</code>. hex-graph&rsquo;s <code>get_impact</code> walks reverse dependency edges recursively (depth&nbsp;3). It finds the complete chain of everything affected.</p>
+        <div class="scenario-result">hex-graph returns <span class="note">MORE data (-167%)</span> because it finds what grep misses: the full dependency tree. <strong>Completeness, not inefficiency.</strong></div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#128269;</span> Find all entry points</div>
+        <p>&ldquo;Who ultimately calls <code>validateInput</code>?&rdquo; The agent needs to trace callers 3 levels deep. With grep: read the file, find callers, read those files, find their callers, read again &mdash; 12,716 characters across 4 tool calls. With hex-graph: <code>trace_calls("validateInput", direction="callers", depth=3)</code> &mdash; 477 characters, 1 call. The full call chain, served from the graph.</p>
+        <div class="scenario-result">12,716 &rarr; 477 ch. <strong>96% savings.</strong> 4 tool calls &rarr; 1.</div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#127959;</span> Get architecture overview</div>
+        <p>New to a 50-file project? An agent needs to build a mental map. With built-in tools, it reads every file &mdash; 389,523 characters across 50 Read calls. With hex-graph: <code>get_architecture()</code> returns the module matrix (which directories depend on which), dependency counts between modules, and hotspot functions (most connected symbols). One call, 2,941 characters.</p>
+        <div class="scenario-result">389,523 &rarr; 2,941 ch. <strong>99% savings.</strong> 50 tool calls &rarr; 1. The single most impactful scenario.</div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#128260;</span> Keep the graph current</div>
+        <p>Call <code>watch_project</code> once and forget about it. Chokidar monitors the file system &mdash; every save triggers an incremental AST reparse of just that file. Deleted files CASCADE-clean their graph nodes and edges. No manual reindex, no stale data. The graph is always current.</p>
+        <div class="scenario-result">Incremental updates. <strong>8ms index cost</strong> for 52 files. Break-even: 1 query.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 TOOLS -->
+  <section>
+    <div class="container">
+      <h2>7 tools</h2>
+      <p class="section-desc">Everything you need to query the knowledge graph.</p>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Tool</th><th>Description</th><th>Key Feature</th></tr>
+            <tr><th>Tool</th><th>What it does</th></tr>
           </thead>
           <tbody>
             <tr>
               <td class="tool-name">index_project</td>
-              <td class="tool-desc">Scan and index project into knowledge graph</td>
-              <td class="tool-feature">Idempotent, skips unchanged files</td>
+              <td class="tool-desc">Scan and index project into a knowledge graph. Idempotent, skips unchanged files</td>
             </tr>
             <tr>
               <td class="tool-name">search_symbols</td>
-              <td class="tool-desc">Full-text search for symbols by name</td>
-              <td class="tool-feature">FTS5, filter by kind</td>
+              <td class="tool-desc">Full-text search for symbols (functions, classes, methods). FTS5, filter by kind</td>
             </tr>
             <tr>
               <td class="tool-name">get_impact</td>
-              <td class="tool-desc">Blast radius analysis for a symbol</td>
-              <td class="tool-feature">Reverse dependency traversal</td>
+              <td class="tool-desc">Blast radius analysis: what symbols and files are affected by a change</td>
             </tr>
             <tr>
               <td class="tool-name">trace_calls</td>
-              <td class="tool-desc">Trace call chains (callers or callees)</td>
-              <td class="tool-feature">BFS with configurable depth</td>
+              <td class="tool-desc">Trace call chains &mdash; who calls this (callers) or what does it call (callees)</td>
             </tr>
             <tr>
               <td class="tool-name">get_context</td>
-              <td class="tool-desc">360-degree view of a symbol</td>
-              <td class="tool-feature">Definition, callers, callees, siblings</td>
+              <td class="tool-desc">360-degree view: definition, callers, callees, siblings, file context</td>
             </tr>
             <tr>
               <td class="tool-name">get_architecture</td>
-              <td class="tool-desc">Project architecture overview</td>
-              <td class="tool-feature">Module matrix, hotspots</td>
+              <td class="tool-desc">Module matrix, cross-module dependencies, hotspot symbols</td>
             </tr>
             <tr>
               <td class="tool-name">watch_project</td>
-              <td class="tool-desc">File watcher for incremental graph updates</td>
-              <td class="tool-feature">Singleton, CASCADE cleanup on delete</td>
+              <td class="tool-desc">File watcher for incremental graph updates. Singleton per project</td>
             </tr>
           </tbody>
         </table>
@@ -345,139 +411,87 @@
     </div>
   </section>
 
-  <!-- USE CASES -->
+  <!-- FULL BENCHMARK -->
   <section style="background: var(--bg-secondary);">
     <div class="container">
-      <h2>Use Cases</h2>
-      <p class="section-desc">Common scenarios and the right tool for each.</p>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Scenario</th><th>Tool</th><th>Example</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Find a function</td>
-              <td class="tool-name">search_symbols</td>
-              <td class="tool-feature">query: "handleAuth"</td>
-            </tr>
-            <tr>
-              <td>Understand unfamiliar code</td>
-              <td class="tool-name">get_context</td>
-              <td class="tool-feature">symbol: "UserService"</td>
-            </tr>
-            <tr>
-              <td>Pre-refactoring check</td>
-              <td class="tool-name">get_impact</td>
-              <td class="tool-feature">symbol: "calculateTotal", depth: 4</td>
-            </tr>
-            <tr>
-              <td>Find entry points</td>
-              <td class="tool-name">trace_calls</td>
-              <td class="tool-feature">symbol: "validateInput", direction: "callers"</td>
-            </tr>
-            <tr>
-              <td>Codebase overview</td>
-              <td class="tool-name">get_architecture</td>
-              <td class="tool-feature">First call after index_project</td>
-            </tr>
-            <tr>
-              <td>Continuous sync</td>
-              <td class="tool-name">watch_project</td>
-              <td class="tool-feature">Start once, graph stays current</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- BENCHMARK -->
-  <section>
-    <div class="container">
       <h2>Token Efficiency</h2>
-      <p class="section-desc">Built-in grep/read vs hex-graph &mdash; 50 files, 422 symbols indexed</p>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>#</th><th>Scenario</th><th>Built-in</th><th>Hex-graph</th><th>Savings</th><th>Ops</th><th>Steps</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>Search symbols</td>
-              <td>5,800 ch</td>
-              <td>196 ch</td>
-              <td class="savings-high">97%</td>
-              <td class="tool-feature">1&rarr;1</td>
-              <td class="tool-feature">1&rarr;1</td>
-            </tr>
-            <tr>
-              <td>2</td>
-              <td>Get context (360&deg;)</td>
-              <td>38,611 ch</td>
-              <td>1,274 ch</td>
-              <td class="savings-high">97%</td>
-              <td class="tool-feature">4&rarr;1</td>
-              <td class="tool-feature">4&rarr;1</td>
-            </tr>
-            <tr>
-              <td>3</td>
-              <td>Get impact (blast radius)</td>
-              <td>969 ch</td>
-              <td>2,590 ch</td>
-              <td class="savings-note">-167%</td>
-              <td class="tool-feature">6&rarr;1</td>
-              <td class="tool-feature">3&rarr;1</td>
-            </tr>
-            <tr>
-              <td>4</td>
-              <td>Trace calls (callers)</td>
-              <td>12,716 ch</td>
-              <td>477 ch</td>
-              <td class="savings-high">96%</td>
-              <td class="tool-feature">4&rarr;1</td>
-              <td class="tool-feature">3&rarr;1</td>
-            </tr>
-            <tr>
-              <td>5</td>
-              <td>Architecture overview</td>
-              <td>389,523 ch</td>
-              <td>2,941 ch</td>
-              <td class="savings-high">99%</td>
-              <td class="tool-feature">50&rarr;1</td>
-              <td class="tool-feature">50&rarr;1</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="benchmark-note">
-        <strong>Test 3 shows -167%:</strong> hex-graph returns MORE data because it recursively expands the full blast radius (depth 3), while grep finds only surface matches. This demonstrates completeness, not inefficiency.
-      </div>
+      <p class="section-desc">Built-in grep/read vs hex-graph on a real codebase.</p>
+      <details>
+        <summary>Full benchmark (50 files, 422 symbols indexed)</summary>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Scenario</th><th>Built-in</th><th>Hex-graph</th><th>Savings</th><th>Ops</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>Search symbols</td>
+                <td>5,800 ch</td>
+                <td>196 ch</td>
+                <td class="savings-high">97%</td>
+                <td class="tool-desc">1&rarr;1</td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>Get context (360&deg;)</td>
+                <td>38,611 ch</td>
+                <td>1,274 ch</td>
+                <td class="savings-high">97%</td>
+                <td class="tool-desc">4&rarr;1</td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>Get impact (blast radius)</td>
+                <td>969 ch</td>
+                <td>2,590 ch</td>
+                <td class="savings-note">-167%</td>
+                <td class="tool-desc">6&rarr;1</td>
+              </tr>
+              <tr>
+                <td>4</td>
+                <td>Trace calls (callers)</td>
+                <td>12,716 ch</td>
+                <td>477 ch</td>
+                <td class="savings-high">96%</td>
+                <td class="tool-desc">4&rarr;1</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>Architecture overview</td>
+                <td>389,523 ch</td>
+                <td>2,941 ch</td>
+                <td class="savings-high">99%</td>
+                <td class="tool-desc">50&rarr;1</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
       <div class="summary-box">
-        <p><strong>Average:</strong> <span class="highlight">44% tokens saved</span> | <strong>65&rarr;5 ops</strong> (92% reduction) | <strong>61&rarr;5 steps</strong></p>
-        <p><strong>Index cost:</strong> 8ms for 52 files. Break-even: 1 query.</p>
+        <strong>Average: 44% tokens saved</strong> | 65&rarr;5 ops (92% reduction) | 61&rarr;5 steps | Index: 8ms for 52 files
       </div>
     </div>
   </section>
 
   <!-- ARCHITECTURE -->
-  <section style="background: var(--bg-secondary);">
+  <section>
     <div class="container">
       <h2>Architecture</h2>
       <div class="workflow-block">
+        <p>Built on SQLite and tree-sitter &mdash; fast indexing, instant queries, zero external services.</p>
         <ul>
-          <li><strong>Storage:</strong> SQLite via better-sqlite3, single <code>.hex-graph.db</code> per project</li>
-          <li><strong>Parsing:</strong> tree-sitter WASM &mdash; 15+ languages (JS, TS, Python, Go, Rust, Java, C, C++, C#, Ruby, PHP, Kotlin, Swift, Bash)</li>
-          <li><strong>Indexer:</strong> 4-pass pipeline &mdash; PURGE &rarr; SCAN &rarr; PARSE &rarr; RESOLVE</li>
-          <li><strong>Watcher:</strong> chokidar for incremental updates, CASCADE cleanup on delete</li>
+          <li><strong>Storage:</strong> SQLite via better-sqlite3. Single <code>.hex-graph.db</code> file per project. FTS5 for fast symbol search.</li>
+          <li><strong>Parsing:</strong> tree-sitter WASM &mdash; 15+ languages (JavaScript, TypeScript, Python, Go, Rust, Java, C, C++, C#, Ruby, PHP, Kotlin, Swift, Bash).</li>
+          <li><strong>Indexer:</strong> 4-pass pipeline: PURGE old data &rarr; SCAN files &rarr; PARSE AST &rarr; RESOLVE cross-file references.</li>
+          <li><strong>Watcher:</strong> Chokidar file system events. Incremental reparse on change, CASCADE cleanup on delete.</li>
         </ul>
       </div>
     </div>
   </section>
 
   <!-- HEX FAMILY -->
-  <section>
+  <section style="background: var(--bg-secondary);">
     <div class="container">
       <h2>Hex MCP Family</h2>
       <p class="section-desc">Three packages, one workflow.</p>

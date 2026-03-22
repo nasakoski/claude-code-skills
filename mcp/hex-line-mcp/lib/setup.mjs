@@ -18,9 +18,6 @@ const __dirname = dirname(__filename);
 const HOOK_SCRIPT = resolve(__dirname, "..", "hook.mjs").replace(/\\/g, "/");
 const HOOK_COMMAND = `node ${HOOK_SCRIPT}`;
 
-// Legacy relative command — needed to find and remove old per-project hooks.
-const OLD_HOOK_COMMAND = "node mcp/hex-line-mcp/hook.mjs";
-
 // Substring that identifies any hex-line hook command (old relative or new absolute).
 const HOOK_SIGNATURE = "hex-line-mcp/hook.mjs";
 
@@ -261,7 +258,6 @@ function uninstallClaude() {
 // ---- Public API ----
 
 const AGENTS = { claude: setupClaude, gemini: setupGemini, codex: setupCodex };
-const UNINSTALL_AGENTS = { claude: uninstallClaude };
 
 /**
  * Configure hex-line hooks for one or all supported agents.

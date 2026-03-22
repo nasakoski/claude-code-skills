@@ -3,9 +3,9 @@
  * Validates range checksums from prior reads.
  */
 
-import { readFileSync } from "node:fs";
 import { fnv1a, rangeChecksum, parseChecksum } from "./hash.mjs";
 import { validatePath } from "./security.mjs";
+import { readText } from "./format.mjs";
 
 /**
  * Verify checksums against current file state.
@@ -16,7 +16,7 @@ import { validatePath } from "./security.mjs";
  */
 export function verifyChecksums(filePath, checksums) {
     const real = validatePath(filePath);
-    const content = readFileSync(real, "utf-8").replace(/\r\n/g, "\n");
+    const content = readText(real);
     const lines = content.split("\n");
 
     // Pre-compute all line hashes

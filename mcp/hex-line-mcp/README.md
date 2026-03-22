@@ -18,10 +18,10 @@ Every line carries an FNV-1a content hash. Every edit must present those hashes 
 | `read_file` | Read file with hash-annotated lines and range checksums | Partial reads via `offset`/`limit` |
 | `edit_file` | Hash-verified edits with anchor or text replacement | Returns compact diff via `diff` package |
 | `write_file` | Create new file or overwrite, auto-creates parent dirs | Path validation, no hash overhead |
-| `grep_search` | Search with ripgrep, returns hash-annotated matches | Edit-ready results -- search then edit directly |
+| `grep_search` | Search with ripgrep, 3 output modes, per-group checksums | Edit-ready: grep -> edit directly with checksums |
 | `outline` | AST-based structural overview via tree-sitter WASM | 95% token reduction (10 lines instead of 500) |
 | `verify` | Check if held range checksums are still valid | Single-line response avoids full re-read |
-| `directory_tree` | Compact directory tree with .gitignore support | Skips node_modules/.git, shows file sizes |
+| `directory_tree` | Compact directory tree with root .gitignore support | Skips node_modules/.git, shows file sizes |
 | `get_file_info` | File metadata without reading content | Size, lines, mtime, type, binary detection |
 | `setup_hooks` | Configure PreToolUse + PostToolUse hooks for Claude/Gemini/Codex | One call sets up everything, idempotent |
 | `changes` | Compare file against git ref, shows added/removed/modified symbols | AST-level semantic diff |
@@ -124,7 +124,7 @@ checksum: 1-50:f7e2a1b0
 
 ### edit_file
 
-Edit using hash-verified anchors or text replacement. Returns a unified diff.
+Edit using hash-verified anchors or text replacement. Returns diff + post-edit checksums for chaining edits.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -140,7 +140,8 @@ Edit operations (JSON array):
   {"set_line": {"anchor": "ab.12", "new_text": "replacement line"}},
   {"replace_lines": {"start_anchor": "ab.10", "end_anchor": "cd.15", "new_text": "..."}},
   {"insert_after": {"anchor": "ab.20", "text": "inserted line"}},
-  {"replace": {"old_text": "find this", "new_text": "replace with", "all": false}}
+  {"replace": {"old_text": "unique text", "new_text": "replacement"}},
+  {"replace": {"old_text": "find all", "new_text": "replace all", "all": true}}
 ]
 ```
 
@@ -155,19 +156,27 @@ Create a new file or overwrite an existing one. Creates parent directories autom
 
 ### grep_search
 
-Search file contents using ripgrep with hash-annotated results.
+Search file contents using ripgrep. Three output modes: `content` (hash-annotated with checksums), `files` (paths only), `count` (match counts).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `pattern` | string | yes | Regex search pattern |
+| `pattern` | string | yes | Search pattern (regex by default, literal if `literal:true`) |
 | `path` | string | no | Directory or file to search (default: cwd) |
 | `glob` | string | no | Glob filter, e.g. `"*.ts"` |
 | `type` | string | no | File type filter, e.g. `"js"`, `"py"` |
+| `output` | enum | no | Output format: `"content"` (default), `"files"`, `"count"` |
 | `case_insensitive` | boolean | no | Ignore case |
-| `smart_case` | boolean | no | Case-insensitive when pattern is all lowercase, case-sensitive if it has uppercase (`-S`) |
-| `context` | number | no | Context lines around matches |
+| `smart_case` | boolean | no | CI when lowercase, CS when uppercase (`-S`) |
+| `literal` | boolean | no | Literal string search, no regex (`-F`) |
+| `multiline` | boolean | no | Pattern can span multiple lines (`-U`) |
+| `context` | number | no | Symmetric context lines around matches (`-C`) |
+| `context_before` | number | no | Context lines BEFORE match (`-B`) |
+| `context_after` | number | no | Context lines AFTER match (`-A`) |
 | `limit` | number | no | Max matches per file (default: 100) |
+| `total_limit` | number | no | Total match events across all files; multiline matches count as 1 (0 = unlimited) |
 | `plain` | boolean | no | Omit hash tags, return `file:line:content` |
+
+**Content mode** returns per-group checksums enabling direct `replace_lines` from grep results without intermediate `read_file`.
 
 ### outline
 
@@ -194,7 +203,7 @@ Returns a single-line confirmation or lists changed ranges.
 
 ### directory_tree
 
-Compact directory tree with .gitignore support and file sizes.
+Compact directory tree with root .gitignore support (path-based rules, negation, dir-only). Nested .gitignore files are not loaded.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -202,7 +211,7 @@ Compact directory tree with .gitignore support and file sizes.
 | `pattern` | string | no | Glob filter on names (e.g. `"*-mcp"`, `"*.mjs"`). Returns flat match list instead of tree |
 | `type` | string | no | `"file"`, `"dir"`, or `"all"` (default). Like `find -type f/d` |
 | `max_depth` | number | no | Max recursion depth (default: 3, or 20 in pattern mode) |
-| `gitignore` | boolean | no | Respect .gitignore patterns (default: true) |
+| `gitignore` | boolean | no | Respect root .gitignore patterns (default: true). Nested .gitignore not supported |
 | `format` | string | no | `"compact"` = names only, no sizes, depth 1. `"full"` = default with sizes |
 
 Skips `node_modules`, `.git`, `dist`, `build`, `__pycache__`, `.next`, `coverage` by default.

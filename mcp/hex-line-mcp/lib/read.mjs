@@ -5,31 +5,13 @@
  * Appends: checksum: {start}-{end}:{8hex}
  */
 
-import { readFileSync, statSync, readdirSync } from "node:fs";
+import { statSync } from "node:fs";
 import { fnv1a, lineTag, rangeChecksum } from "./hash.mjs";
 import { validatePath } from "./security.mjs";
 import { getGraphDB, fileAnnotations, getRelativePath } from "./graph-enrich.mjs";
-
-/**
- * Format a Date as relative time string: "just now", "5 min ago", etc.
- */
-function relativeTime(date) {
-    const sec = Math.round((Date.now() - date.getTime()) / 1000);
-    if (sec < 60) return "just now";
-    const min = Math.floor(sec / 60);
-    if (min < 60) return `${min} min ago`;
-    const hrs = Math.floor(min / 60);
-    if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-    const months = Math.floor(days / 30);
-    if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
-    const years = Math.floor(months / 12);
-    return `${years} year${years === 1 ? "" : "s"} ago`;
-}
+import { relativeTime, listDirectory, readText, MAX_OUTPUT_CHARS } from "./format.mjs";
 
 const DEFAULT_LIMIT = 2000;
-const MAX_OUTPUT_CHARS = 80000;
 
 /**
  * Read a file with hash-annotated lines.
@@ -44,12 +26,11 @@ export function readFile(filePath, opts = {}) {
 
     // Directory listing fallback
     if (stat.isDirectory()) {
-        const entries = readdirSync(real, { withFileTypes: true });
-        const listing = entries.map((e) => `${e.isDirectory() ? "d" : "f"} ${e.name}`).join("\n");
-        return `Directory: ${filePath}\n\n\`\`\`\n${listing}\n\`\`\``;
+        const { text } = listDirectory(real, { metadata: true });
+        return `Directory: ${filePath}\n\n\`\`\`\n${text}\n\`\`\``;
     }
 
-    const content = readFileSync(real, "utf-8").replace(/\r\n/g, "\n");
+    const content = readText(real);
     const lines = content.split("\n");
     const total = lines.length;
 

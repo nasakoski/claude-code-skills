@@ -4,8 +4,10 @@
  * Returns: size, line count, modification time, type, binary detection.
  */
 
-import { statSync, readFileSync } from "node:fs";
+import { statSync, openSync, readSync, closeSync } from "node:fs";
 import { resolve, isAbsolute, extname, basename } from "node:path";
+import { normalizePath } from "./security.mjs";
+import { formatSize, relativeTime, countFileLines } from "./format.mjs";
 
 const MAX_LINE_COUNT_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -31,32 +33,15 @@ const EXT_NAMES = {
     ".dockerfile": "Dockerfile", ".vue": "Vue component", ".svelte": "Svelte component",
 };
 
-function formatSize(bytes) {
-    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-    return `${bytes}B`;
-}
-
-function relativeTime(mtime) {
-    const diff = Date.now() - mtime.getTime();
-    const secs = Math.floor(diff / 1000);
-    if (secs < 60) return "just now";
-    const mins = Math.floor(secs / 60);
-    if (mins < 60) return `${mins} minute${mins > 1 ? "s" : ""} ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} day${days > 1 ? "s" : ""} ago`;
-    const months = Math.floor(days / 30);
-    return `${months} month${months > 1 ? "s" : ""} ago`;
-}
 
 function detectBinary(filePath, size) {
     if (size === 0) return false;
-    const fd = readFileSync(filePath, { encoding: null, flag: "r" });
-    const checkLen = Math.min(fd.length, 8192);
-    for (let i = 0; i < checkLen; i++) {
-        if (fd[i] === 0) return true;
+    const fd = openSync(filePath, "r");
+    const probe = Buffer.alloc(Math.min(size, 8192));
+    const bytesRead = readSync(fd, probe, 0, probe.length, 0);
+    closeSync(fd);
+    for (let i = 0; i < bytesRead; i++) {
+        if (probe[i] === 0) return true;
     }
     return false;
 }
@@ -68,7 +53,8 @@ function detectBinary(filePath, size) {
  */
 export function fileInfo(filePath) {
     if (!filePath) throw new Error("Empty file path");
-    const abs = isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath);
+    const normalized = normalizePath(filePath);
+    const abs = isAbsolute(normalized) ? normalized : resolve(process.cwd(), normalized);
 
     const stat = statSync(abs);
     if (!stat.isFile()) throw new Error(`Not a regular file: ${abs}`);
@@ -86,12 +72,8 @@ export function fileInfo(filePath) {
     // Binary detection
     const isBinary = size > 0 ? detectBinary(abs, size) : false;
 
-    // Line count (only for non-binary, <10MB)
-    let lineCount = null;
-    if (!isBinary && size <= MAX_LINE_COUNT_SIZE && size > 0) {
-        const content = readFileSync(abs, "utf-8");
-        lineCount = content.split("\n").length;
-    }
+    // Line count (only for non-binary, <=10MB)
+    const lineCount = !isBinary && size > 0 ? countFileLines(abs, size, MAX_LINE_COUNT_SIZE) : null;
 
     // Format output
     const sizeStr = lineCount !== null

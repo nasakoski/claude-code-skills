@@ -8,11 +8,12 @@
  * - dry_run preview, noop detection, diff output
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { diffLines } from "diff";
-import { fnv1a, lineTag, rangeChecksum, parseChecksum } from "./hash.mjs";
+import { fnv1a, lineTag, rangeChecksum, parseChecksum, parseRef } from "./hash.mjs";
 import { validatePath } from "./security.mjs";
 import { getGraphDB, blastRadius, getRelativePath } from "./graph-enrich.mjs";
+import { readText } from "./format.mjs";
 
 // Unicode characters visually similar to ASCII hyphen-minus (U+002D)
 const CONFUSABLE_HYPHENS = /[\u2010\u2011\u2012\u2013\u2014\u2212\uFE63\uFF0D]/g;
@@ -41,6 +42,24 @@ function restoreIndent(origLines, newLines) {
 }
 
 /**
+ * Build hash-annotated snippet around a position for error messages.
+ * @param {string[]} lines - file lines
+ * @param {number} centerIdx - 0-based center index
+ * @param {number} radius - lines before/after center (default 5)
+ * @returns {{ start: number, end: number, text: string }}
+ */
+function buildErrorSnippet(lines, centerIdx, radius = 5) {
+    const start = Math.max(0, centerIdx - radius);
+    const end = Math.min(lines.length, centerIdx + radius + 1);
+    const text = lines.slice(start, end).map((line, i) => {
+        const num = start + i + 1;
+        const tag = lineTag(fnv1a(line));
+        return `${tag}.${num}\t${line}`;
+    }).join("\n");
+    return { start: start + 1, end, text };
+}
+
+/**
  * Build a hash index of all lines, keeping only unique tags.
  * 2-char tags have collisions — duplicates are excluded to avoid wrong relocations.
  * @param {string[]} lines
@@ -65,21 +84,11 @@ function buildHashIndex(lines) {
 function findLine(lines, lineNum, expectedTag, hashIndex) {
     const idx = lineNum - 1;
     if (idx < 0 || idx >= lines.length) {
-        const start = idx >= lines.length
-            ? Math.max(0, lines.length - 10)
-            : 0;
-        const end = idx >= lines.length
-            ? lines.length
-            : Math.min(lines.length, 10);
-        const snippet = lines.slice(start, end).map((line, i) => {
-            const num = start + i + 1;
-            const tag = lineTag(fnv1a(line));
-            return `${tag}.${num}\t${line}`;
-        }).join("\n");
-
+        const center = idx >= lines.length ? lines.length - 1 : 0;
+        const snip = buildErrorSnippet(lines, center);
         throw new Error(
             `Line ${lineNum} out of range (1-${lines.length}).\n\n` +
-            `Current content (lines ${start + 1}-${end}):\n${snippet}\n\n` +
+            `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
             `Tip: Use updated hashes above for retry.`
         );
     }
@@ -116,30 +125,14 @@ function findLine(lines, lineNum, expectedTag, hashIndex) {
         if (relocated !== undefined) return relocated;
     }
 
-    // Build snippet with fresh hashes so agent can retry without re-reading
-    const start = Math.max(0, idx - 5);
-    const end = Math.min(lines.length, idx + 6);
-    const snippet = lines.slice(start, end).map((line, i) => {
-        const num = start + i + 1;
-        const tag = lineTag(fnv1a(line));
-        return `${tag}.${num}\t${line}`;
-    }).join("\n");
-
+    const snip = buildErrorSnippet(lines, idx);
     throw new Error(
-        `Hash mismatch line ${lineNum}: expected ${expectedTag}, got ${actual}.\n\n` +
-        `Current content (lines ${start + 1}-${end}):\n${snippet}\n\n` +
+        `HASH_MISMATCH: line ${lineNum} expected ${expectedTag}, got ${actual}.\n\n` +
+        `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
         `Tip: Use updated hashes above for retry.`
     );
 }
 
-/**
- * Parse a ref string: "ab.12" → { tag: "ab", line: 12 }
- */
-function parseRef(ref) {
-    const m = ref.trim().match(/^([a-z2-7]{2})\.(\d+)$/);
-    if (!m) throw new Error(`Bad ref: "${ref}". Expected "ab.12"`);
-    return { tag: m[1], line: parseInt(m[2], 10) };
-}
 
 /**
  * Context diff via `diff` package (Myers O(ND) algorithm).
@@ -243,7 +236,20 @@ function textReplace(content, oldText, newText, all) {
     const normNew = newText.replace(/\r\n/g, "\n");
 
     if (!all) {
-        throw new Error("replace requires all:true (rename-all mode). For single replacements, use set_line or replace_lines with hash anchors.");
+        // Uniqueness check: count occurrences
+        const parts = norm.split(normOld);
+        const count = parts.length - 1;
+        if (count === 0) {
+            // Fall through to TEXT_NOT_FOUND below
+        } else if (count === 1) {
+            // Unique match — safe to replace single occurrence
+            return parts.join(normNew);
+        } else {
+            throw new Error(
+                `AMBIGUOUS_MATCH: "${normOld.slice(0, 80)}" found ${count} times. ` +
+                `Use all:true to replace all, or use set_line/replace_lines for a specific occurrence.`
+            );
+        }
     }
     let idx = norm.indexOf(normOld);
     let confusableMatch = false;
@@ -299,9 +305,10 @@ function textReplace(content, oldText, newText, all) {
  */
 export function editFile(filePath, edits, opts = {}) {
     const real = validatePath(filePath);
-    const original = readFileSync(real, "utf-8").replace(/\r\n/g, "\n");
+    const original = readText(real);
     const lines = original.split("\n");
     const origLines = [...lines];
+    const hadTrailingNewline = original.endsWith("\n");
 
     // Build hash index once for global relocation in findLine
     const hashIndex = buildHashIndex(lines);
@@ -313,7 +320,35 @@ export function editFile(filePath, edits, opts = {}) {
     for (const e of edits) {
         if (e.set_line || e.replace_lines || e.insert_after) anchored.push(e);
         else if (e.replace) texts.push(e);
-        else throw new Error(`Unknown edit type: ${JSON.stringify(e)}`);
+        else throw new Error(`BAD_INPUT: unknown edit type: ${JSON.stringify(e)}`);
+    }
+
+    // Overlap validation: reject duplicate/overlapping edit targets
+    const editTargets = [];
+    for (const e of anchored) {
+        if (e.set_line) {
+            const line = parseRef(e.set_line.anchor).line;
+            editTargets.push({ start: line, end: line });
+        } else if (e.replace_lines) {
+            const s = parseRef(e.replace_lines.start_anchor).line;
+            const en = parseRef(e.replace_lines.end_anchor).line;
+            editTargets.push({ start: s, end: en });
+        } else if (e.insert_after) {
+            const line = parseRef(e.insert_after.anchor).line;
+            editTargets.push({ start: line, end: line, insert: true });
+        }
+    }
+    for (let i = 0; i < editTargets.length; i++) {
+        for (let j = i + 1; j < editTargets.length; j++) {
+            const a = editTargets[i], b = editTargets[j];
+            if (a.insert || b.insert) continue; // insert_after doesn't overlap
+            if (a.start <= b.end && b.start <= a.end) {
+                throw new Error(
+                    `OVERLAPPING_EDITS: lines ${a.start}-${a.end} and ${b.start}-${b.end} overlap. ` +
+                    `Split into separate edit_file calls.`
+                );
+            }
+        }
     }
 
     // Sort anchor edits bottom-to-top
@@ -356,9 +391,11 @@ export function editFile(filePath, edits, opts = {}) {
             const actualStart = si + 1;
             const actualEnd = ei + 1;
             if (csStart > actualStart || csEnd < actualEnd) {
+                const snip = buildErrorSnippet(origLines, actualStart - 1);
                 throw new Error(
-                    `Checksum range ${csStart}-${csEnd} does not cover edit range ${actualStart}-${actualEnd}. ` +
-                    `Re-read lines ${actualStart}-${actualEnd} first.`
+                    `CHECKSUM_RANGE_GAP: range ${csStart}-${csEnd} does not cover edit range ${actualStart}-${actualEnd}.\n\n` +
+                    `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
+                    `Tip: Use updated hashes above for retry.`
                 );
             }
 
@@ -366,14 +403,24 @@ export function editFile(filePath, edits, opts = {}) {
             const csStartIdx = csStart - 1;
             const csEndIdx = csEnd - 1;
             if (csStartIdx < 0 || csEndIdx >= origLines.length) {
-                throw new Error(`Checksum range ${csStart}-${csEnd} out of bounds (file has ${origLines.length} lines). Re-read the file.`);
+                const snip = buildErrorSnippet(origLines, origLines.length - 1);
+                throw new Error(
+                    `CHECKSUM_OUT_OF_BOUNDS: range ${csStart}-${csEnd} exceeds file length ${origLines.length}.\n\n` +
+                    `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
+                    `Tip: Use updated hashes above for retry.`
+                );
             }
             const lineHashes = [];
             for (let i = csStartIdx; i <= csEndIdx; i++) lineHashes.push(fnv1a(origLines[i]));
             const actual = rangeChecksum(lineHashes, csStart, csEnd);
             const actualHex = actual.split(":")[1];
             if (csHex !== actualHex) {
-                throw new Error(`Range checksum mismatch: expected ${rc}, got ${actual}. File changed \u2014 re-read lines ${csStart}-${csEnd}.`);
+                const snip = buildErrorSnippet(origLines, csStartIdx);
+                throw new Error(
+                    `CHECKSUM_MISMATCH: expected ${rc}, got ${actual}. File changed \u2014 re-read lines ${csStart}-${csEnd}.\n\n` +
+                    `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
+                    `Retry with fresh checksum ${actual}, or use set_line with hashes above.`
+                );
             }
 
             const txt = e.replace_lines.new_text;
@@ -396,6 +443,8 @@ export function editFile(filePath, edits, opts = {}) {
 
     // Apply text replacements
     let content = lines.join("\n");
+    if (hadTrailingNewline && !content.endsWith("\n")) content += "\n";
+    if (!hadTrailingNewline && content.endsWith("\n")) content = content.slice(0, -1);
     for (const e of texts) {
         if (!e.replace.old_text) throw new Error("replace.old_text required");
         content = textReplace(content, e.replace.old_text, e.replace.new_text || "", e.replace.all || false);
@@ -441,6 +490,35 @@ export function editFile(filePath, edits, opts = {}) {
             }
         }
     } catch { /* silent */ }
+
+    // Post-edit context: hash-annotated lines around changed region + checksums
+    const newLines = content.split("\n");
+    if (diff) {
+        const diffArr = diff.split("\n");
+        let minLine = Infinity, maxLine = 0;
+        for (const dl of diffArr) {
+            const m = dl.match(/^[+-](\d+)\|/);
+            if (m) { const n = +m[1]; if (n < minLine) minLine = n; if (n > maxLine) maxLine = n; }
+        }
+        if (minLine <= maxLine) {
+            const ctxStart = Math.max(0, minLine - 6);
+            const ctxEnd = Math.min(newLines.length, maxLine + 5);
+            const ctxLines = [];
+            const ctxHashes = [];
+            for (let i = ctxStart; i < ctxEnd; i++) {
+                const h = fnv1a(newLines[i]);
+                ctxHashes.push(h);
+                ctxLines.push(`${lineTag(h)}.${i + 1}\t${newLines[i]}`);
+            }
+            const ctxCs = rangeChecksum(ctxHashes, ctxStart + 1, ctxEnd);
+            msg += `\n\nPost-edit (lines ${ctxStart + 1}-${ctxEnd}):\n${ctxLines.join("\n")}\nchecksum: ${ctxCs}`;
+        }
+    }
+    // File-level checksum
+    const fileHashes = [];
+    for (let i = 0; i < newLines.length; i++) fileHashes.push(fnv1a(newLines[i]));
+    const fileCs = rangeChecksum(fileHashes, 1, newLines.length);
+    msg += `\nfile: ${fileCs}`;
 
     return msg;
 }

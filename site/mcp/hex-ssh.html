@@ -113,6 +113,16 @@
     }
     .hero .install-block:hover .copy { color: var(--text-primary); }
 
+    /* -- INTRO -- */
+    .intro {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 720px;
+      margin: 0 auto;
+      line-height: 1.7;
+      text-align: center;
+    }
+
     /* -- SECTION -- */
     section { padding: 64px 0; }
     section h2 {
@@ -125,6 +135,23 @@
       margin-bottom: 32px;
       max-width: 600px;
     }
+
+    /* -- SCENARIOS -- */
+    .scenario { margin-bottom: 32px; }
+    .scenario-title {
+      font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-primary);
+    }
+    .scenario-icon { font-size: 1.3rem; }
+    .scenario p { color: var(--text-secondary); font-size: 15px; line-height: 1.7; }
+    .scenario-result {
+      margin-top: 12px; padding: 12px 16px;
+      background: var(--bg-primary); border-left: 3px solid var(--green);
+      border-radius: 0 8px 8px 0; font-family: var(--font-mono); font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .scenario-result strong { color: var(--green); }
 
     /* -- TABLE -- */
     .table-wrap {
@@ -298,43 +325,72 @@
 
   <section>
     <div class="container">
-      <h2>Tools</h2>
-      <p class="section-desc">6 tools for remote file operations over SSH with built-in token optimization.</p>
+      <p class="intro">Your agent can read and edit local files &mdash; but what about the server running in production? hex-ssh-mcp brings the same hash-verified editing to remote machines over SSH. Every remote read returns FNV-1a hashes, every edit verifies them. Command output is normalized and deduplicated automatically.</p>
+    </div>
+  </section>
+
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>When it matters</h2>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#128269;</span> &ldquo;Check a config on the remote server&rdquo;</div>
+        <p>Your agent needs to read the nginx config on production &mdash; 200 lines, but only the upstream block matters. With raw <code>ssh cat /etc/nginx/nginx.conf</code>, the entire file floods your context. With <code>ssh-read-lines</code>, the agent requests lines 40&ndash;80 with hash annotations. Each line carries an FNV-1a tag, ready for immediate editing &mdash; no second read needed.</p>
+        <div class="scenario-result">Targeted partial read instead of full dump. <strong>Edit-ready hashes included.</strong></div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#9888;</span> &ldquo;Fix a typo in production config&rdquo;</div>
+        <p>The agent read the file 5 minutes ago and wants to fix a typo on line 65. But someone deployed a hotfix since then &mdash; lines shifted. With a raw SSH command, the edit silently overwrites the wrong line. hex-ssh&rsquo;s <code>ssh-edit-block</code> checks the range checksum before applying. Stale? Edit rejected, current checksum returned. The agent re-reads just the changed range and retries.</p>
+        <div class="scenario-result"><strong>Zero silent overwrites</strong> across SSH boundaries.</div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#128203;</span> &ldquo;Search remote logs for an error pattern&rdquo;</div>
+        <p>The agent greps 10,000 lines of application logs looking for &ldquo;connection timeout.&rdquo; Raw output: thousands of duplicate stack traces with different timestamps, UUIDs, and request IDs. <code>ssh-search-code</code> normalizes all dynamic values &mdash; UUIDs become &lt;UUID&gt;, timestamps become &lt;TS&gt;, IPs become &lt;IP&gt;. Identical normalized lines collapse with (xN) counts. 10K lines become 40 actionable ones.</p>
+        <div class="scenario-result"><strong>Actionable output</strong> instead of token-flooding noise.</div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-title"><span class="scenario-icon">&#128274;</span> &ldquo;Write to a restricted path&rdquo;</div>
+        <p>The agent generates a new config and writes it to the staging server. But a typo in the path targets <code>/etc/</code> instead of <code>/home/deploy/etc/</code>. With raw SSH, the file lands in the system directory &mdash; potentially breaking the server. hex-ssh checks against ALLOWED_DIRS before every write. Path outside the permitted list? Rejected immediately.</p>
+        <div class="scenario-result"><strong>Path validation</strong> prevents writes outside permitted directories.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2>6 tools</h2>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Tool</th><th>Description</th><th>Key Feature</th></tr>
+            <tr><th>Tool</th><th>What it does</th></tr>
           </thead>
           <tbody>
             <tr>
               <td class="tool-name">remote-ssh</td>
-              <td class="tool-desc">Execute shell commands on remote servers</td>
-              <td class="tool-feature">Output normalization + deduplication</td>
+              <td class="tool-desc">Execute shell commands. Output auto-normalized and deduplicated</td>
             </tr>
             <tr>
               <td class="tool-name">ssh-read-lines</td>
-              <td class="tool-desc">Read remote file with hash-annotated lines</td>
-              <td class="tool-feature">Partial reads via startLine/endLine</td>
+              <td class="tool-desc">Read remote files with hash-annotated lines. Partial reads via startLine/endLine</td>
             </tr>
             <tr>
               <td class="tool-name">ssh-edit-block</td>
-              <td class="tool-desc">Hash-verified text replacement in remote files</td>
-              <td class="tool-feature">Checksum verification + compact diff</td>
+              <td class="tool-desc">Hash-verified text replacement. Checksum verification + compact diff</td>
             </tr>
             <tr>
               <td class="tool-name">ssh-search-code</td>
-              <td class="tool-desc">Search remote files with grep</td>
-              <td class="tool-feature">Deduplicated results with (xN) counts</td>
+              <td class="tool-desc">Search remote files with grep. Deduplicated results with (xN) counts</td>
             </tr>
             <tr>
               <td class="tool-name">ssh-write-chunk</td>
-              <td class="tool-desc">Write or append to remote files</td>
-              <td class="tool-feature">Auto-creates parent directories</td>
+              <td class="tool-desc">Write or append to remote files. Auto-creates parent directories</td>
             </tr>
             <tr>
               <td class="tool-name">ssh-verify</td>
-              <td class="tool-desc">Check if held checksums are still valid</td>
-              <td class="tool-feature">Single-line response</td>
+              <td class="tool-desc">Check if held checksums are still valid. Single-line response</td>
             </tr>
           </tbody>
         </table>
@@ -345,7 +401,7 @@
   <section style="background: var(--bg-secondary);">
     <div class="container">
       <h2>Security</h2>
-      <p class="section-desc">Restrict access by host, directory, and authentication method.</p>
+      <p class="section-desc">Security is not optional when agents talk to production servers. hex-ssh restricts what hosts agents can reach, what paths they can touch, and requires key-only authentication.</p>
       <div class="features-grid">
         <div class="feature">
           <h3>ALLOWED_HOSTS</h3>
@@ -369,7 +425,7 @@
   <section>
     <div class="container">
       <h2>Output Normalization</h2>
-      <p class="section-desc">Built into remote-ssh and ssh-search-code. Reduces token waste automatically.</p>
+      <p class="section-desc">Command output from remote servers is often noisy &mdash; timestamps, UUIDs, IPs change on every run. The normalization pipeline reduces this noise automatically:</p>
       <div class="table-wrap">
         <table>
           <thead>

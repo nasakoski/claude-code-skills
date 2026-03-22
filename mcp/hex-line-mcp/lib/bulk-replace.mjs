@@ -1,16 +1,18 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { simpleDiff } from "./edit.mjs";
+import { normalizePath } from "./security.mjs";
+import { readText, MAX_OUTPUT_CHARS } from "./format.mjs";
 
 export function bulkReplace(rootDir, globPattern, replacements, opts = {}) {
     const { dryRun = false, maxFiles = 100 } = opts;
-    const abs = resolve(rootDir);
+    const abs = resolve(normalizePath(rootDir));
 
     // Find files via ripgrep (respects .gitignore)
     let files;
     try {
-        const rgOut = execSync(`rg --files -g "${globPattern}" "${abs}"`, { encoding: "utf-8", timeout: 10000 });
+        const rgOut = execFileSync("rg", ["--files", "-g", globPattern, abs], { encoding: "utf-8", timeout: 10000 });
         files = rgOut.trim().split("\n").filter(Boolean);
     } catch (e) {
         if (e.status === 1) return "No files matched the glob pattern.";
@@ -23,12 +25,12 @@ export function bulkReplace(rootDir, globPattern, replacements, opts = {}) {
 
     const results = [];
     let changed = 0, skipped = 0, errors = 0;
-    const MAX_OUTPUT = 80000;
+    const MAX_OUTPUT = MAX_OUTPUT_CHARS;
     let totalChars = 0;
 
     for (const file of files) {
         try {
-            const original = readFileSync(file, "utf-8").replace(/\r\n/g, "\n");
+            const original = readText(file);
             let content = original;
 
             for (const { old: oldText, new: newText } of replacements) {

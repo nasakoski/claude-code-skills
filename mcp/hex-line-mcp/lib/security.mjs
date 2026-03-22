@@ -6,8 +6,9 @@
  * binary file detection, and size limits.
  */
 
-import { realpathSync, statSync, existsSync, readdirSync, openSync, readSync, closeSync } from "node:fs";
+import { realpathSync, statSync, existsSync, openSync, readSync, closeSync } from "node:fs";
 import { resolve, isAbsolute, dirname } from "node:path";
+import { listDirectory } from "./format.mjs";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -15,7 +16,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
  * Convert Git Bash /c/Users/... → c:/Users/... on Windows.
  * Node.js resolve() treats /c/ as absolute from current drive root, producing D:\c\Users.
  */
-function normalizePath(p) {
+export function normalizePath(p) {
     if (process.platform === "win32" && /^\/[a-zA-Z]\//.test(p)) {
         return p[1] + ":" + p.slice(2);
     }
@@ -39,12 +40,9 @@ export function validatePath(filePath) {
         try {
             const parent = dirname(abs);
             if (existsSync(parent)) {
-                const entries = readdirSync(parent, { withFileTypes: true });
-                const listing = entries.slice(0, 20).map(e =>
-                    `  ${e.isDirectory() ? "d" : "f"} ${e.name}`
-                ).join("\n");
-                hint = `\n\nParent directory ${parent} contains:\n${listing}`;
-                if (entries.length > 20) hint += `\n  ... (${entries.length - 20} more)`;
+                const { text, total } = listDirectory(parent, { limit: 20, metadata: true });
+                hint = `\n\nParent directory ${parent} contains:\n${text}`;
+                if (total > 20) hint += `\n  ... (${total - 20} more)`;
             }
         } catch {}
         throw new Error(`FILE_NOT_FOUND: ${abs}${hint}`);

@@ -1,6 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const CWD = "d:/Development/LevNikolaevich/claude-code-skills/mcp/hex-line-mcp";
 
@@ -287,6 +289,26 @@ describe("directory_tree pattern", () => {
     });
 });
 
+describe("directory_tree gitignore", () => {
+    it("respects path-based .gitignore rules", async () => {
+        const { directoryTree } = await import("../lib/tree.mjs");
+        const tmp = join(tmpdir(), "hex-test-gitignore");
+        fs.mkdirSync(join(tmp, "nested"), { recursive: true });
+        fs.writeFileSync(join(tmp, ".gitignore"), "nested/secret.txt\n");
+        fs.writeFileSync(join(tmp, "keep.txt"), "visible\n");
+        fs.writeFileSync(join(tmp, "nested", "secret.txt"), "hidden\n");
+        fs.writeFileSync(join(tmp, "nested", "other.txt"), "visible\n");
+        try {
+            const result = directoryTree(tmp);
+            assert.ok(result.includes("keep.txt"), "non-ignored file visible");
+            assert.ok(result.includes("other.txt"), "non-ignored nested file visible");
+            assert.ok(!result.includes("secret.txt"), "path-ignored file hidden");
+        } finally {
+            fs.rmSync(tmp, { recursive: true });
+        }
+    });
+});
+
 // ==================== read_file ====================
 
 describe("read_file output", () => {
@@ -362,6 +384,139 @@ describe("grep_search case modes", () => {
     });
 });
 
+describe("grep_search output modes", () => {
+    it("files mode returns only paths, count mode returns counts", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        const files = await grepSearch("export", { path: CWD + "/lib", output: "files" });
+        assert.ok(files.includes("```"), "should be in code fence");
+        assert.ok(!files.includes(">>"), "files mode has no hash annotations");
+        assert.ok(files.includes("search.mjs") || files.includes("hash.mjs"), "should list files");
+
+        const count = await grepSearch("export", { path: CWD + "/lib", output: "count" });
+        assert.ok(count.includes(":"), "count mode has file:N format");
+        assert.ok(!count.includes(">>"), "count mode has no hash annotations");
+    });
+
+    it("content mode returns checksums per group", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        const result = await grepSearch("grepSearch", { path: CWD + "/lib/search.mjs", context: 1 });
+        assert.ok(result.includes(">>"), "content mode has >> match markers");
+        assert.ok(result.includes("checksum:"), "content mode has per-group checksums");
+        // Verify checksum format: N-N:hexhexhex
+        const csMatch = result.match(/checksum: (\d+)-(\d+):([0-9a-f]{8})/);
+        assert.ok(csMatch, `checksum format should be N-N:hex8, got: ${result.slice(0, 200)}`);
+    });
+
+    it("disjoint matches get separate checksums (fixture)", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        const tmp = join(tmpdir(), "hex-test-disjoint.txt");
+        const content = ["MARKER_A", ...Array(10).fill("filler"), "MARKER_B"].join("\n") + "\n";
+        fs.writeFileSync(tmp, content);
+        try {
+            const result = await grepSearch("MARKER", { path: tmp });
+            const checksums = result.match(/checksum: \d+-\d+:[0-9a-f]{8}/g) || [];
+            assert.ok(checksums.length >= 2, `disjoint markers should produce >=2 checksums, got ${checksums.length}`);
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("grep checksum round-trips through verify", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        const { verifyChecksums } = await import("../lib/verify.mjs");
+        const tmp = join(tmpdir(), "hex-test-roundtrip.txt");
+        fs.writeFileSync(tmp, "line one\nline two\nline three\n");
+        try {
+            const result = await grepSearch("two", { path: tmp });
+            const csMatch = result.match(/checksum: (\d+-\d+:[0-9a-f]{8})/);
+            assert.ok(csMatch, "grep should produce a checksum");
+            const verifyResult = verifyChecksums(tmp, [csMatch[1]]);
+            assert.ok(verifyResult.includes("valid"), `checksum should verify: ${verifyResult}`);
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+});
+
+describe("grep_search new params", () => {
+    it("literal mode disables regex", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        // '.' in regex matches any char; in literal mode matches only '.'
+        const regex = await grepSearch(".", { path: CWD + "/lib/hash.mjs", plain: true });
+        const literal = await grepSearch(".", { path: CWD + "/lib/hash.mjs", plain: true, literal: true });
+        const regexCount = regex.split("\n").filter(l => l.trim() && !l.startsWith("```")).length;
+        const litCount = literal.split("\n").filter(l => l.trim() && !l.startsWith("```")).length;
+        assert.ok(regexCount > litCount, `regex (${regexCount}) should match more than literal (${litCount})`);
+    });
+});
+
+describe("edit_file uniqueness replace", () => {
+    it("unique text replaced without all:true", async () => {
+        const { editFile } = await import("../lib/edit.mjs");
+        const tmp = CWD + "/test/tmp_unique_replace.txt";
+        fs.writeFileSync(tmp, "line one\nline two unique marker\nline three\n");
+        try {
+            const result = editFile(tmp, [{ replace: { old_text: "unique marker", new_text: "replaced marker" } }]);
+            assert.ok(result.includes("replaced marker"), "unique text should be replaced");
+            assert.ok(result.includes("Post-edit"), "response should include post-edit context");
+            assert.ok(result.includes("checksum:"), "response should include checksum");
+            assert.ok(result.includes("file:"), "response should include file checksum");
+            const content = fs.readFileSync(tmp, "utf-8");
+            assert.ok(content.includes("replaced marker"), "file should contain replaced text");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("ambiguous text throws AMBIGUOUS_MATCH", async () => {
+        const { editFile } = await import("../lib/edit.mjs");
+        const tmp = CWD + "/test/tmp_ambiguous.txt";
+        fs.writeFileSync(tmp, "hello world\nhello world\nhello world\n");
+        try {
+            assert.throws(() => {
+                editFile(tmp, [{ replace: { old_text: "hello world", new_text: "bye" } }]);
+            }, /AMBIGUOUS_MATCH.*3 times/);
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+});
+
+
+// ==================== bulk_replace ====================
+
+describe("bulk_replace", () => {
+    it("replaces text in matched files", async () => {
+        const { bulkReplace } = await import("../lib/bulk-replace.mjs");
+        const tmp = "d:/tmp/hex-test-bulk";
+        fs.mkdirSync(tmp, { recursive: true });
+        fs.writeFileSync(tmp + "/a.txt", "hello world\n");
+        fs.writeFileSync(tmp + "/b.txt", "hello planet\n");
+        try {
+            const result = bulkReplace(tmp, "*.txt", [{ old: "hello", new: "hi" }]);
+            assert.ok(result.includes("2 changed") || result.includes("changed"), "files should be changed");
+            assert.equal(fs.readFileSync(tmp + "/a.txt", "utf-8").trim(), "hi world");
+            assert.equal(fs.readFileSync(tmp + "/b.txt", "utf-8").trim(), "hi planet");
+        } finally {
+            fs.unlinkSync(tmp + "/a.txt");
+            fs.unlinkSync(tmp + "/b.txt");
+            fs.rmdirSync(tmp);
+        }
+    });
+});
+
+// ==================== changes ====================
+
+describe("changes", () => {
+    it("returns diff against HEAD for tracked file", async () => {
+        const { fileChanges } = await import("../lib/changes.mjs");
+        // Use a known tracked file — should return no changes or a diff
+        const result = await fileChanges(CWD + "/lib/hash.mjs", "HEAD");
+        assert.ok(typeof result === "string", "should return string");
+        // If file is unchanged vs HEAD, result says "No changes" or shows symbols
+        assert.ok(result.length > 0, "should have content");
+    });
+});
 // ==================== isHexLineDisabled ====================
 
 describe("isHexLineDisabled", () => {

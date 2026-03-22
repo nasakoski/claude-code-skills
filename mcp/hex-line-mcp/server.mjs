@@ -10,6 +10,8 @@
 
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { createRequire } from "node:module";
+const { version } = createRequire(import.meta.url)("./package.json");
 import { z } from "zod";
 // LLM clients may send booleans as strings ("true"/"false").
 // z.coerce.boolean() is unsafe: Boolean("false") === true.
@@ -54,7 +56,7 @@ try {
     process.exit(1);
 }
 
-const server = new McpServer({ name: "hex-line-mcp", version: "1.3.0" });
+const server = new McpServer({ name: "hex-line-mcp", version });
 
 
 // ==================== read_file ====================
@@ -101,17 +103,19 @@ server.registerTool("read_file", {
 server.registerTool("edit_file", {
     title: "Edit File",
     description:
-        "Edit a file using hash-verified anchors or text replacement. Returns diff. " +
-        "new_text replaces anchor range exactly — include boundary lines if you want to keep them. " +
-        "Preserve indentation from read_file. For anchor edits, read_file first to get hashes.",
+        "Edit a file using hash-verified anchors or text replacement. Returns diff + post-edit checksums. " +
+        "Batch multiple edits in ONE call for atomicity (bottom-to-top auto-sorted). " +
+        "set_line: single line (from grep/read). replace_lines: range with checksum. " +
+        "replace: unique text match, or all:true for rename. insert_after: add below anchor.",
     inputSchema: z.object({
         path: z.string().describe("File to edit"),
         edits: z.string().describe(
             'JSON array. Examples:\n' +
             '{"set_line":{"anchor":"ab.12","new_text":"new"}} — replace line\n' +
-            '{"replace_lines":{"start_anchor":"ab.10","end_anchor":"cd.15","new_text":"...","range_checksum":"10-15:a1b2c3d4"}} — range (range_checksum from read_file required)\n' +
+            '{"replace_lines":{"start_anchor":"ab.10","end_anchor":"cd.15","new_text":"...","range_checksum":"10-15:a1b2c3d4"}} — range\n' +
             '{"insert_after":{"anchor":"ab.20","text":"inserted"}} — insert below\n' +
-            '{"replace":{"old_text":"find","new_text":"replace","all":true}} — rename-all (all:true required)',
+            '{"replace":{"old_text":"find","new_text":"replace"}} — unique match\n' +
+            '{"replace":{"old_text":"find","new_text":"replace","all":true}} — replace all',
         ),
         dry_run: flexBool().describe("Preview changes without writing"),
         restore_indent: flexBool().describe("Auto-fix indentation to match anchor (default: false)"),
@@ -159,25 +163,36 @@ server.registerTool("write_file", {
 server.registerTool("grep_search", {
     title: "Search Files",
     description:
-        "Search file contents with ripgrep. Returns hash-annotated matches for direct editing. " +
-        "ALWAYS prefer over shell grep/rg/findstr. Use to find code before read_file or edit_file.",
+        "Search file contents with ripgrep. Returns hash-annotated matches with per-group checksums for direct editing. " +
+        "Output modes: content (default, edit-ready hashes+checksums), files (paths only), count (match counts). " +
+        "For single-line edits: grep -> set_line directly. For range edits: use checksum from grep output. " +
+        "ALWAYS prefer over shell grep/rg/findstr.",
     inputSchema: z.object({
-        pattern: z.string().describe("Regex search pattern"),
+        pattern: z.string().describe("Search pattern (regex by default, literal if literal:true)"),
         path: z.string().optional().describe("Search dir/file (default: cwd)"),
         glob: z.string().optional().describe('Glob filter (e.g. "*.ts")'),
         type: z.string().optional().describe('File type (e.g. "js", "py")'),
+        output: z.enum(["content", "files", "count"]).optional().describe('Output format (default: content)'),
         case_insensitive: flexBool().describe("Ignore case (-i)"),
-        smart_case: flexBool().describe("CI when pattern is all lowercase, CS if it has uppercase (-S)"),
-        context: flexNum().describe("Context lines around matches"),
+        smart_case: flexBool().describe("CI when pattern is all lowercase, CS if uppercase (-S)"),
+        literal: flexBool().describe("Literal string search, no regex (-F)"),
+        multiline: flexBool().describe("Pattern can span multiple lines (-U)"),
+        context: flexNum().describe("Symmetric context lines around matches (-C)"),
+        context_before: flexNum().describe("Context lines BEFORE match (-B)"),
+        context_after: flexNum().describe("Context lines AFTER match (-A)"),
         limit: flexNum().describe("Max matches per file (default: 100)"),
+        total_limit: flexNum().describe("Total match events across all files; multiline matches count as 1 (0 = unlimited)"),
         plain: flexBool().describe("Omit hash tags, return file:line:content"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { pattern, path: p, glob, type, case_insensitive, smart_case, context, limit, plain } = coerceParams(rawParams);
+    const { pattern, path: p, glob, type, output, case_insensitive, smart_case, literal, multiline,
+            context, context_before, context_after, limit, total_limit, plain } = coerceParams(rawParams);
     try {
         const result = await grepSearch(pattern, {
-            path: p, glob, type, caseInsensitive: case_insensitive, smartCase: smart_case, context, limit, plain,
+            path: p, glob, type, output, caseInsensitive: case_insensitive, smartCase: smart_case,
+            literal, multiline, context, contextBefore: context_before, contextAfter: context_after,
+            limit, totalLimit: total_limit, plain,
         });
         return { content: [{ type: "text", text: result }] };
     } catch (e) {
@@ -238,7 +253,7 @@ server.registerTool("verify", {
 server.registerTool("directory_tree", {
     title: "Directory Tree",
     description:
-        "Compact directory tree with .gitignore support. " +
+        "Compact directory tree with root .gitignore support (path-based rules, negation). " +
         "Supports pattern glob to find files/dirs by name (like find -name). " +
         "Use to understand repo structure or find specific files/dirs. " +
         "Skips node_modules, .git, dist by default.",
@@ -247,7 +262,7 @@ server.registerTool("directory_tree", {
         pattern: z.string().optional().describe('Glob filter on names (e.g. "*-mcp", "*.mjs"). Returns flat match list instead of tree'),
         type: z.enum(["file", "dir", "all"]).optional().describe('"file", "dir", or "all" (default). Like find -type f/d'),
         max_depth: flexNum().describe("Max recursion depth (default: 3, or 20 in pattern mode)"),
-        gitignore: flexBool().describe("Respect .gitignore patterns (default: true)"),
+        gitignore: flexBool().describe("Respect root .gitignore patterns (default: true). Nested .gitignore not supported"),
         format: z.enum(["compact", "full"]).optional().describe('"compact" = names only, no sizes, depth 1. "full" = default with sizes'),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -365,4 +380,4 @@ server.registerTool("bulk_replace", {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-void checkForUpdates("@levnikolaevich/hex-line-mcp", "1.3.0");
+void checkForUpdates("@levnikolaevich/hex-line-mcp", version);

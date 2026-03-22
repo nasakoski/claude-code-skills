@@ -6,10 +6,11 @@
  * without temp files.
  */
 
-import { execSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { statSync } from "node:fs";
 import { extname } from "node:path";
 import { validatePath } from "./security.mjs";
+import { readText } from "./format.mjs";
 import { outlineFromContent } from "./outline.mjs";
 
 /**
@@ -50,7 +51,7 @@ function toSymbolMap(entries) {
  * Get relative path from git root for `git show`.
  */
 function gitRelativePath(absPath) {
-    const root = execSync("git rev-parse --show-toplevel", {
+    const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
         cwd: absPath.replace(/[/\\][^/\\]+$/, ""),
         encoding: "utf-8",
         timeout: 5000,
@@ -79,7 +80,7 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
     // Directory: return git diff --stat (compact file list, no content reads)
     if (statSync(real).isDirectory()) {
         try {
-            const stat = execSync(`git diff --stat "${compareAgainst}" -- .`, {
+            const stat = execFileSync("git", ["diff", "--stat", compareAgainst, "--", "."], {
                 cwd: real,
                 encoding: "utf-8",
                 timeout: 10000,
@@ -94,7 +95,7 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
     const ext = extname(real).toLowerCase();
 
     // Check if outline supports this extension
-    const currentContent = readFileSync(real, "utf-8").replace(/\r\n/g, "\n");
+    const currentContent = readText(real);
     const currentResult = await outlineFromContent(currentContent, ext);
     if (!currentResult) {
         return `Cannot outline ${ext} files. Supported: .js .mjs .ts .py .go .rs .java .c .cpp .cs .rb .php .kt .swift .sh .bash`;
@@ -104,7 +105,7 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
     const relPath = gitRelativePath(real);
     let gitContent;
     try {
-        gitContent = execSync(`git show "${compareAgainst}:${relPath}"`, {
+        gitContent = execFileSync("git", ["show", `${compareAgainst}:${relPath}`], {
             cwd: real.replace(/[/\\][^/\\]+$/, ""),
             encoding: "utf-8",
             timeout: 5000,
