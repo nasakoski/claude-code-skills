@@ -11,7 +11,7 @@
  */
 
 import { readFileSync, statSync, readdirSync, existsSync, mkdirSync } from "node:fs";
-import { resolve, extname, relative, join, dirname } from "node:path";
+import { resolve, extname, relative, join, dirname, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { getStore } from "./store.mjs";
 import { parseFile, languageFor, supportedExtensions } from "./parser.mjs";
@@ -172,6 +172,20 @@ function resolveFileEdges(store, filePath, { definitions, imports, calls, refere
             }
         }
     }
+
+    // 1b. Create file-scope module node (fallback source for top-level calls/refs)
+    const ext = extname(filePath);
+    const moduleNodeId = store.insertNode({
+        name: basename(filePath, ext),
+        qualified_name: `${filePath}:module`,
+        kind: "module",
+        language,
+        file: filePath,
+        line_start: 1,
+        line_end: 9999,
+        parent_id: null,
+        signature: null,
+    });
 
     // 2. Build local symbol map (name -> nodeId, null = ambiguous)
     const localSymbols = new Map();
@@ -350,14 +364,13 @@ function resolveFileEdges(store, filePath, { definitions, imports, calls, refere
     // 8. Resolve and persist call edges
     for (const call of calls) {
         const callerDef = findEnclosingDefinition(call.line, definitions);
-        const callerId = callerDef ? nodeIds.get(callerDef.key) : null;
-        if (!callerId) continue;
+        const callerId = callerDef ? nodeIds.get(callerDef.key) : moduleNodeId;
 
         let targetId = null;
         let confidence = "exact";
 
         // 1. Same-class sibling method
-        if (callerDef.parent && classMethods.has(`${callerDef.parent}.${call.name}`)) {
+        if (callerDef?.parent && classMethods.has(`${callerDef.parent}.${call.name}`)) {
             targetId = classMethods.get(`${callerDef.parent}.${call.name}`);
         }
         // 2. Local symbol (skip null = ambiguous)
@@ -421,8 +434,7 @@ function resolveFileEdges(store, filePath, { definitions, imports, calls, refere
             if (!targetId) continue;
 
             // Skip self-references: if target is the enclosing definition
-            const callerId = enclosingDef ? nodeIds.get(enclosingDef.key) : null;
-            if (!callerId) continue; // Skip top-level references — no source provenance
+            const callerId = enclosingDef ? nodeIds.get(enclosingDef.key) : moduleNodeId;
             if (targetId === callerId) continue;
 
             const edgeKind = ref.refKind === "type_ref" ? "ref_type" : "ref_read";

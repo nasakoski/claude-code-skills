@@ -4,7 +4,6 @@
 
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
-import { resolve } from "node:path";
 import { runN, graphResult, rg } from "./helpers.mjs";
 import {
     searchSymbols,
@@ -16,7 +15,6 @@ import {
     getModuleMetrics,
     getReferences,
 } from "../lib/store.mjs";
-import { findClones } from "../lib/clones.mjs";
 import { findCycles } from "../lib/cycles.mjs";
 import { findUnused } from "../lib/unused.mjs";
 import { impactOfChanges } from "../lib/impact.mjs";
@@ -28,7 +26,7 @@ import { impactOfChanges } from "../lib/impact.mjs";
  */
 export function runWorkflows(store, config) {
     const workflows = [];
-    const { repoRoot, allFiles, searchSym, contextSym, impactSym, traceSym } = config;
+    const { repoRoot, allFiles, searchSym, impactSym } = config;
 
     // W1: Understand unfamiliar codebase
     {

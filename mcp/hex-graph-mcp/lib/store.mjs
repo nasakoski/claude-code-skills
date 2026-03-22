@@ -19,6 +19,7 @@ const SCHEMA_VERSION = 3;
 function displayName(node) {
     if (node.name === "__default_export__") return "default export";
     if (node.kind === "reexport") return `${node.name} (re-export)`;
+    if (node.kind === "module") return `<${node.name}>`;
     return node.name;
 }
 
@@ -996,43 +997,65 @@ export function getModuleMetrics({ scopePath, sort, minCoupling, path } = {}) {
     return store.moduleMetrics({ scopePath, sort, minCoupling });
 }
 
-export function getReferences(symbol, { kind, limit = 50, path } = {}) {
+export function getReferences(symbol, { kind, limit = 50, file, path } = {}) {
     const store = resolveStore(path);
     if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first").content[0].text;
 
     const nodes = store.findByName(symbol);
-    const nonImport = nodes.filter(n => n.kind !== "import" && n.name !== "__default_export__");
-    if (nonImport.length === 0) return graphError("SYMBOL_NOT_FOUND", `Symbol '${symbol}' not found`, "Check spelling or run index_project").content[0].text;
+    let candidates = nodes.filter(n => n.kind !== "import" && n.kind !== "module" && n.kind !== "reexport" && n.name !== "__default_export__");
+    if (candidates.length === 0) return graphError("SYMBOL_NOT_FOUND", `Symbol '${symbol}' not found`, "Check spelling or run index_project").content[0].text;
 
-    const node = nonImport.find(n => n.kind !== "import") || nonImport[0];
-    let refs = store.findReferences(node.id);
-
-    // Also collect refs to reexport proxy nodes (barrel re-exports)
-    const reexportProxies = store.reexportSourcesTo(node.id);
-    for (const { source_id } of reexportProxies) {
-        const proxyRefs = store.findReferences(source_id);
-        refs.push(...proxyRefs);
+    // Disambiguate by file if provided
+    if (file) {
+        const filtered = candidates.filter(n => n.file === file || n.file.endsWith(file) || n.file.endsWith(`/${file}`));
+        if (filtered.length > 0) candidates = filtered;
     }
 
-    // Filter by kind if specified
-    if (kind && kind !== "all") {
-        refs = refs.filter(r => r.kind === kind);
+    // Helper: collect all refs for a node (including reexport proxies)
+    function collectRefs(node) {
+        let refs = store.findReferences(node.id);
+        const reexportProxies = store.reexportSourcesTo(node.id);
+        for (const { source_id } of reexportProxies) {
+            refs.push(...store.findReferences(source_id));
+        }
+        if (kind && kind !== "all") refs = refs.filter(r => r.kind === kind);
+        return refs;
     }
 
-    // Limit
-    refs = refs.slice(0, limit);
-
-    // Group by kind
-    const byKind = {};
-    for (const r of refs) {
-        byKind[r.kind] = (byKind[r.kind] || 0) + 1;
+    // Single candidate — original format
+    if (candidates.length === 1) {
+        const node = candidates[0];
+        const refs = collectRefs(node).slice(0, limit);
+        const byKind = {};
+        for (const r of refs) byKind[r.kind] = (byKind[r.kind] || 0) + 1;
+        return {
+            symbol: displayName(node),
+            definition: { file: node.file, line: node.line_start, kind: node.kind },
+            references: refs.map(r => ({ file: r.file, line: r.line, kind: r.kind })),
+            total_by_kind: byKind,
+            total: refs.length,
+        };
     }
 
+    // Multiple candidates — grouped response
+    const definitions = [];
+    let grandTotal = 0;
+    for (const node of candidates) {
+        const refs = collectRefs(node);
+        grandTotal += refs.length;
+        const limited = refs.slice(0, limit);
+        definitions.push({
+            file: node.file,
+            line: node.line_start,
+            kind: node.kind,
+            references: limited.map(r => ({ file: r.file, line: r.line, kind: r.kind })),
+            total: refs.length,
+        });
+    }
     return {
-        symbol: displayName(node),
-        definition: { file: node.file, line: node.line_start, kind: node.kind },
-        references: refs.map(r => ({ file: r.file, line: r.line, kind: r.kind })),
-        total_by_kind: byKind,
-        total: refs.length,
+        symbol,
+        ambiguous: true,
+        definitions,
+        total: grandTotal,
     };
 }

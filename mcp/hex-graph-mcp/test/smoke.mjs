@@ -910,6 +910,35 @@ describe("find_references through barrel", () => {
     });
 });
 
+describe("find_references ambiguity", () => {
+    it("groups results for same-name symbols across files and honors file filter", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-ambrefs-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "a.mjs"), 'export function helper() { return 1; }\n');
+        writeFileSync(join(tmp, "b.mjs"), 'export function helper() { return 2; }\n');
+        writeFileSync(join(tmp, "use-a.mjs"), 'import { helper } from "./a.mjs";\nexport function runA() { return helper(); }\n');
+        writeFileSync(join(tmp, "use-b.mjs"), 'import { helper } from "./b.mjs";\nexport function runB() { return helper(); }\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+
+            const grouped = getReferences("helper", { path: tmp });
+            assert.equal(grouped.ambiguous, true, "ambiguous lookup returns grouped response");
+            assert.equal(grouped.definitions.length, 2, "both helper definitions returned");
+            assert.equal(grouped.total, 4, "aggregates refs from both definitions");
+
+            const aOnly = getReferences("helper", { path: tmp, file: "a.mjs" });
+            assert.equal(aOnly.ambiguous, undefined, "file filter resolves ambiguity");
+            assert.equal(aOnly.definition.file, "a.mjs");
+            assert.equal(aOnly.total, 2, "filtered result only includes a.mjs refs");
+
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+});
+
 // ==================== Bug 2: C# public method export ====================
 
 describe("C# public method export", () => {
@@ -967,6 +996,33 @@ describe("no self-edge for top-level references", () => {
             // Check no self-referencing edges exist
             const allEdges = store.db.prepare("SELECT * FROM edges WHERE source_id = target_id AND kind IN ('ref_read', 'ref_type')").all();
             assert.equal(allEdges.length, 0, "No self-referencing reference edges");
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+
+    it("top-level calls and reads attach to module node", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-topmodule-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
+        writeFileSync(join(tmp, "consumer.mjs"), 'import { foo } from "./a.mjs";\nfoo();\nconst x = foo;\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+
+            const refs = getReferences("foo", { path: tmp, file: "a.mjs" });
+            const kinds = refs.references.map(r => r.kind);
+            assert.ok(kinds.includes("imports"), "top-level import recorded");
+            assert.ok(kinds.includes("calls"), "top-level call recorded");
+            assert.ok(kinds.includes("ref_read"), "top-level read recorded");
+
+            const moduleNode = store.nodesByFile("consumer.mjs").find(n => n.kind === "module");
+            assert.ok(moduleNode, "module pseudo-node created");
+            const moduleEdges = store.edgesFrom(moduleNode.id);
+            assert.ok(moduleEdges.some(e => e.kind === "calls"), "module node is caller for top-level call");
+            assert.ok(moduleEdges.some(e => e.kind === "ref_read"), "module node is source for top-level read");
+
             store.close();
         } finally {
             try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }

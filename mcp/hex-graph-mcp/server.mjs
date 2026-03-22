@@ -537,15 +537,16 @@ server.registerTool("find_references", {
         "Requires index_project first.",
     inputSchema: z.object({
         symbol: z.string().describe("Symbol name to find references for"),
+        file: z.string().optional().describe("File path to disambiguate same-name symbols (e.g. 'src/utils.mjs')"),
         kind: z.enum(["ref_read", "ref_type", "calls", "reexports", "imports", "all"]).default("all").describe("Filter by reference kind"),
         limit: flexNum().describe("Max references (default: 50)"),
         path: z.string().optional().describe("Project root"),
         format: z.enum(["json", "text"]).default("text").describe("Output format"),
     }),
 }, async (rawParams) => {
-    const { symbol, kind, limit, path, format } = coerceParams(rawParams);
+    const { symbol, file, kind, limit, path, format } = coerceParams(rawParams);
     try {
-        const result = getReferences(symbol, { kind, limit: limit ?? 50, path });
+        const result = getReferences(symbol, { kind, limit: limit ?? 50, file, path });
         if (typeof result === "string") return { content: [{ type: "text", text: result }], isError: true };
 
         if (format === "json") {
@@ -554,14 +555,28 @@ server.registerTool("find_references", {
 
         // Text format
         const lines = [];
-        lines.push(`${result.symbol} (${result.definition.kind} in ${result.definition.file}:${result.definition.line})`);
-        lines.push(`${result.total} references`);
-        if (Object.keys(result.total_by_kind).length > 0) {
-            lines.push(`  by kind: ${Object.entries(result.total_by_kind).map(([k, v]) => `${k}:${v}`).join(", ")}`);
-        }
-        lines.push("");
-        for (const ref of result.references) {
-            lines.push(`  ${ref.kind.padEnd(10)} ${ref.file}:${ref.line}`);
+        if (result.ambiguous) {
+            lines.push(`${result.symbol}: ${result.definitions.length} definitions (${result.total} total references)`);
+            lines.push("Hint: use file param to select one definition");
+            lines.push("");
+            for (const def of result.definitions) {
+                lines.push(`## ${result.symbol} (${def.kind} in ${def.file}:${def.line})`);
+                lines.push(`  ${def.total} references`);
+                for (const ref of def.references) {
+                    lines.push(`    ${ref.kind.padEnd(10)} ${ref.file}:${ref.line}`);
+                }
+                lines.push("");
+            }
+        } else {
+            lines.push(`${result.symbol} (${result.definition.kind} in ${result.definition.file}:${result.definition.line})`);
+            lines.push(`${result.total} references`);
+            if (Object.keys(result.total_by_kind).length > 0) {
+                lines.push(`  by kind: ${Object.entries(result.total_by_kind).map(([k, v]) => `${k}:${v}`).join(", ")}`);
+            }
+            lines.push("");
+            for (const ref of result.references) {
+                lines.push(`  ${ref.kind.padEnd(10)} ${ref.file}:${ref.line}`);
+            }
         }
 
         return { content: [{ type: "text", text: lines.join("\n") }] };
