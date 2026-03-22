@@ -324,8 +324,13 @@ class Store {
                 nodeIds.set(def.key, id);
 
                 // Index class definitions for fast parent lookup
+                // Null on collision (same-name classes in one file = ambiguous parent)
                 if (def.kind === "class") {
-                    classIndex.set(def.name, id);
+                    if (classIndex.has(def.name)) {
+                        classIndex.set(def.name, null);
+                    } else {
+                        classIndex.set(def.name, id);
+                    }
                 }
             }
 
@@ -479,17 +484,21 @@ class Store {
             mod.kinds[node.kind] = (mod.kinds[node.kind] || 0) + 1;
         }
 
-        // Hotspots: most connected nodes
+        // Hotspots: complex functions with many callers
         const hotspots = this.db.prepare(`
-            SELECT n.name, n.kind, n.file, n.line_start,
-                   (SELECT COUNT(*) FROM edges WHERE source_id = n.id) as outgoing,
-                   (SELECT COUNT(*) FROM edges WHERE target_id = n.id) as incoming,
-                   (SELECT COUNT(*) FROM edges WHERE source_id = n.id) +
-                   (SELECT COUNT(*) FROM edges WHERE target_id = n.id) as total
+            SELECT n.file, n.name, n.kind, n.line_start,
+                   COALESCE(cb.stmt_count, n.line_end - n.line_start + 1) AS complexity,
+                   (cb.stmt_count IS NOT NULL) AS has_stmts,
+                   COUNT(DISTINCT e.source_id) AS callers
             FROM nodes n
-            ORDER BY total DESC
-            LIMIT 15
-        `).all();
+            LEFT JOIN clone_blocks cb ON cb.node_id = n.id
+            LEFT JOIN edges e ON e.target_id = n.id AND e.kind = 'calls'
+            WHERE n.kind IN ('function', 'method')
+            GROUP BY n.id
+            HAVING callers > 0
+            ORDER BY complexity * callers DESC
+            LIMIT ?
+        `).all(15);
 
         // Cross-module edges
         const crossEdges = this.db.prepare(`
@@ -507,6 +516,45 @@ class Store {
         `).all();
 
         return { modules, hotspots, crossEdges };
+    }
+
+    // --- Query: Hotspots (complexity × callers) ---
+
+    hotspots({ minCallers = 2, minComplexity = 15, limit = 20, scopePath } = {}) {
+        const scopeFilter = scopePath
+            ? "AND n.file LIKE ? || '%' ESCAPE '\\'"
+            : "";
+        const sql = `
+            SELECT n.file, n.name, n.kind, n.line_start, n.line_end,
+                   COALESCE(cb.stmt_count, MAX(n.line_end - n.line_start + 1, 1)) AS complexity,
+                   COUNT(DISTINCT e.source_id) AS callers,
+                   COALESCE(cb.stmt_count, MAX(n.line_end - n.line_start + 1, 1)) * COUNT(DISTINCT e.source_id) AS risk,
+                   cb.stmt_count AS raw_stmt_count
+            FROM nodes n
+            LEFT JOIN clone_blocks cb ON cb.node_id = n.id
+            LEFT JOIN edges e ON e.target_id = n.id AND e.kind = 'calls'
+            WHERE n.kind IN ('function', 'method')
+            ${scopeFilter}
+            GROUP BY n.id
+            HAVING callers >= ? OR complexity >= ?
+            ORDER BY risk DESC
+            LIMIT ?
+        `;
+        const params = scopePath
+            ? [scopePath.replace(/[%_\\]/g, m => "\\" + m), minCallers, minComplexity, limit]
+            : [minCallers, minComplexity, limit];
+        const rows = this.db.prepare(sql).all(...params);
+        return rows.map(r => ({
+            file: r.file,
+            name: r.name,
+            kind: r.kind,
+            line_start: r.line_start,
+            line_end: r.line_end,
+            complexity: r.complexity,
+            callers: r.callers,
+            risk: r.risk,
+            complexity_source: r.raw_stmt_count != null ? "stmt_count" : "line_span_fallback",
+        }));
     }
 
     // --- Stats ---
@@ -657,11 +705,12 @@ export function getArchitecture(scopePath, { limit = 15, path } = {}) {
     }
 
     const shownHotspots = hotspots.slice(0, limit);
-    lines.push("\n## Hotspots (most connected)\n");
-    lines.push("| Name | Kind | File | In | Out | Total |");
-    lines.push("|------|------|------|----|-----|-------|");
+    lines.push("\n## Hotspots (complexity x callers)\n");
+    lines.push("| Name | Kind | File | Complexity | Callers | Score |");
+    lines.push("|------|------|------|------------|---------|-------|");
     for (const h of shownHotspots) {
-        lines.push(`| ${h.name} | ${h.kind} | ${h.file} | ${h.incoming} | ${h.outgoing} | ${h.total} |`);
+        const suffix = h.has_stmts ? ' stmts' : ' lines';
+        lines.push(`| ${h.name} | ${h.kind} | ${h.file} | ${h.complexity}${suffix} | ${h.callers} | ${h.complexity * h.callers} |`);
     }
     if (hotspots.length > limit) lines.push(`\n--- ${hotspots.length - limit} more hotspots omitted ---`);
 
@@ -678,4 +727,10 @@ export function getArchitecture(scopePath, { limit = 15, path } = {}) {
     lines.push(`\n**Total:** ${stats.files} files, ${stats.nodes} symbols, ${stats.edges} edges`);
 
     return lines.join("\n");
+}
+
+export function getHotspots({ minCallers = 2, minComplexity = 15, limit = 20, scopePath, path } = {}) {
+    const store = resolveStore(path);
+    if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first");
+    return store.hotspots({ minCallers, minComplexity, limit, scopePath });
 }

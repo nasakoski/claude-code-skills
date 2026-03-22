@@ -295,3 +295,35 @@ export class B {
     });
 });
 
+describe("find_clones schema validation", () => {
+    it("rejects threshold out of range", async () => {
+        const z = await import("zod");
+        const schema = z.z.object({
+            threshold: z.z.preprocess(v => typeof v === "string" ? Number(v) : v, z.z.number().min(0).max(1).default(0.80)),
+        });
+        // Valid
+        assert.doesNotThrow(() => schema.parse({ threshold: 0.5 }));
+        assert.doesNotThrow(() => schema.parse({ threshold: 0 }));
+        assert.doesNotThrow(() => schema.parse({ threshold: 1 }));
+        // Invalid
+        assert.throws(() => schema.parse({ threshold: -0.1 }));
+        assert.throws(() => schema.parse({ threshold: 1.5 }));
+        assert.throws(() => schema.parse({ threshold: -1 }));
+    });
+
+    it("rejects min_stmts < 1", async () => {
+        const z = await import("zod");
+        const schema = z.z.object({
+            min_stmts: z.z.preprocess(v => typeof v === "string" ? Number(v) : v, z.z.number().int().min(1).optional()),
+        });
+        // Valid
+        assert.doesNotThrow(() => schema.parse({ min_stmts: 1 }));
+        assert.doesNotThrow(() => schema.parse({ min_stmts: 10 }));
+        assert.doesNotThrow(() => schema.parse({})); // optional
+        // Invalid
+        assert.throws(() => schema.parse({ min_stmts: 0 }));
+        assert.throws(() => schema.parse({ min_stmts: -5 }));
+        assert.throws(() => schema.parse({ min_stmts: 2.5 })); // not integer
+    });
+});
+
