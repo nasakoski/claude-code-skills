@@ -228,39 +228,43 @@ Returns: size, line count, modification time (absolute + relative), file type, b
 
 ## Hook
 
-The unified PostToolUse hook (`hook.mjs`) handles two concerns:
+The unified hook (`hook.mjs`) handles four events:
 
-### Hex-line Reminder
+### PreToolUse: Tool Redirect
 
-Triggers on built-in `Read`, `Edit`, `Write`, `Grep` tool usage for text files. Outputs a short reminder to stderr (exit code 2) nudging the agent to use the corresponding hex-line tool instead.
+Blocks built-in `Read`, `Edit`, `Write`, `Grep` on text files and redirects to hex-line equivalents. Binary files (images, PDFs, notebooks, archives, executables, fonts, media) are excluded.
 
-Binary files (images, PDFs, notebooks, archives, executables, fonts, media) are excluded -- those should use built-in tools.
+### PreToolUse: Bash Redirect + Dangerous Blocker
 
-### RTK Output Filter
+Intercepts simple Bash commands (`cat`, `head`, `tail`, `ls`, `find`, `grep`, `sed -i`, etc.) and redirects to hex-line tools. Blocks dangerous commands (`rm -rf /`, `git push --force`, `git reset --hard`, `DROP TABLE`, `chmod 777`, `mkfs`, `dd`).
+
+### PostToolUse: RTK Output Filter
 
 Triggers on `Bash` tool output exceeding 50 lines. Pipeline:
 
 1. **Detect command type** -- npm install, test, build, pip install, git verbose, or generic
-2. **Type-specific summary** -- extracts key metrics (e.g., `npm install: 42 added, 3 warnings`)
-3. **Normalize** -- replaces UUIDs, timestamps, IPs, hex values, large numbers with placeholders
-4. **Deduplicate** -- collapses identical normalized lines with `(xN)` counts
-5. **Truncate** -- keeps first 12 + last 12 lines, omits the middle
+2. **Normalize** -- replaces UUIDs, timestamps, IPs, hex values, large numbers with placeholders
+3. **Deduplicate** -- collapses identical normalized lines with `(xN)` counts
+4. **Truncate** -- keeps first 15 + last 15 lines, omits the middle
 
 Configuration constants in `hook.mjs`:
 
 | Constant | Default | Purpose |
-|----------|---------|---------|
+|----------|---------|--------|
 | `LINE_THRESHOLD` | 50 | Minimum lines to trigger filtering |
-| `TRUNCATE_LIMIT` | 30 | Lines below this are kept as-is after dedup |
-| `HEAD_LINES` | 12 | Lines to keep from start |
-| `TAIL_LINES` | 12 | Lines to keep from end |
+| `HEAD_LINES` | 15 | Lines to keep from start |
+| `TAIL_LINES` | 15 | Lines to keep from end |
+
+### SessionStart: Tool Preferences
+
+Injects hex-line tool preference list into agent context at session start.
 
 ## Architecture
 
 ```
 hex-line-mcp/
-  server.mjs          MCP server (stdio transport, 6 tools)
-  hook.mjs            PostToolUse hook (reminder + RTK filter)
+  server.mjs          MCP server (stdio transport, 11 tools)
+  hook.mjs            Unified hook (PreToolUse + PostToolUse + SessionStart)
   package.json
   lib/
     hash.mjs          FNV-1a hashing, 2-char tags, range checksums
@@ -269,6 +273,13 @@ hex-line-mcp/
     search.mjs        ripgrep wrapper with hash-annotated results
     outline.mjs       tree-sitter WASM AST outline
     verify.mjs        Range checksum verification
+    info.mjs          File metadata (size, lines, mtime, type)
+    tree.mjs          Directory tree with .gitignore support
+    changes.mjs       Semantic git diff via AST
+    bulk-replace.mjs  Multi-file search-and-replace
+    setup.mjs         Hook installation for Claude/Gemini/Codex
+    format.mjs        Output formatting utilities
+    coerce.mjs        Parameter alias mapping
     security.mjs      Path validation, binary detection, size limits
     normalize.mjs     Output normalization, deduplication, truncation
 ```
@@ -327,7 +338,7 @@ Outline works on code files only (15+ languages via tree-sitter WASM). For markd
 <details>
 <summary><b>How does the RTK filter reduce tokens?</b></summary>
 
-The PostToolUse hook normalizes Bash output (replaces UUIDs, timestamps, IPs with placeholders), deduplicates identical lines, and truncates to first 12 + last 12 lines. Average savings: 45% (flat) / 52% (weighted) across 18 benchmark scenarios.
+The PostToolUse hook normalizes Bash output (replaces UUIDs, timestamps, IPs with placeholders), deduplicates identical lines, and truncates to first 15 + last 15 lines. Average savings: 45% (flat) / 52% (weighted) across 18 benchmark scenarios.
 
 </details>
 

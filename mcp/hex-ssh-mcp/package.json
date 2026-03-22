@@ -17,7 +17,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node --test test/*.mjs",
-    "check": "node --check server.mjs"
+    "check": "node --check server.mjs",
+    "benchmark": "node benchmark.mjs"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -25,7 +26,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "diff": "^8.0.3",
-    "ssh2": "^1.16.0"
+    "ssh2": "^1.16.0",
+    "zod": "^3.25.0"
   },
   "author": "Lev Nikolaevich <https://github.com/levnikolaevich>",
   "license": "MIT",

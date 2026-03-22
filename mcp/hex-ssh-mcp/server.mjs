@@ -14,6 +14,8 @@
  */
 
 import { z } from "zod";
+import { createRequire } from "node:module";
+const { version } = createRequire(import.meta.url)("./package.json");
 
 // LLM clients may send booleans as strings ("true"/"false").
 // z.coerce.boolean() is unsafe: Boolean("false") === true.
@@ -46,7 +48,7 @@ try {
     process.exit(1);
 }
 
-const server = new McpServer({ name: "hex-ssh-mcp", version: "1.1.2" });
+const server = new McpServer({ name: "hex-ssh-mcp", version });
 
 // --- Common connection args for reuse ---
 
@@ -800,4 +802,4 @@ server.registerTool("ssh-verify", {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-void checkForUpdates("@levnikolaevich/hex-ssh-mcp", "1.1.2");
+void checkForUpdates("@levnikolaevich/hex-ssh-mcp", version);
