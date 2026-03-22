@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hex-graph-mcp — Claude Code Skills</title>
+  <meta name="description" content="Code knowledge graph MCP server. AST indexing via tree-sitter for 15+ languages.">
+  <link rel="icon" type="image/jpeg" href="../favicon.jpg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #16161f;
+      --bg-card-hover: #1c1c28;
+      --border: #2a2a3a;
+      --text-primary: #e8e8f0;
+      --text-secondary: #9898aa;
+      --text-muted: #6a6a7a;
+      --accent: #7c6aef;
+      --accent-light: #9d8ff5;
+      --accent-glow: rgba(124, 106, 239, 0.15);
+      --green: #34d399;
+      --blue: #60a5fa;
+      --amber: #fbbf24;
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --max-width: 1120px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-light); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #bfb3ff; }
+
+    .container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+
+    /* -- NAV -- */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 10, 15, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    nav .logo { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+    nav .logo span { color: var(--accent-light); }
+    nav .links { display: flex; gap: 24px; font-size: 14px; }
+    nav .links a { color: var(--text-secondary); }
+    nav .links a:hover { color: var(--text-primary); }
+
+    /* -- HERO -- */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, var(--accent-glow), transparent);
+    }
+    .hero .back-link {
+      display: inline-block;
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      transition: color 0.2s;
+    }
+    .hero .back-link:hover { color: var(--accent-light); }
+    .hero h1 {
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .hero .subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto 32px;
+      line-height: 1.5;
+    }
+    .hero .install-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .hero .install-block:hover { border-color: var(--accent); }
+    .hero .install-block .prompt { color: var(--text-muted); user-select: none; }
+    .hero .install-block .cmd { color: var(--green); }
+    .hero .install-block .copy {
+      color: var(--text-muted); font-size: 12px;
+      padding: 4px 8px; border-radius: 4px;
+      background: var(--bg-card);
+      transition: color 0.2s;
+    }
+    .hero .install-block:hover .copy { color: var(--text-primary); }
+
+    /* -- SECTION -- */
+    section { padding: 64px 0; }
+    section h2 {
+      font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    section .section-desc {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      margin-bottom: 32px;
+      max-width: 600px;
+    }
+
+    /* -- TABLE -- */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    .tool-name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      white-space: nowrap;
+    }
+    .tool-desc { color: var(--text-secondary); }
+    .tool-feature { color: var(--text-muted); font-size: 13px; }
+
+    /* -- WORKFLOW BLOCK -- */
+    .workflow-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+    }
+    .workflow-block p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .workflow-block p + p { margin-top: 12px; }
+    .workflow-block code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .workflow-block ul {
+      list-style: none;
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .workflow-block li {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+      padding-left: 20px;
+      position: relative;
+    }
+    .workflow-block li::before {
+      content: "\25B8";
+      color: var(--accent-light);
+      position: absolute;
+      left: 0;
+      font-weight: 700;
+    }
+
+    /* -- BENCHMARK -- */
+    .savings-high { color: var(--green); font-weight: 700; }
+    .savings-note { color: var(--amber); font-weight: 700; }
+    .benchmark-note {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .benchmark-note strong { color: var(--amber); }
+    .summary-box {
+      margin-top: 24px;
+      padding: 20px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: 10px;
+    }
+    .summary-box p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+    .summary-box strong { color: var(--text-primary); }
+    .summary-box .highlight { color: var(--green); font-weight: 700; }
+
+    /* -- HEX FAMILY -- */
+    .npm-link {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent-light);
+      background: var(--bg-primary);
+      padding: 3px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .npm-link:hover { color: #bfb3ff; }
+    .current-pkg { color: var(--green); font-weight: 600; }
+
+    /* -- FOOTER -- */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--text-secondary); }
+    footer .links-row { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .hero { padding: 48px 0 36px; }
+      section { padding: 48px 0; }
+      nav .links { gap: 16px; }
+      .hero .install-block { font-size: 12px; padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="../index.html" class="logo">Claude Code <span>Skills</span></a>
+      <div class="links">
+        <a href="../index.html#mcp">All MCP</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <a href="../index.html#mcp" class="back-link">&larr; Back to MCP servers</a>
+      <h1>hex-graph-mcp</h1>
+      <p class="subtitle">Code knowledge graph MCP server. AST indexing via tree-sitter for 15+ languages.</p>
+      <div class="install-block" onclick="navigator.clipboard.writeText('npm i -g @levnikolaevich/hex-graph-mcp'); this.querySelector('.copy').textContent='Copied!'">
+        <span class="prompt">$</span>
+        <span class="cmd">npm i -g @levnikolaevich/hex-graph-mcp</span>
+        <span class="copy">Copy</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOOLS -->
+  <section>
+    <div class="container">
+      <h2>Tools</h2>
+      <p class="section-desc">7 MCP tools for code knowledge graph operations.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tool</th><th>Description</th><th>Key Feature</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-name">index_project</td>
+              <td class="tool-desc">Scan and index project into knowledge graph</td>
+              <td class="tool-feature">Idempotent, skips unchanged files</td>
+            </tr>
+            <tr>
+              <td class="tool-name">search_symbols</td>
+              <td class="tool-desc">Full-text search for symbols by name</td>
+              <td class="tool-feature">FTS5, filter by kind</td>
+            </tr>
+            <tr>
+              <td class="tool-name">get_impact</td>
+              <td class="tool-desc">Blast radius analysis for a symbol</td>
+              <td class="tool-feature">Reverse dependency traversal</td>
+            </tr>
+            <tr>
+              <td class="tool-name">trace_calls</td>
+              <td class="tool-desc">Trace call chains (callers or callees)</td>
+              <td class="tool-feature">BFS with configurable depth</td>
+            </tr>
+            <tr>
+              <td class="tool-name">get_context</td>
+              <td class="tool-desc">360-degree view of a symbol</td>
+              <td class="tool-feature">Definition, callers, callees, siblings</td>
+            </tr>
+            <tr>
+              <td class="tool-name">get_architecture</td>
+              <td class="tool-desc">Project architecture overview</td>
+              <td class="tool-feature">Module matrix, hotspots</td>
+            </tr>
+            <tr>
+              <td class="tool-name">watch_project</td>
+              <td class="tool-desc">File watcher for incremental graph updates</td>
+              <td class="tool-feature">Singleton, CASCADE cleanup on delete</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- USE CASES -->
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>Use Cases</h2>
+      <p class="section-desc">Common scenarios and the right tool for each.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Scenario</th><th>Tool</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Find a function</td>
+              <td class="tool-name">search_symbols</td>
+              <td class="tool-feature">query: "handleAuth"</td>
+            </tr>
+            <tr>
+              <td>Understand unfamiliar code</td>
+              <td class="tool-name">get_context</td>
+              <td class="tool-feature">symbol: "UserService"</td>
+            </tr>
+            <tr>
+              <td>Pre-refactoring check</td>
+              <td class="tool-name">get_impact</td>
+              <td class="tool-feature">symbol: "calculateTotal", depth: 4</td>
+            </tr>
+            <tr>
+              <td>Find entry points</td>
+              <td class="tool-name">trace_calls</td>
+              <td class="tool-feature">symbol: "validateInput", direction: "callers"</td>
+            </tr>
+            <tr>
+              <td>Codebase overview</td>
+              <td class="tool-name">get_architecture</td>
+              <td class="tool-feature">First call after index_project</td>
+            </tr>
+            <tr>
+              <td>Continuous sync</td>
+              <td class="tool-name">watch_project</td>
+              <td class="tool-feature">Start once, graph stays current</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- BENCHMARK -->
+  <section>
+    <div class="container">
+      <h2>Token Efficiency</h2>
+      <p class="section-desc">Built-in grep/read vs hex-graph &mdash; 50 files, 422 symbols indexed</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Scenario</th><th>Built-in</th><th>Hex-graph</th><th>Savings</th><th>Ops</th><th>Steps</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Search symbols</td>
+              <td>5,800 ch</td>
+              <td>196 ch</td>
+              <td class="savings-high">97%</td>
+              <td class="tool-feature">1&rarr;1</td>
+              <td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Get context (360&deg;)</td>
+              <td>38,611 ch</td>
+              <td>1,274 ch</td>
+              <td class="savings-high">97%</td>
+              <td class="tool-feature">4&rarr;1</td>
+              <td class="tool-feature">4&rarr;1</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Get impact (blast radius)</td>
+              <td>969 ch</td>
+              <td>2,590 ch</td>
+              <td class="savings-note">-167%</td>
+              <td class="tool-feature">6&rarr;1</td>
+              <td class="tool-feature">3&rarr;1</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Trace calls (callers)</td>
+              <td>12,716 ch</td>
+              <td>477 ch</td>
+              <td class="savings-high">96%</td>
+              <td class="tool-feature">4&rarr;1</td>
+              <td class="tool-feature">3&rarr;1</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Architecture overview</td>
+              <td>389,523 ch</td>
+              <td>2,941 ch</td>
+              <td class="savings-high">99%</td>
+              <td class="tool-feature">50&rarr;1</td>
+              <td class="tool-feature">50&rarr;1</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="benchmark-note">
+        <strong>Test 3 shows -167%:</strong> hex-graph returns MORE data because it recursively expands the full blast radius (depth 3), while grep finds only surface matches. This demonstrates completeness, not inefficiency.
+      </div>
+      <div class="summary-box">
+        <p><strong>Average:</strong> <span class="highlight">44% tokens saved</span> | <strong>65&rarr;5 ops</strong> (92% reduction) | <strong>61&rarr;5 steps</strong></p>
+        <p><strong>Index cost:</strong> 8ms for 52 files. Break-even: 1 query.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>Architecture</h2>
+      <div class="workflow-block">
+        <ul>
+          <li><strong>Storage:</strong> SQLite via better-sqlite3, single <code>.hex-graph.db</code> per project</li>
+          <li><strong>Parsing:</strong> tree-sitter WASM &mdash; 15+ languages (JS, TS, Python, Go, Rust, Java, C, C++, C#, Ruby, PHP, Kotlin, Swift, Bash)</li>
+          <li><strong>Indexer:</strong> 4-pass pipeline &mdash; PURGE &rarr; SCAN &rarr; PARSE &rarr; RESOLVE</li>
+          <li><strong>Watcher:</strong> chokidar for incremental updates, CASCADE cleanup on delete</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- HEX FAMILY -->
+  <section>
+    <div class="container">
+      <h2>Hex MCP Family</h2>
+      <p class="section-desc">Three packages, one workflow.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Package</th><th>Purpose</th><th>npm</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-name">hex-line-mcp</td>
+              <td class="tool-desc">Local file editing + hooks</td>
+              <td><a class="npm-link" href="https://www.npmjs.com/package/@levnikolaevich/hex-line-mcp" target="_blank">@levnikolaevich/hex-line-mcp</a></td>
+            </tr>
+            <tr>
+              <td class="tool-name">hex-ssh-mcp</td>
+              <td class="tool-desc">Remote file editing over SSH</td>
+              <td><a class="npm-link" href="https://www.npmjs.com/package/@levnikolaevich/hex-ssh-mcp" target="_blank">@levnikolaevich/hex-ssh-mcp</a></td>
+            </tr>
+            <tr>
+              <td class="tool-name current-pkg">hex-graph-mcp</td>
+              <td class="tool-desc">Code knowledge graph + AST indexing</td>
+              <td><a class="npm-link" href="https://www.npmjs.com/package/@levnikolaevich/hex-graph-mcp" target="_blank">@levnikolaevich/hex-graph-mcp</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="links-row">
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/releases" target="_blank">Releases</a>
+        <a href="https://skills.sh/LevNikolaevich/claude-code-skills" target="_blank">skills.sh</a>
+      </div>
+      <p>
+        Made by <a href="https://github.com/levnikolaevich" target="_blank">@levnikolaevich</a>
+        &middot; MIT License
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

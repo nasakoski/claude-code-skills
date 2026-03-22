@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hex-line-mcp — Claude Code Skills</title>
+  <meta name="description" content="Hash-verified file editing MCP server + token efficiency hook for AI coding agents. 11 tools, hooks, output style.">
+  <link rel="icon" type="image/jpeg" href="../favicon.jpg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #16161f;
+      --bg-card-hover: #1c1c28;
+      --border: #2a2a3a;
+      --text-primary: #e8e8f0;
+      --text-secondary: #9898aa;
+      --text-muted: #6a6a7a;
+      --accent: #7c6aef;
+      --accent-light: #9d8ff5;
+      --accent-glow: rgba(124, 106, 239, 0.15);
+      --green: #34d399;
+      --blue: #60a5fa;
+      --amber: #fbbf24;
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --max-width: 1120px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-light); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #bfb3ff; }
+
+    .container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+
+    /* -- NAV -- */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 10, 15, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    nav .logo { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+    nav .logo span { color: var(--accent-light); }
+    nav .links { display: flex; gap: 24px; font-size: 14px; }
+    nav .links a { color: var(--text-secondary); }
+    nav .links a:hover { color: var(--text-primary); }
+
+    /* -- HERO -- */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, var(--accent-glow), transparent);
+    }
+    .hero .back-link {
+      display: inline-block;
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      transition: color 0.2s;
+    }
+    .hero .back-link:hover { color: var(--accent-light); }
+    .hero h1 {
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .hero .subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto 32px;
+      line-height: 1.5;
+    }
+    .hero .install-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .hero .install-block:hover { border-color: var(--accent); }
+    .hero .install-block .prompt { color: var(--text-muted); user-select: none; }
+    .hero .install-block .cmd { color: var(--green); }
+    .hero .install-block .copy {
+      color: var(--text-muted); font-size: 12px;
+      padding: 4px 8px; border-radius: 4px;
+      background: var(--bg-card);
+      transition: color 0.2s;
+    }
+    .hero .install-block:hover .copy { color: var(--text-primary); }
+
+    /* -- SECTION -- */
+    section { padding: 64px 0; }
+    section h2 {
+      font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    section .section-desc {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      margin-bottom: 32px;
+      max-width: 600px;
+    }
+
+    /* -- TABLE -- */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    .tool-name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      white-space: nowrap;
+    }
+    .tool-desc { color: var(--text-secondary); }
+    .tool-feature { color: var(--text-muted); font-size: 13px; }
+
+    /* -- WORKFLOW -- */
+    .workflow-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+    }
+    .workflow-block p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .workflow-block code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* -- CODE BLOCK -- */
+    .code-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.8;
+      overflow-x: auto;
+      max-width: 640px;
+    }
+    .code-block .comment { color: var(--text-muted); }
+    .code-block .cmd { color: var(--green); }
+    .code-block .hash { color: var(--amber); }
+    .code-block .line-num { color: var(--text-muted); }
+
+    /* -- SAVINGS HIGHLIGHT -- */
+    .savings-high { color: var(--green); font-weight: 700; }
+
+    /* -- SUMMARY BOX -- */
+    .summary-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 24px;
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .summary-box strong { color: var(--text-primary); }
+
+    /* -- HOOK EVENT -- */
+    .hook-event {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--amber);
+      white-space: nowrap;
+    }
+
+    /* -- NPM BADGE -- */
+    .npm-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--green);
+      padding: 4px 10px;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .npm-link:hover { border-color: var(--green); color: var(--green); }
+
+    /* -- HASH FORMAT -- */
+    .hash-format {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.8;
+      overflow-x: auto;
+      max-width: 540px;
+    }
+
+    /* -- FOOTER -- */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--text-secondary); }
+    footer .links-row { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .hero { padding: 48px 0 36px; }
+      section { padding: 48px 0; }
+      nav .links { gap: 16px; }
+      .hero .install-block { font-size: 12px; padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="../index.html" class="logo">Claude Code <span>Skills</span></a>
+      <div class="links">
+        <a href="../index.html#mcp">All MCP</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <a href="../index.html#mcp" class="back-link">&larr; Back to MCP servers</a>
+      <h1>hex-line-mcp</h1>
+      <p class="subtitle">Hash-verified file editing MCP + token efficiency hook for AI coding agents</p>
+      <div class="install-block" onclick="navigator.clipboard.writeText('npm i -g @levnikolaevich/hex-line-mcp'); this.querySelector('.copy').textContent='Copied!'">
+        <span class="prompt">$</span>
+        <span class="cmd">npm i -g @levnikolaevich/hex-line-mcp</span>
+        <span class="copy">Copy</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Tools -->
+  <section>
+    <div class="container">
+      <h2>Tools</h2>
+      <p class="section-desc">11 MCP tools for reading, editing, searching, and analyzing code files.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tool</th><th>Description</th><th>Key Feature</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-name">read_file</td>
+              <td class="tool-desc">Read file with hash-annotated lines and range checksums</td>
+              <td class="tool-feature">Partial reads via offset/limit</td>
+            </tr>
+            <tr>
+              <td class="tool-name">edit_file</td>
+              <td class="tool-desc">Hash-verified edits with anchor or text replacement</td>
+              <td class="tool-feature">Returns compact unified diff</td>
+            </tr>
+            <tr>
+              <td class="tool-name">write_file</td>
+              <td class="tool-desc">Create/overwrite files, auto-creates parent dirs</td>
+              <td class="tool-feature">Path validation, no hash overhead</td>
+            </tr>
+            <tr>
+              <td class="tool-name">grep_search</td>
+              <td class="tool-desc">Search with ripgrep, hash-annotated matches</td>
+              <td class="tool-feature">Edit-ready results &mdash; search then edit</td>
+            </tr>
+            <tr>
+              <td class="tool-name">outline</td>
+              <td class="tool-desc">AST structural overview via tree-sitter WASM</td>
+              <td class="tool-feature">95% token reduction</td>
+            </tr>
+            <tr>
+              <td class="tool-name">verify</td>
+              <td class="tool-desc">Check if range checksums are still valid</td>
+              <td class="tool-feature">Single-line response</td>
+            </tr>
+            <tr>
+              <td class="tool-name">directory_tree</td>
+              <td class="tool-desc">Compact tree with .gitignore support</td>
+              <td class="tool-feature">Skips node_modules/.git, shows sizes</td>
+            </tr>
+            <tr>
+              <td class="tool-name">get_file_info</td>
+              <td class="tool-desc">File metadata without reading content</td>
+              <td class="tool-feature">Size, lines, mtime, binary detection</td>
+            </tr>
+            <tr>
+              <td class="tool-name">setup_hooks</td>
+              <td class="tool-desc">Configure hooks for Claude/Gemini/Codex</td>
+              <td class="tool-feature">One call, idempotent</td>
+            </tr>
+            <tr>
+              <td class="tool-name">changes</td>
+              <td class="tool-desc">Semantic diff against git ref</td>
+              <td class="tool-feature">AST-level added/removed/modified</td>
+            </tr>
+            <tr>
+              <td class="tool-name">bulk_replace</td>
+              <td class="tool-desc">Multi-file search-and-replace by glob</td>
+              <td class="tool-feature">Per-file diffs, dry_run safety</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hooks -->
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>Hooks &amp; Output Style</h2>
+      <p class="section-desc">Hooks install via <code style="font-family: var(--font-mono); font-size: 13px; color: var(--accent-light); background: var(--bg-primary); padding: 2px 6px; border-radius: 4px;">setup_hooks</code> tool. One call configures everything &mdash; PreToolUse blocking, PostToolUse filtering, and Output Style.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Event</th><th>Trigger</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="hook-event">PreToolUse</td>
+              <td class="tool-desc">Read/Edit/Write/Grep on text files</td>
+              <td class="tool-desc">Blocks built-in, forces hex-line tools</td>
+            </tr>
+            <tr>
+              <td class="hook-event">PreToolUse</td>
+              <td class="tool-desc">Bash with dangerous commands</td>
+              <td class="tool-desc">Blocks rm -rf /, git push --force, DROP, chmod 777</td>
+            </tr>
+            <tr>
+              <td class="hook-event">PostToolUse</td>
+              <td class="tool-desc">Bash output exceeding 50 lines</td>
+              <td class="tool-desc">RTK: normalize, deduplicate, truncate (first 12 + last 12)</td>
+            </tr>
+            <tr>
+              <td class="hook-event">SessionStart</td>
+              <td class="tool-desc">Session begins</td>
+              <td class="tool-desc">Injects tool preference list into agent context</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 32px;">
+        <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 16px;">Output Style Hack</h3>
+        <div class="workflow-block">
+          <p>
+            A persistent <strong style="color: var(--text-primary);">Output Style</strong> installed to
+            <code>~/.claude/output-styles/hex-line.md</code>
+          </p>
+          <p style="margin-top: 12px;">
+            Embeds tool preferences directly in Claude's system prompt &mdash; reducing hook firings by making Claude
+            prefer hex-line tools from the start.
+          </p>
+          <p style="margin-top: 12px;">
+            Installed automatically by <code>setup_hooks</code>. Activates if no other output style is set.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benchmark -->
+  <section>
+    <div class="container">
+      <h2>Token Efficiency</h2>
+      <p class="section-desc">Benchmark v3 &mdash; 21 code files, 4,801 lines, 18 scenarios</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Scenario</th><th>Baseline</th><th>Hex-line</th><th>Savings</th><th>Ops</th><th>Steps</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td><td class="tool-desc">Read full (&lt;50L)</td>
+              <td>1,837 ch</td><td>1,676 ch</td><td>9%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>1</td><td class="tool-desc">Read full (50-200L)</td>
+              <td>4,976 ch</td><td>4,609 ch</td><td>7%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>1</td><td class="tool-desc">Read full (200-500L)</td>
+              <td>11,702 ch</td><td>10,796 ch</td><td>8%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>1</td><td class="tool-desc">Read full (500L+)</td>
+              <td>76,079 ch</td><td>71,578 ch</td><td>6%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>2</td><td class="tool-desc">Outline+read (200-500L)</td>
+              <td>11,702 ch</td><td>3,620 ch</td><td class="savings-high">69%</td>
+              <td class="tool-feature">1&rarr;2</td><td class="tool-feature">1&rarr;2</td>
+            </tr>
+            <tr>
+              <td>2</td><td class="tool-desc">Outline+read (500L+)</td>
+              <td>76,079 ch</td><td>19,020 ch</td><td class="savings-high">75%</td>
+              <td class="tool-feature">1&rarr;2</td><td class="tool-feature">1&rarr;2</td>
+            </tr>
+            <tr>
+              <td>3</td><td class="tool-desc">Grep search</td>
+              <td>2,816 ch</td><td>2,926 ch</td><td>-4%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>4</td><td class="tool-desc">Directory tree</td>
+              <td>1,967 ch</td><td>699 ch</td><td class="savings-high">64%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>5</td><td class="tool-desc">File info</td>
+              <td>371 ch</td><td>197 ch</td><td class="savings-high">47%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>6</td><td class="tool-desc">Create file (200L)</td>
+              <td>113 ch</td><td>85 ch</td><td class="savings-high">25%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>7</td><td class="tool-desc">Edit x5 sequential</td>
+              <td>2,581 ch</td><td>1,529 ch</td><td class="savings-high">41%</td>
+              <td class="tool-feature">5&rarr;5</td><td class="tool-feature">5&rarr;5</td>
+            </tr>
+            <tr>
+              <td>8</td><td class="tool-desc">Verify checksums (4 ranges)</td>
+              <td>8,295 ch</td><td>93 ch</td><td class="savings-high">99%</td>
+              <td class="tool-feature">4&rarr;1</td><td class="tool-feature">4&rarr;1</td>
+            </tr>
+            <tr>
+              <td>9</td><td class="tool-desc">Multi-file read (2 files)</td>
+              <td>3,674 ch</td><td>3,358 ch</td><td>9%</td>
+              <td class="tool-feature">2&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>10</td><td class="tool-desc">bulk_replace dry_run (5 files)</td>
+              <td>2,795 ch</td><td>1,706 ch</td><td class="savings-high">39%</td>
+              <td class="tool-feature">5&rarr;1</td><td class="tool-feature">5&rarr;1</td>
+            </tr>
+            <tr>
+              <td>11</td><td class="tool-desc">Changes (semantic diff)</td>
+              <td>830 ch</td><td>271 ch</td><td class="savings-high">67%</td>
+              <td class="tool-feature">1&rarr;1</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>12</td><td class="tool-desc">FILE_NOT_FOUND recovery</td>
+              <td>2,071 ch</td><td>101 ch</td><td class="savings-high">95%</td>
+              <td class="tool-feature">3&rarr;1</td><td class="tool-feature">3&rarr;1</td>
+            </tr>
+            <tr>
+              <td>13</td><td class="tool-desc">Hash mismatch recovery</td>
+              <td>8,918 ch</td><td>423 ch</td><td class="savings-high">95%</td>
+              <td class="tool-feature">3&rarr;1</td><td class="tool-feature">3&rarr;1</td>
+            </tr>
+            <tr>
+              <td>14</td><td class="tool-desc">Bash redirects (cat+ls+stat)</td>
+              <td>5,602 ch</td><td>4,695 ch</td><td class="savings-high">16%</td>
+              <td class="tool-feature">3&rarr;3</td><td class="tool-feature">1&rarr;1</td>
+            </tr>
+            <tr>
+              <td>15</td><td class="tool-desc">HASH_HINT multi-match</td>
+              <td>8,888 ch</td><td>653 ch</td><td class="savings-high">93%</td>
+              <td class="tool-feature">3&rarr;2</td><td class="tool-feature">3&rarr;1</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="summary-box">
+        <strong>Average savings: 45% (flat) / 52% (weighted)</strong> &nbsp;|&nbsp; 39&rarr;28 ops (28% fewer) &nbsp;|&nbsp; 36&rarr;25 steps
+      </div>
+    </div>
+  </section>
+
+  <!-- Hash Format -->
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>Hash Format</h2>
+      <p class="section-desc">Every line is annotated with a 2-char content hash and line number.</p>
+      <div class="hash-format">
+        <span class="hash" style="color: var(--amber);">ab</span><span class="line-num" style="color: var(--text-muted);">.42</span>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color: var(--text-primary);">const x = calculateTotal(items);</span>
+      </div>
+      <div style="margin-top: 24px; max-width: 600px;">
+        <div class="workflow-block">
+          <p>
+            <code>ab</code> &mdash; 2-char FNV-1a tag from content (whitespace-normalized)
+          </p>
+          <p style="margin-top: 8px;">
+            <code>42</code> &mdash; line number (1-indexed)
+          </p>
+          <p style="margin-top: 12px;">
+            <strong style="color: var(--text-primary);">Range checksums:</strong>
+            <code>checksum: 1-50:f7e2a1b0</code> &mdash; FNV-1a accumulator, detects any change in the range.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hex Family -->
+  <section>
+    <div class="container">
+      <h2>Hex Family</h2>
+      <p class="section-desc">Three MCP servers covering local editing, remote SSH, and code intelligence.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Package</th><th>Purpose</th><th>npm</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-name">hex-line-mcp</td>
+              <td class="tool-desc">Local file editing + hooks</td>
+              <td><a class="npm-link" href="https://www.npmjs.com/package/@levnikolaevich/hex-line-mcp" target="_blank">npm</a></td>
+            </tr>
+            <tr>
+              <td class="tool-name">hex-ssh-mcp</td>
+              <td class="tool-desc">Remote file editing over SSH</td>
+              <td><a class="npm-link" href="https://www.npmjs.com/package/@levnikolaevich/hex-ssh-mcp" target="_blank">npm</a></td>
+            </tr>
+            <tr>
+              <td class="tool-name">hex-graph-mcp</td>
+              <td class="tool-desc">Code knowledge graph + AST indexing</td>
+              <td><a class="npm-link" href="https://www.npmjs.com/package/@levnikolaevich/hex-graph-mcp" target="_blank">npm</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="links-row">
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/releases" target="_blank">Releases</a>
+        <a href="https://skills.sh/LevNikolaevich/claude-code-skills" target="_blank">skills.sh</a>
+      </div>
+      <p>
+        Made by <a href="https://github.com/levnikolaevich" target="_blank">@levnikolaevich</a>
+        &middot; MIT License
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

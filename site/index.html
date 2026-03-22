@@ -259,6 +259,7 @@
     <div class="container">
       <div class="logo">Claude Code <span>Skills</span></div>
       <div class="links">
+        <a href="#mcp">MCP</a>
         <a href="#plugins">Plugins</a>
         <a href="#quickstart">Quick Start</a>
         <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
@@ -295,9 +296,43 @@
   <div class="container">
     <div class="stats">
       <div class="stat"><div class="num">MIT</div><div class="label">License</div></div>
-      <div class="stat"><div class="num">0</div><div class="label">API Keys Required</div></div>
     </div>
   </div>
+
+  <!-- MCP SERVERS -->
+  <section id="mcp">
+    <div class="container">
+      <h2>Hex MCP Servers</h2>
+      <p class="section-desc">Token-efficient MCP servers for AI coding agents. Hash-verified editing, remote SSH ops, code knowledge graphs.</p>
+      <div class="plugins-grid">
+
+        <div class="plugin-card">
+          <div class="icon" style="font-family: var(--font-mono); font-size: 24px;">#</div>
+          <h3>hex-line-mcp</h3>
+          <p>11 tools: hash-verified file editing, AST outline, hooks + output style. <strong style="color: var(--green);">45% avg token savings</strong> across 18 benchmark scenarios.</p>
+          <code>npm i -g @levnikolaevich/hex-line-mcp</code>
+          <a href="mcp/hex-line.html" class="plugin-link">View details &rarr;</a>
+        </div>
+
+        <div class="plugin-card">
+          <div class="icon" style="font-family: var(--font-mono); font-size: 24px;">&gt;_</div>
+          <h3>hex-ssh-mcp</h3>
+          <p>6 tools: remote file editing over SSH with FNV-1a hash verification, output normalization, and deduplication.</p>
+          <code>npm i -g @levnikolaevich/hex-ssh-mcp</code>
+          <a href="mcp/hex-ssh.html" class="plugin-link">View details &rarr;</a>
+        </div>
+
+        <div class="plugin-card">
+          <div class="icon">&#9673;</div>
+          <h3>hex-graph-mcp</h3>
+          <p>7 tools: code knowledge graph, blast radius analysis, call tracing. <strong style="color: var(--green);">97% savings</strong> on symbol search and architecture overview.</p>
+          <code>npm i -g @levnikolaevich/hex-graph-mcp</code>
+          <a href="mcp/hex-graph.html" class="plugin-link">View details &rarr;</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
 
   <!-- PLUGINS -->
   <section id="plugins">

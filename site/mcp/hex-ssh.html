@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hex-ssh-mcp — Claude Code Skills</title>
+  <meta name="description" content="Token-efficient SSH MCP server with hash-verified remote file editing. Part of the Hex MCP family.">
+  <link rel="icon" type="image/jpeg" href="../favicon.jpg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #16161f;
+      --bg-card-hover: #1c1c28;
+      --border: #2a2a3a;
+      --text-primary: #e8e8f0;
+      --text-secondary: #9898aa;
+      --text-muted: #6a6a7a;
+      --accent: #7c6aef;
+      --accent-light: #9d8ff5;
+      --accent-glow: rgba(124, 106, 239, 0.15);
+      --green: #34d399;
+      --blue: #60a5fa;
+      --amber: #fbbf24;
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --max-width: 1120px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent-light); text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #bfb3ff; }
+
+    .container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+
+    /* -- NAV -- */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 10, 15, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    nav .container {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px;
+    }
+    nav .logo { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+    nav .logo span { color: var(--accent-light); }
+    nav .links { display: flex; gap: 24px; font-size: 14px; }
+    nav .links a { color: var(--text-secondary); }
+    nav .links a:hover { color: var(--text-primary); }
+
+    /* -- HERO -- */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+      background: radial-gradient(ellipse 60% 50% at 50% 0%, var(--accent-glow), transparent);
+    }
+    .hero .back-link {
+      display: inline-block;
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      transition: color 0.2s;
+    }
+    .hero .back-link:hover { color: var(--accent-light); }
+    .hero h1 {
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .hero .subtitle {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin: 0 auto 32px;
+      line-height: 1.5;
+    }
+    .hero .install-block {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .hero .install-block:hover { border-color: var(--accent); }
+    .hero .install-block .prompt { color: var(--text-muted); user-select: none; }
+    .hero .install-block .cmd { color: var(--green); }
+    .hero .install-block .copy {
+      color: var(--text-muted); font-size: 12px;
+      padding: 4px 8px; border-radius: 4px;
+      background: var(--bg-card);
+      transition: color 0.2s;
+    }
+    .hero .install-block:hover .copy { color: var(--text-primary); }
+
+    /* -- SECTION -- */
+    section { padding: 64px 0; }
+    section h2 {
+      font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    section .section-desc {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      margin-bottom: 32px;
+      max-width: 600px;
+    }
+
+    /* -- TABLE -- */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      text-align: left;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    .tool-name {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      white-space: nowrap;
+    }
+    .tool-desc { color: var(--text-secondary); }
+    .tool-feature { color: var(--text-secondary); font-size: 13px; }
+
+    /* -- FEATURES GRID -- */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+    }
+    .feature {
+      padding: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .feature h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .feature p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    .feature code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent-light);
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .feature .example {
+      display: block;
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--green);
+      background: var(--bg-primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    /* -- WORKFLOW -- */
+    .workflow-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+    }
+    .workflow-block p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .workflow-block code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent-light);
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .workflow-block ol {
+      list-style: none;
+      counter-reset: steps;
+      margin-top: 16px;
+    }
+    .workflow-block ol li {
+      counter-increment: steps;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .workflow-block ol li::before {
+      content: counter(steps);
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-glow);
+      color: var(--accent-light);
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .workflow-block ol li strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* -- FOOTER -- */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    footer a { color: var(--text-secondary); }
+    footer .links-row { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .hero { padding: 48px 0 36px; }
+      section { padding: 48px 0; }
+      nav .links { gap: 16px; }
+      .hero .install-block { font-size: 12px; padding: 10px 14px; }
+      .features-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container">
+      <a href="../index.html" class="logo">Claude Code <span>Skills</span></a>
+      <div class="links">
+        <a href="../index.html#mcp">All MCP</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <a href="../index.html#mcp" class="back-link">&larr; Back to MCP servers</a>
+      <h1>hex-ssh-mcp</h1>
+      <p class="subtitle">Token-efficient SSH MCP server with hash-verified remote file editing</p>
+      <div class="install-block" onclick="navigator.clipboard.writeText('npm i -g @levnikolaevich/hex-ssh-mcp'); this.querySelector('.copy').textContent='Copied!'">
+        <span class="prompt">$</span>
+        <span class="cmd">npm i -g @levnikolaevich/hex-ssh-mcp</span>
+        <span class="copy">Copy</span>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <div class="container">
+      <h2>Tools</h2>
+      <p class="section-desc">6 tools for remote file operations over SSH with built-in token optimization.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tool</th><th>Description</th><th>Key Feature</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-name">remote-ssh</td>
+              <td class="tool-desc">Execute shell commands on remote servers</td>
+              <td class="tool-feature">Output normalization + deduplication</td>
+            </tr>
+            <tr>
+              <td class="tool-name">ssh-read-lines</td>
+              <td class="tool-desc">Read remote file with hash-annotated lines</td>
+              <td class="tool-feature">Partial reads via startLine/endLine</td>
+            </tr>
+            <tr>
+              <td class="tool-name">ssh-edit-block</td>
+              <td class="tool-desc">Hash-verified text replacement in remote files</td>
+              <td class="tool-feature">Checksum verification + compact diff</td>
+            </tr>
+            <tr>
+              <td class="tool-name">ssh-search-code</td>
+              <td class="tool-desc">Search remote files with grep</td>
+              <td class="tool-feature">Deduplicated results with (xN) counts</td>
+            </tr>
+            <tr>
+              <td class="tool-name">ssh-write-chunk</td>
+              <td class="tool-desc">Write or append to remote files</td>
+              <td class="tool-feature">Auto-creates parent directories</td>
+            </tr>
+            <tr>
+              <td class="tool-name">ssh-verify</td>
+              <td class="tool-desc">Check if held checksums are still valid</td>
+              <td class="tool-feature">Single-line response</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>Security</h2>
+      <p class="section-desc">Restrict access by host, directory, and authentication method.</p>
+      <div class="features-grid">
+        <div class="feature">
+          <h3>ALLOWED_HOSTS</h3>
+          <p>Comma-separated permitted hostnames/IPs. When set, connections to unlisted hosts are rejected.</p>
+          <span class="example">ALLOWED_HOSTS=prod-web,prod-db,10.0.0.5</span>
+        </div>
+        <div class="feature">
+          <h3>ALLOWED_DIRS</h3>
+          <p>Comma-separated permitted remote directory prefixes. File operations outside these paths are rejected.</p>
+          <span class="example">ALLOWED_DIRS=/home/deploy,/var/www</span>
+        </div>
+        <div class="feature">
+          <h3>SSH Key Authentication</h3>
+          <p>Key-only (no passwords) &mdash; RSA, ED25519, ECDSA. Resolution order:</p>
+          <span class="example">privateKeyPath &rarr; SSH_PRIVATE_KEY env &rarr; ~/.ssh/id_*</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2>Output Normalization</h2>
+      <p class="section-desc">Built into remote-ssh and ssh-search-code. Reduces token waste automatically.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Pattern</th><th>Replacement</th><th>Example</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-desc">UUIDs</td>
+              <td class="tool-name">&lt;UUID&gt;</td>
+              <td class="tool-feature">550e8400-e29b-41d4-... &rarr; &lt;UUID&gt;</td>
+            </tr>
+            <tr>
+              <td class="tool-desc">Timestamps</td>
+              <td class="tool-name">&lt;TS&gt;</td>
+              <td class="tool-feature">2026-03-19 14:30:00 &rarr; &lt;TS&gt;</td>
+            </tr>
+            <tr>
+              <td class="tool-desc">IP addresses</td>
+              <td class="tool-name">&lt;IP&gt;</td>
+              <td class="tool-feature">192.168.1.100:8080 &rarr; &lt;IP&gt;</td>
+            </tr>
+            <tr>
+              <td class="tool-desc">Hex IDs in paths</td>
+              <td class="tool-name">/&lt;ID&gt;</td>
+              <td class="tool-feature">/a1b2c3d4e5 &rarr; /&lt;ID&gt;</td>
+            </tr>
+            <tr>
+              <td class="tool-desc">Large numbers</td>
+              <td class="tool-name">&lt;N&gt;</td>
+              <td class="tool-feature">1234567 &rarr; &lt;N&gt;</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="workflow-block" style="margin-top: 32px;">
+        <p><strong style="color: var(--text-primary);">Processing pipeline</strong></p>
+        <ol>
+          <li><strong>Normalize</strong> &mdash; replace dynamic values with placeholders</li>
+          <li><strong>Deduplicate</strong> &mdash; collapse identical lines with (xN) counts</li>
+          <li><strong>Truncate</strong> &mdash; keep first 40 + last 20 lines, omit middle</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2>Hex MCP Family</h2>
+      <p class="section-desc">Three packages covering local, remote, and architectural analysis.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Package</th><th>Purpose</th><th>Install</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-name"><a href="hex-line.html">hex-line-mcp</a></td>
+              <td class="tool-desc">Local file editing with hash-verified lines, outline, grep, bulk replace</td>
+              <td class="tool-feature" style="font-family: var(--font-mono); font-size: 12px;">npm i -g @levnikolaevich/hex-line-mcp</td>
+            </tr>
+            <tr>
+              <td class="tool-name"><strong>hex-ssh-mcp</strong></td>
+              <td class="tool-desc">Remote file editing over SSH with output normalization and deduplication</td>
+              <td class="tool-feature" style="font-family: var(--font-mono); font-size: 12px;">npm i -g @levnikolaevich/hex-ssh-mcp</td>
+            </tr>
+            <tr>
+              <td class="tool-name"><a href="hex-graph.html">hex-graph-mcp</a></td>
+              <td class="tool-desc">Codebase indexing, symbol search, call tracing, impact analysis</td>
+              <td class="tool-feature" style="font-family: var(--font-mono); font-size: 12px;">npm i -g @levnikolaevich/hex-graph-mcp</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="links-row">
+        <a href="https://github.com/levnikolaevich/claude-code-skills" target="_blank">GitHub</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/discussions" target="_blank">Discussions</a>
+        <a href="https://github.com/levnikolaevich/claude-code-skills/releases" target="_blank">Releases</a>
+        <a href="https://skills.sh/LevNikolaevich/claude-code-skills" target="_blank">skills.sh</a>
+      </div>
+      <p>
+        Made by <a href="https://github.com/levnikolaevich" target="_blank">@levnikolaevich</a>
+        &middot; MIT License
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

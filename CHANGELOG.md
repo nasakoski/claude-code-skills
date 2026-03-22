@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-03-22
+
+- **GitHub Pages MCP section** — hex-line, hex-ssh, hex-graph MCP servers showcased on site index with dedicated detail pages (`site/mcp/`)
+- **Plugin pages enhanced** — all 6 plugin detail pages now link each skill row to its SKILL.md source on GitHub
+- **GitHub Pages best practices** — new standards doc for site development guidelines
+
 ## 2026-03-21
 
 - **ln-012 MCP configurator** — 3 critical phases added: hooks+outputStyle install (Phase 4b), allowed-tools REPLACE strategy with mcp__* preservation (Phase 4d), MCP Tool Preferences auto-write to CLAUDE.md/GEMINI.md/AGENTS.md (Phase 4e)

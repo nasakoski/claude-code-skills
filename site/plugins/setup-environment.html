@@ -157,6 +157,9 @@
       white-space: nowrap;
     }
     .skill-desc { color: var(--text-secondary); }
+    .skill-link { width: 40px; text-align: center; }
+    .skill-link a { color: var(--text-muted); font-size: 14px; transition: color 0.2s; }
+    .skill-link a:hover { color: var(--accent-light); }
 
     .workflow-block {
       background: var(--bg-card);
@@ -243,15 +246,17 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Skill ID</th><th>Description</th></tr>
+            <tr><th>Skill ID</th><th>Description</th><th></th></tr>
           </thead>
           <tbody>
-            <tr><td class="skill-id">ln-001</td><td class="skill-desc">Commit and push all changes to remote</td></tr>
-            <tr><td class="skill-id">ln-010</td><td class="skill-desc">Full environment setup coordinator</td></tr>
-            <tr><td class="skill-id">ln-011</td><td class="skill-desc">Install or update Codex, Gemini &amp; Claude CLI</td></tr>
-            <tr><td class="skill-id">ln-012</td><td class="skill-desc">Register MCP servers, analyze token budget</td></tr>
-            <tr><td class="skill-id">ln-013</td><td class="skill-desc">Sync settings to Gemini/Codex</td></tr>
-            <tr><td class="skill-id">ln-014</td><td class="skill-desc">Audit CLAUDE.md/AGENTS.md/GEMINI.md</td></tr>
+            <tr><td class="skill-id">ln-001</td><td class="skill-desc">Commit and push all changes to remote</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-001-push-all" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-002</td><td class="skill-desc">Analyze session errors and optimization opportunities</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-002-session-analyzer" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-010</td><td class="skill-desc">Full environment setup coordinator</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-010-dev-environment-setup" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-011</td><td class="skill-desc">Install or update Codex, Gemini &amp; Claude CLI</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-011-agent-installer" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-012</td><td class="skill-desc">Register MCP servers, analyze token budget</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-012-mcp-configurator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-013</td><td class="skill-desc">Sync settings to Gemini/Codex</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-013-config-syncer" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-014</td><td class="skill-desc">Audit CLAUDE.md/AGENTS.md/GEMINI.md</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-014-agent-instructions-auditor" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-020</td><td class="skill-desc">Build and query code knowledge graph</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-020-codegraph" target="_blank" title="View source">&#8599;</a></td></tr>
           </tbody>
         </table>
       </div>

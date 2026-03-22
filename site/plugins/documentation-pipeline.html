@@ -157,6 +157,9 @@
       white-space: nowrap;
     }
     .skill-desc { color: var(--text-secondary); }
+    .skill-link { width: 40px; text-align: center; }
+    .skill-link a { color: var(--text-muted); font-size: 14px; transition: color 0.2s; }
+    .skill-link a:hover { color: var(--accent-light); }
 
     .workflow-block {
       background: var(--bg-card);
@@ -242,23 +245,23 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Skill ID</th><th>Description</th></tr>
+            <tr><th>Skill ID</th><th>Description</th><th></th></tr>
           </thead>
           <tbody>
-            <tr><td class="skill-id">ln-100</td><td class="skill-desc">Top orchestrator for complete doc system</td></tr>
-            <tr><td class="skill-id">ln-110</td><td class="skill-desc">Detect project type, delegate to workers</td></tr>
-            <tr><td class="skill-id">ln-111</td><td class="skill-desc">CLAUDE.md, README, standards, principles</td></tr>
-            <tr><td class="skill-id">ln-112</td><td class="skill-desc">Requirements, architecture, tech stack, patterns</td></tr>
-            <tr><td class="skill-id">ln-113</td><td class="skill-desc">API spec, database schema</td></tr>
-            <tr><td class="skill-id">ln-114</td><td class="skill-desc">Design guidelines</td></tr>
-            <tr><td class="skill-id">ln-115</td><td class="skill-desc">Infrastructure, runbook</td></tr>
-            <tr><td class="skill-id">ln-120</td><td class="skill-desc">ADRs, guides, manuals based on tech stack</td></tr>
-            <tr><td class="skill-id">ln-130</td><td class="skill-desc">Task management docs, kanban board</td></tr>
-            <tr><td class="skill-id">ln-140</td><td class="skill-desc">Testing strategy, test README</td></tr>
-            <tr><td class="skill-id">ln-150</td><td class="skill-desc">Interactive HTML presentation (6 tabs)</td></tr>
-            <tr><td class="skill-id">ln-160</td><td class="skill-desc">Scan docs, classify procedural content</td></tr>
-            <tr><td class="skill-id">ln-161</td><td class="skill-desc">Create .claude/commands from docs</td></tr>
-            <tr><td class="skill-id">ln-162</td><td class="skill-desc">Review skills quality (D1&ndash;D9 + M1&ndash;M5)</td></tr>
+            <tr><td class="skill-id">ln-100</td><td class="skill-desc">Top orchestrator for complete doc system</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-100-documents-pipeline" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-110</td><td class="skill-desc">Detect project type, delegate to workers</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-110-project-docs-coordinator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-111</td><td class="skill-desc">CLAUDE.md, README, standards, principles</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-111-root-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-112</td><td class="skill-desc">Requirements, architecture, tech stack, patterns</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-112-project-core-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-113</td><td class="skill-desc">API spec, database schema</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-113-backend-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-114</td><td class="skill-desc">Design guidelines</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-114-frontend-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-115</td><td class="skill-desc">Infrastructure, runbook</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-115-devops-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-120</td><td class="skill-desc">ADRs, guides, manuals based on tech stack</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-120-reference-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-130</td><td class="skill-desc">Task management docs, kanban board</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-130-tasks-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-140</td><td class="skill-desc">Testing strategy, test README</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-140-test-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-150</td><td class="skill-desc">Interactive HTML presentation (6 tabs)</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-150-presentation-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-160</td><td class="skill-desc">Scan docs, classify procedural content</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-160-docs-skill-extractor" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-161</td><td class="skill-desc">Create .claude/commands from docs</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-161-skill-creator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-162</td><td class="skill-desc">Review skills quality (D1&ndash;D9 + M1&ndash;M5)</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/ln-162-skill-reviewer" target="_blank" title="View source">&#8599;</a></td></tr>
           </tbody>
         </table>
       </div>
