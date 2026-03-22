@@ -11,6 +11,11 @@
  */
 
 import { readFileSync } from "node:fs";
+import {
+    BODY_EXTRACTORS, walkLeaves, countStatements,
+    normalizeTokens, computeRawHash, computeNormHash,
+    ngrams, minhashSignature, lshBands,
+} from "./clone-hash.mjs";
 import { resolve, extname, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -98,17 +103,27 @@ export function supportedExtensions() {
 }
 
 /**
+ * Compute identity key for a definition.
+ * @param {object} def - { name, parent?, line_start }
+ * @returns {string}
+ */
+function defKey(def) {
+    return def.parent ? `${def.parent}.${def.name}:${def.line_start}` : `${def.name}:${def.line_start}`;
+}
+
+/**
  * Parse a file and extract symbols and calls.
  *
  * @param {string} filePath - absolute file path
  * @param {string} source - file content
+ * @param {{cloneDetection?: boolean}} opts - options (default: {})
  * @returns {Promise<{definitions: Array, imports: Array, calls: Array}>}
  *
- * definitions: { name, kind, line_start, line_end, parent?, signature? }
+ * definitions: { name, kind, line_start, line_end, parent?, signature?, key, clone_data? }
  * imports:     { name, source, line, kind: "import" }
  * calls:       { name, line, parent? }
  */
-export async function parseFile(filePath, source) {
+export async function parseFile(filePath, source, opts = {}) {
     const ext = extname(filePath).toLowerCase();
     const config = LANG_CONFIGS[ext];
     if (!config) {
@@ -134,23 +149,28 @@ export async function parseFile(filePath, source) {
         if (captureName === "definition.function") {
             const nameNode = node.childForFieldName("name");
             if (nameNode) {
-                definitions.push({
+                const def = {
                     name: nameNode.text,
                     kind: "function",
                     line_start: startLine,
                     line_end: endLine,
                     signature: extractSignature(node),
-                });
+                    _node: node,
+                };
+                def.key = defKey(def);
+                definitions.push(def);
             }
         } else if (captureName === "definition.class") {
             const nameNode = node.childForFieldName("name");
             if (nameNode) {
-                definitions.push({
+                const def = {
                     name: nameNode.text,
                     kind: "class",
                     line_start: startLine,
                     line_end: endLine,
-                });
+                };
+                def.key = defKey(def);
+                definitions.push(def);
             }
         } else if (captureName === "definition.method") {
             const nameNode = node.childForFieldName("name");
@@ -161,31 +181,39 @@ export async function parseFile(filePath, source) {
                 while (p) {
                     if (p.type.includes("class") || p.type === "impl_item") {
                         const pName = p.childForFieldName("name");
-                        if (pName) parentName = pName.text;
-                        break;
+                        if (pName) {
+                            parentName = pName.text;
+                            break;
+                        }
+                        // class_body or similar wrapper — no name field, keep walking
                     }
                     p = p.parent;
                 }
-                definitions.push({
+                const def = {
                     name: nameNode.text,
                     kind: "method",
                     line_start: startLine,
                     line_end: endLine,
                     parent: parentName,
                     signature: extractSignature(node),
-                });
+                    _node: node,
+                };
+                def.key = defKey(def);
+                definitions.push(def);
             }
         } else if (captureName === "definition.variable") {
             // Variable declarations — extract name from declarator
             const text = node.text;
             const nameMatch = text.match(/(?:const|let|var|export\s+(?:const|let|var))\s+(\w+)/);
             if (nameMatch) {
-                definitions.push({
+                const def = {
                     name: nameMatch[1],
                     kind: "variable",
                     line_start: startLine,
                     line_end: endLine,
-                });
+                };
+                def.key = defKey(def);
+                definitions.push(def);
             }
         } else if (captureName === "import") {
             const imp = extractImport(node, config.grammar);
@@ -196,6 +224,74 @@ export async function parseFile(filePath, source) {
                 calls.push({ name: callName, line: startLine });
             }
         }
+    }
+
+    // --- Clone detection (opt-in) ---
+    if (opts.cloneDetection) {
+        const extractor = BODY_EXTRACTORS.get(config.grammar);
+
+        for (const def of definitions) {
+            if (def.kind !== "function" && def.kind !== "method") continue;
+            if (!def._node) continue;
+
+            if (extractor) {
+                // Full extraction path (grammar in BODY_EXTRACTORS)
+                if (extractor.skipNodes.has(def._node.type)) continue;
+
+                const bodyNode = def._node.childForFieldName(extractor.bodyField);
+                if (!bodyNode) continue;
+
+                const stmtCount = countStatements(bodyNode, extractor.stmtTypes);
+                if (stmtCount < 3) continue;
+
+                const leaves = walkLeaves(bodyNode);
+                const rawHash = computeRawHash(bodyNode.text);
+                const normalizedTokens = normalizeTokens(leaves);
+                const normHash = computeNormHash(normalizedTokens);
+                const tokenStrings = ngrams(normalizedTokens, 5);
+                const fingerprint = minhashSignature(tokenStrings, 64);
+                const bands = lshBands(fingerprint, 16, 4);
+
+                def.clone_data = {
+                    raw_hash: rawHash,
+                    norm_hash: normHash,
+                    fingerprint,
+                    stmt_count: stmtCount,
+                    token_count: leaves.length,
+                    bands,
+                };
+            } else {
+                // Hashes-only fallback (grammar not in BODY_EXTRACTORS)
+                const bodyText = source.split("\n").slice(def.line_start - 1, def.line_end).join("\n");
+                const rawHash = computeRawHash(bodyText);
+
+                const rawTokens = bodyText.replace(/\s+/g, " ").trim().split(/\s+/);
+                const normalizedTokens = rawTokens.map(t => {
+                    if (/^[a-zA-Z_]\w*$/.test(t)) return "$";
+                    if (/^["']/.test(t)) return "$S";
+                    if (/^\d/.test(t)) return "$N";
+                    return t;
+                });
+                const normHash = computeNormHash(normalizedTokens);
+
+                const stmtCount = (bodyText.match(/[;\n]/g) || []).length;
+                if (stmtCount < 3) continue;
+
+                def.clone_data = {
+                    raw_hash: rawHash,
+                    norm_hash: normHash,
+                    fingerprint: null,
+                    stmt_count: stmtCount,
+                    token_count: normalizedTokens.length,
+                    bands: [],
+                };
+            }
+        }
+    }
+
+    // Clean up tree-sitter node references (can't survive tree.delete())
+    for (const def of definitions) {
+        delete def._node;
     }
 
     tree.delete();
@@ -212,7 +308,7 @@ function extractSignature(node) {
 }
 
 function extractCallName(node) {
-    // call_expression → function field is the callee
+    // call_expression -> function field is the callee
     const fn = node.childForFieldName("function");
     if (!fn) return null;
 

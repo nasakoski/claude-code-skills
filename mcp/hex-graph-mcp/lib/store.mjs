@@ -1,7 +1,7 @@
 /**
  * SQLite graph store for code knowledge graph.
  *
- * Schema: files → nodes → edges, with FTS5 search and CTE traversal.
+ * Schema: files -> nodes -> edges, with FTS5 search and CTE traversal.
  * ON DELETE CASCADE: removing a file auto-cleans nodes + edges.
  * WAL mode: concurrent reads during watcher writes.
  * Singleton per DB path.
@@ -79,6 +79,31 @@ class Store {
             CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_id);
             CREATE INDEX IF NOT EXISTS idx_edges_kind ON edges(kind, source_id);
             CREATE INDEX IF NOT EXISTS idx_edges_kind_target ON edges(kind, target_id);
+        `);
+
+        // Clone detection tables (non-destructive migration)
+        this.db.exec(`
+            CREATE TABLE IF NOT EXISTS clone_blocks (
+                node_id INTEGER PRIMARY KEY REFERENCES nodes(id) ON DELETE CASCADE,
+                raw_hash TEXT NOT NULL,
+                norm_hash TEXT NOT NULL,
+                fingerprint BLOB,
+                stmt_count INTEGER NOT NULL,
+                token_count INTEGER NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_clone_raw ON clone_blocks(raw_hash);
+            CREATE INDEX IF NOT EXISTS idx_clone_norm ON clone_blocks(norm_hash);
+            CREATE INDEX IF NOT EXISTS idx_clone_stmts ON clone_blocks(stmt_count);
+
+            CREATE TABLE IF NOT EXISTS clone_lsh (
+                band_id INTEGER NOT NULL,
+                bucket_hash TEXT NOT NULL,
+                node_id INTEGER NOT NULL REFERENCES clone_blocks(node_id) ON DELETE CASCADE,
+                PRIMARY KEY (band_id, bucket_hash, node_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_lsh_lookup ON clone_lsh(band_id, bucket_hash);
         `);
 
         // FTS5 external content table
@@ -159,6 +184,36 @@ class Store {
         this._edgesTo = this.db.prepare(
             "SELECT e.*, n.name as source_name, n.file as source_file, n.line_start as source_line FROM edges e JOIN nodes n ON n.id = e.source_id WHERE e.target_id = ?"
         );
+
+        // --- Clone detection statements ---
+
+        this._insertCloneBlock = this.db.prepare(
+            "INSERT OR REPLACE INTO clone_blocks (node_id, raw_hash, norm_hash, fingerprint, stmt_count, token_count) VALUES (@node_id, @raw_hash, @norm_hash, @fingerprint, @stmt_count, @token_count)"
+        );
+
+        this._insertLshBand = this.db.prepare(
+            "INSERT OR REPLACE INTO clone_lsh (band_id, bucket_hash, node_id) VALUES (@band_id, @bucket_hash, @node_id)"
+        );
+
+        this._lshCandidates = this.db.prepare(
+            "SELECT DISTINCT cl.node_id FROM clone_lsh cl WHERE cl.band_id = ? AND cl.bucket_hash = ? AND cl.node_id != ?"
+        );
+
+        this._cloneBlockById = this.db.prepare(`
+            SELECT cb.node_id, cb.raw_hash, cb.norm_hash, cb.fingerprint, cb.stmt_count, cb.token_count,
+                   n.name, n.kind, n.file, n.line_start, n.line_end, n.qualified_name, n.signature
+            FROM clone_blocks cb
+            JOIN nodes n ON n.id = cb.node_id
+            WHERE cb.node_id = ?
+        `);
+
+        this._allCloneBlocks = this.db.prepare(`
+            SELECT cb.node_id, cb.raw_hash, cb.norm_hash, cb.fingerprint, cb.stmt_count, cb.token_count,
+                   n.name, n.kind, n.file, n.line_start, n.line_end, n.qualified_name, n.signature
+            FROM clone_blocks cb
+            JOIN nodes n ON n.id = cb.node_id
+            WHERE cb.stmt_count >= ?
+        `);
     }
 
     // --- File operations ---
@@ -212,6 +267,28 @@ class Store {
         return this._edgesTo.all(nodeId);
     }
 
+    // --- Clone detection operations ---
+
+    insertCloneBlock({node_id, raw_hash, norm_hash, fingerprint, stmt_count, token_count}) {
+        this._insertCloneBlock.run({node_id, raw_hash, norm_hash, fingerprint, stmt_count, token_count});
+    }
+
+    insertLshBand({band_id, bucket_hash, node_id}) {
+        this._insertLshBand.run({band_id, bucket_hash, node_id});
+    }
+
+    getLshCandidates(bandId, bucketHash, excludeNodeId) {
+        return this._lshCandidates.all(bandId, bucketHash, excludeNodeId).map(r => r.node_id);
+    }
+
+    getCloneBlockById(nodeId) {
+        return this._cloneBlockById.get(nodeId);
+    }
+
+    getAllCloneBlocks(minStmts) {
+        return this._allCloneBlocks.all(minStmts);
+    }
+
     // --- Bulk operations (transaction) ---
 
     clearFile(filePath) {
@@ -228,6 +305,7 @@ class Store {
             this._insertFile.run(filePath, mtime, hash, allNodes.length);
 
             const nodeIds = new Map();
+            const classIndex = new Map(); // className -> nodeId
 
             for (const def of definitions) {
                 const id = this.insertNode({
@@ -240,10 +318,15 @@ class Store {
                     file: filePath,
                     line_start: def.line_start,
                     line_end: def.line_end,
-                    parent_id: def.parent ? (nodeIds.get(def.parent) || null) : null,
+                    parent_id: def.parent ? (classIndex.get(def.parent) || null) : null,
                     signature: def.signature || null,
                 });
-                nodeIds.set(def.name, id);
+                nodeIds.set(def.key, id);
+
+                // Index class definitions for fast parent lookup
+                if (def.kind === "class") {
+                    classIndex.set(def.name, id);
+                }
             }
 
             for (const imp of imports) {
@@ -447,7 +530,7 @@ export function graphError(code, message, recovery) {
     return { content: [{ type: "text", text: `${code}: ${message}\nRecovery: ${recovery}` }], isError: true };
 }
 
-function resolveStore(path) {
+export function resolveStore(path) {
     if (path) {
         const store = _stores.get(path);
         if (store) return store;

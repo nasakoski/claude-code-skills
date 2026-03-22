@@ -2,7 +2,7 @@
   "name": "@levnikolaevich/hex-graph-mcp",
   "version": "0.2.3",
   "type": "module",
-  "description": "Code knowledge graph MCP server. Indexes codebases into SQLite graph via tree-sitter AST. 7 tools: index_project, search_symbols, get_impact, trace_calls, get_context, get_architecture, watch_project.",
+  "description": "Code knowledge graph MCP server. Indexes codebases into SQLite graph via tree-sitter AST. 8 tools: index_project, search_symbols, get_impact, trace_calls, get_context, get_architecture, watch_project, find_clones.",
   "main": "server.mjs",
   "bin": {
     "hex-graph-mcp": "server.mjs"
@@ -27,6 +27,7 @@
     "@modelcontextprotocol/sdk": "^1.17.0",
     "better-sqlite3": "^12.0.0",
     "chokidar": "^4.0.0",
+    "picomatch": "^4.0.3",
     "tree-sitter-wasms": "^0.1.0",
     "web-tree-sitter": "^0.25.0",
     "zod": "^3.25.0"

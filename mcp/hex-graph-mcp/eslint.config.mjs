@@ -25,6 +25,7 @@ export default [
                 clearTimeout: "readonly",
                 fetch: "readonly",
                 AbortController: "readonly",
+                BigInt: "readonly",
             }
         },
         rules: {

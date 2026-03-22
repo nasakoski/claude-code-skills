@@ -16,6 +16,25 @@ Fast, automated scan using Grep/Glob/Bash tools.
 | Find files by structure | Glob | Locate config files, entry points, test files |
 | Run analysis tools | Bash | Execute linters, audit commands, type checkers |
 
+
+### Layer 1 Acceleration: find_clones
+
+When hex-graph is available (project indexed via `mcp__hex-graph__index_project`), use `mcp__hex-graph__find_clones` for Layer 1 DRY candidate detection instead of Grep:
+
+```
+find_clones(path, type="all", format="json", cross_file=true, suppress=true)
+```
+
+| Output field | Use |
+|---|---|
+| `groups[].type` | exact = identical copy, normalized = renamed vars, near_miss = modified structure |
+| `groups[].members[]` | file, name, lines, stmt_count, callers |
+| `groups[].impact` | Refactoring priority (callers x size) |
+| `groups[].suppressed` | true = test-fixture (skip), false + hints = review needed |
+
+Layer 2 verification still required: read actual code, confirm refactoring value.
+
+**Fall back to Grep when:** hex-graph not indexed, or domain-specific duplication (validation logic, error messages, SQL) — find_clones detects structural clones, not semantic similarity.
 **Output:** List of candidate locations (file:line) with matched pattern.
 
 ## Layer 2: Context Analysis

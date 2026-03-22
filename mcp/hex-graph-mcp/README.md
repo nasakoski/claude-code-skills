@@ -18,6 +18,7 @@ Code knowledge graph MCP server. Indexes codebases into a SQLite graph via tree-
 | `get_context` | 360-degree view of a symbol | Definition, callers, callees, siblings |
 | `get_architecture` | Project architecture overview | Module matrix, hotspots |
 | `watch_project` | File watcher for incremental graph updates | Singleton, CASCADE cleanup on delete |
+| `find_clones` | Detect code clones across codebase. 3-tier: exact (identical), normalized (renamed vars), near_miss (modified) | Impact scores, suppression heuristics |
 
 ## Install
 
@@ -105,11 +106,45 @@ Start file watcher for incremental graph updates. Singleton per project path -- 
 |-----------|------|----------|-------------|
 | `path` | string | yes | Project root directory to watch |
 
+
+### find_clones
+
+Detects duplicated code at three confidence levels:
+
+| Tier | Detects | Method | Min Statements |
+|------|---------|--------|----------------|
+| exact | Identical copies (Type-1) | FNV-1a-64 hash of raw body | 3 |
+| normalized | Renamed identifiers (Type-2) | FNV-1a-64 hash of identifier-normalized body | 5 |
+| near_miss | Modified structure (Type-3) | MinHash fingerprint + Jaccard similarity | 8 |
+
+**Parameters:**
+
+- `path` (required) — project root, must be indexed first
+- `type` — "exact" | "normalized" | "near_miss" | "all" (default: "all")
+- `threshold` — Jaccard similarity threshold for near_miss (default: 0.80)
+- `min_stmts` — override minimum statements per tier
+- `kind` — "function" | "method" | "all" (default: "all")
+- `scope` — file glob filter (e.g. "src/**/*.ts")
+- `cross_file` — only cross-file clones (default: true)
+- `format` — "json" | "text" (default: "json")
+- `suppress` — apply suppression heuristics (default: true)
+
+**Suppression heuristics:**
+
+| Heuristic | Strength | Condition |
+|-----------|----------|-----------|
+| test-fixture | strong | all members in test files |
+| interface-impl-hint | weak | same signature, different parents |
+| bounded-context-hint | weak | different dirs, no shared callers |
+
+**Languages with full AST fingerprinting:** JavaScript, TypeScript, Python
+**Other languages:** hash-only detection (exact + normalized tiers)
+
 ## Architecture
 
 ```
 hex-graph-mcp/
-  server.mjs          MCP server (stdio transport, 7 tools)
+  server.mjs          MCP server (stdio transport, 8 tools)
   package.json
   lib/
     indexer.mjs        Tree-sitter AST parsing, file scanning
@@ -147,6 +182,7 @@ hex-graph-mcp/
 | Find entry points | `trace_calls` | `symbol: "validateInput", direction: "callers"` |
 | Codebase overview | `get_architecture` | First call after `index_project` |
 | Continuous sync | `watch_project` | Start once, graph stays current |
+| Detect duplicates | `find_clones` | `path: "/project", type: "near_miss", scope: "src/**"` |
 
 
 ## Benchmark

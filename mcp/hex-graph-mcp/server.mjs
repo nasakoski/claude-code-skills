@@ -2,8 +2,8 @@
 /**
  * hex-graph-mcp — Code knowledge graph MCP server.
  *
- * 7 tools: index_project, search_symbols, get_impact, trace_calls,
- *          get_context, get_architecture, watch_project
+ * 8 tools: index_project, search_symbols, get_impact, trace_calls,
+ *          get_context, get_architecture, watch_project, find_clones
  * Tree-sitter AST → SQLite graph (nodes, edges, FTS5)
  * Transport: stdio
  */
@@ -13,6 +13,8 @@ import { createRequire } from "node:module";
 const { version } = createRequire(import.meta.url)("./package.json");
 import { checkForUpdates } from "./lib/update-check.mjs";
 import { coerceParams } from "./lib/coerce.mjs";
+import { findClones } from "./lib/clones.mjs";
+import { resolveStore } from "./lib/store.mjs";
 
 // LLM clients may send booleans/numbers as strings. Safe coercion.
 const flexBool = () => z.preprocess(
@@ -223,6 +225,52 @@ server.registerTool("watch_project", {
         return { content: [{ type: "text", text: result }] };
     } catch (e) {
         return graphError("PATH_NOT_FOUND", e.message, "Check path exists");
+    }
+});
+
+// ==================== find_clones ====================
+
+server.registerTool("find_clones", {
+    title: "Find Clones",
+    description:
+        "Detect code clones (exact copies, renamed variables, structurally similar). " +
+        "3-tier: exact (Type-1), normalized (Type-2), near_miss (Type-3). " +
+        "Returns groups with refactoring impact scores. Requires index_project first.",
+    inputSchema: z.object({
+        path: z.string().describe("Project root (must be indexed)"),
+        type: z.enum(["exact", "normalized", "near_miss", "all"]).default("all").describe("Clone type to detect"),
+        threshold: z.preprocess(v => typeof v === "string" ? Number(v) : v, z.number().min(0).max(1).default(0.80)).describe("Jaccard threshold for near_miss (0.0-1.0, default: 0.80)"),
+        min_stmts: z.preprocess(v => typeof v === "string" ? Number(v) : v, z.number().int().min(1).optional()).describe("Min statements override (tier defaults: exact=3, normalized=5, near_miss=8)"),
+        kind: z.enum(["function", "method", "all"]).default("all").describe("Symbol kind filter. near_miss always restricts to function+method"),
+        scope: z.string().optional().describe("File glob filter (e.g. 'src/**/*.ts')"),
+        cross_file: flexBool().describe("Only cross-file clones (default: true)"),
+        format: z.enum(["json", "text"]).default("json").describe("Output format"),
+        suppress: flexBool().describe("Apply suppression heuristics (default: true)"),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+}, async (rawParams) => {
+    const { path, type, threshold, min_stmts, kind, scope, cross_file, format, suppress } = coerceParams(rawParams);
+    try {
+        const store = resolveStore(path);
+        if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first");
+
+        const result = findClones(store, {
+            type,
+            threshold: threshold ?? 0.80,
+            minStmts: min_stmts ?? null,
+            kind,
+            scope,
+            crossFile: cross_file ?? true,
+            format,
+            suppress: suppress ?? true,
+        });
+
+        const content = format === "json"
+            ? JSON.stringify(result, null, 2)
+            : result;
+        return { content: [{ type: "text", text: typeof content === "string" ? content : JSON.stringify(content, null, 2) }] };
+    } catch (e) {
+        return graphError("DB_ERROR", e.message, "Re-run index_project to rebuild");
     }
 });
 
