@@ -151,7 +151,7 @@ Zero out penalty points as structural fixes applied (section added, format corre
 2) **Parse agent suggestions** from both result files
 3) **MERGE** Claude's findings + Agent suggestions. Re-read lines modified in Phase 4 (agents saw pre-fix state)
 4) **For EACH suggestion:** dedup (own findings + history) → evaluate → AGREE (accept) or DISAGREE (debate per shared workflow)
-5) **Apply accepted** — mode=story: Story/Tasks, mode=plan_review: plan file, mode=context: documents
+5) **Apply accepted** — mode=story: Story/Tasks, mode=context: documents, mode=plan_review: use best agent's `## Refined Plan` as base (prefer agent with more accepted suggestions), apply remaining accepted suggestions from other agent as patches. If no agent produced refined plan → fall back to individual suggestion application
 6) **Save review summary** → `.agent-review/review_history.md`
 - SKIPPED verdict (0 agents) → proceed unchanged
 - **Display:** `"Agent Review: codex ({accepted}/{total}), gemini ({accepted}/{total}), {N} applied"`

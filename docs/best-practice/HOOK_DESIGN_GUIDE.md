@@ -8,7 +8,7 @@
 |-------|---------------|----------------|--------|--------|
 | `SessionStart` | Session begins | Inject preferences | `stdout` JSON `{systemMessage}` | N/A |
 | `PreToolUse` | Before tool executes | Block/redirect | Silent = approve | `stderr` = block |
-| `PostToolUse` | After tool returns | Filter/compress output | Silent = pass through | `stderr` = replace output |
+| `PostToolUse` | After tool returns | Filter/compress output | Silent = pass through | `stderr` = shown to Claude as feedback |
 | `Stop` | Agent about to stop | Final validation | Silent = allow | `stderr` = continue |
 | `UserPromptSubmit` | User sends message | Transform/validate | Silent = pass through | `stderr` = modified prompt |
 
@@ -32,7 +32,7 @@ Pre = gate (block/redirect). Post = filter (compress/annotate).
 | Approve silently | 0 | (none) | (none) | Tool proceeds / output passes |
 | Inject info | 0 | stdout | `{"systemMessage":"..."}` | Added to agent context |
 | Block tool (Pre) | 2 | stderr | `{"decision":"block","reason":"..."}` | Call cancelled |
-| Replace output (Post) | 2 | stderr | Filtered text | Original replaced |
+| Feedback (Post) | 2 | stderr | Filtered text | Shown to Claude as feedback |
 | Hook error | 0 | (none) | (none) | Fail open -- never block on crash |
 
 Hooks MUST fail open. Unhandled exception = `exit(0)`, not agent crash.
@@ -111,7 +111,7 @@ Flow: block -> agent sees reason -> asks user -> confirms -> retries with bypass
 | Truncate | First N + last N, gap indicator | `smartTruncate(text, 15, 15)` |
 | Header | Type + compression ratio | `RTK FILTERED: npm-install (847 -> 30 lines)` |
 
-Output to stderr + exit 2 = replaces original in agent context.
+Output to stderr + exit 2 = stderr is shown to Claude as feedback; output replacement is not guaranteed for Bash.
 
 ## 10. SessionStart Injection
 

@@ -26,17 +26,17 @@ Skills collection for Codex with config-driven Agile task management (Linear or 
 
 ## MCP Tool Preferences
 
-When `hex-line` MCP is available, **always prefer it** over built-in file tools for text files:
+**PREFER** hex-line MCP for code files — hash-annotated reads enable safe edits:
 
-| Instead of | Use | Why |
-|-----------|-----|-----|
-| Built-in Read | `hex-line read_file` | Hash-annotated lines, range checksums, edit-ready |
-| Built-in Edit | `hex-line edit_file` | Hash-verified anchors, compact diff |
-| Built-in Write | `hex-line write_file` | Consistent with read/edit workflow |
-| Built-in Grep | `hex-line grep_search` | Hash-annotated matches, edit-ready |
-| Reading large code file | `hex-line outline` → then `read_file` with offset/limit | 95% token reduction |
+| Instead of | Use | When |
+|-----------|-----|------|
+| Built-in Read | `hex-line read_file` | Code files (hash-annotated, edit-ready) |
+| Built-in Edit | `hex-line edit_file` | Always (hash-verified anchors) |
+| Built-in Write | `hex-line write_file` | Always (consistent workflow) |
+| Built-in Grep | `hex-line grep_search` | Before editing found code (grep→edit pipeline) |
+| Large code file | `hex-line outline` then `read_file` with range | Unfamiliar files >100 lines |
 
-**Exceptions** (use built-in Read): images (.png/.jpg), PDFs, Jupyter notebooks — hex-line returns error with fallback instructions for these.
+**Built-in OK for:** images, PDFs, notebooks, Glob (always), `.claude/settings.json` and `.claude/settings.local.json`.
 
 ## Quick Understanding
 

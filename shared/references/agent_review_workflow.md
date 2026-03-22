@@ -108,6 +108,7 @@ b) When first agent completes (background task notification):
    - Read `.agent-review/{agent}/{identifier}_{review_type}_result.md`
    - The result file contains the agent's full review report (markdown analysis + `## Structured Data` with JSON) wrapped in metadata markers
    - Parse JSON from `## Structured Data` section (```json block) between `<!-- AGENT_REVIEW_RESULT -->` / `<!-- END_AGENT_REVIEW_RESULT -->` markers
+   - For plan_review mode: also extract `## Refined Plan` section (between header and `## Structured Data`). Store as `refined_plan_text`
    - Parse `session_id` from `<!-- session_id: ... -->` metadata line in result file
    - The report text above Structured Data serves as the agent's reasoning (used during Critical Verification for deeper context)
    - Write `.agent-review/{agent}/{identifier}_session.json`: `{"agent": "...", "session_id": "...", "review_type": "...", "created_at": "..."}`
@@ -258,6 +259,10 @@ debate_log:
         resolution: "accepted | rejected | follow_up"
     final_resolution: "accepted | accepted_after_debate | accepted_after_followup | rejected"
 ```
+
+### Mode-specific extensions
+
+**plan_review:** Agent results may include `refined_plan_included: true` in JSON and a `## Refined Plan` section with the corrected plan text. The orchestrator uses the best agent's refined plan as base and patches remaining accepted suggestions from the other agent on top.
 
 ## Shared Reference Files
 

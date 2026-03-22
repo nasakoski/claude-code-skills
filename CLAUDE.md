@@ -23,17 +23,17 @@ Skills collection for Claude Code with config-driven Agile task management (Line
 
 ## MCP Tool Preferences
 
-**MANDATORY:** NEVER use built-in Read, Edit, Write, Grep. Use hex-line MCP equivalents:
+**PREFER** hex-line MCP for code files — hash-annotated reads enable safe edits:
 
-| Instead of | Use | Why |
-|-----------|-----|-----|
-| Built-in Read | `hex-line read_file` | Hash-annotated, edit-ready |
-| Built-in Edit | `hex-line edit_file` | Hash-verified anchors |
-| Built-in Write | `hex-line write_file` | Consistent workflow |
-| Built-in Grep | `hex-line grep_search` | Hash-annotated matches |
-| Large code file | `hex-line outline` then `read_file` with range | 95% token reduction |
+| Instead of | Use | When |
+|-----------|-----|------|
+| Built-in Read | `hex-line read_file` | Code files (hash-annotated, edit-ready) |
+| Built-in Edit | `hex-line edit_file` | Always (hash-verified anchors) |
+| Built-in Write | `hex-line write_file` | Always (consistent workflow) |
+| Built-in Grep | `hex-line grep_search` | Before editing found code (grep→edit pipeline) |
+| Large code file | `hex-line outline` then `read_file` with range | Unfamiliar files >100 lines |
 
-**Exceptions** (use built-in Read): images, PDFs, Jupyter notebooks.
+**Built-in OK for:** images, PDFs, notebooks, Glob (always), `.claude/settings.json` and `.claude/settings.local.json`.
 
 ## Quick Understanding
 
