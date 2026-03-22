@@ -18,9 +18,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
  */
 export function normalizePath(p) {
     if (process.platform === "win32" && /^\/[a-zA-Z]\//.test(p)) {
-        return p[1] + ":" + p.slice(2);
+        p = p[1] + ":" + p.slice(2);
     }
-    return p;
+    return p.replace(/\\/g, "/");
 }
 
 /**
@@ -80,7 +80,7 @@ export function validatePath(filePath) {
         }
     }
 
-    return real;
+    return real.replace(/\\/g, "/");
 }
 
 /**
@@ -108,5 +108,5 @@ export function validateWritePath(filePath) {
         }
     }
 
-    return abs;
+    return abs.replace(/\\/g, "/");
 }

@@ -38,3 +38,14 @@
 
 ; --- Calls ---
 (call_expression) @call
+
+; --- References (read position) ---
+; Identifier used in expression (not declaration, not import, not call function position)
+(expression_statement (identifier) @reference.identifier)
+(return_statement (identifier) @reference.identifier)
+(assignment_expression right: (identifier) @reference.identifier)
+(variable_declarator value: (identifier) @reference.identifier)
+(arguments (identifier) @reference.identifier)
+(binary_expression (identifier) @reference.identifier)
+(array (identifier) @reference.identifier)
+(spread_element (identifier) @reference.identifier)

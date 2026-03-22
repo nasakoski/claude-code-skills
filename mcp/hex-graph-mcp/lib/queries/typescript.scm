@@ -45,3 +45,20 @@
 
 ; --- Calls ---
 (call_expression) @call
+
+; --- References (read position) ---
+(expression_statement (identifier) @reference.identifier)
+(return_statement (identifier) @reference.identifier)
+(assignment_expression right: (identifier) @reference.identifier)
+(variable_declarator value: (identifier) @reference.identifier)
+(arguments (identifier) @reference.identifier)
+(binary_expression (identifier) @reference.identifier)
+(array (identifier) @reference.identifier)
+(spread_element (identifier) @reference.identifier)
+
+; --- Type references ---
+(type_annotation (type_identifier) @reference.type)
+(generic_type name: (type_identifier) @reference.type)
+(implements_clause (type_identifier) @reference.type)
+(extends_clause value: (identifier) @reference.type)
+(type_arguments (type_identifier) @reference.type)

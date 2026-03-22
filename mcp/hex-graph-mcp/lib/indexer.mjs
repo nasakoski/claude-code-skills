@@ -57,6 +57,7 @@ export async function indexProject(projectPath, { languages } = {}) {
             purged++;
         }
     }
+    if (purged > 0) store.cleanupOrphanModuleEdges();
 
     // Pass 1: SCAN
     const filesToIndex = [];
@@ -78,7 +79,8 @@ export async function indexProject(projectPath, { languages } = {}) {
         const ext = extname(relPath).toLowerCase();
         const language = languageFor(ext);
 
-        const { definitions, imports, calls } = await parseFile(fullPath, source, { cloneDetection: true });
+        const result = await parseFile(fullPath, source, { cloneDetection: true });
+        const { definitions, imports, calls, references } = result;
 
         // Bulk insert definitions + imports
         const nodeIds = store.bulkInsert(relPath, mtime, hash, language, definitions, imports);
@@ -86,108 +88,15 @@ export async function indexProject(projectPath, { languages } = {}) {
         // Insert clone detection data
         persistCloneData(store, definitions, nodeIds);
 
-        fileNodeMap.set(relPath, { definitions, imports, calls, language, nodeIds });
+        fileNodeMap.set(relPath, { definitions, imports, calls, references, exports: result.exports, defaultExport: result.defaultExport, reexports: result.reexports, language, nodeIds });
         parsed++;
     }
 
-    // Pass 3: RESOLVE — build call edges
+    // Pass 3: RESOLVE — build edges (import, call, reexport)
     let edgeCount = 0;
     for (const [filePath, data] of fileNodeMap) {
-        const { calls, nodeIds, definitions, imports } = data;
-
-        // Build local symbol map (name -> nodeId, null = ambiguous)
-        const localSymbols = new Map();
-        // Build class method map ("parent.name" -> nodeId) for scope-aware resolution
-        const classMethods = new Map();
-
-        for (const def of definitions) {
-            if (!nodeIds.has(def.key)) continue;
-            const nodeId = nodeIds.get(def.key);
-
-            // Scoped methods: track by "parent.name" for same-class resolution
-            if (def.parent) {
-                classMethods.set(`${def.parent}.${def.name}`, nodeId);
-            }
-
-            // Unscoped: unique names only (null = ambiguous)
-            if (localSymbols.has(def.name)) {
-                localSymbols.set(def.name, null);
-            } else {
-                localSymbols.set(def.name, nodeId);
-            }
-        }
-
-        // Build imported symbol map
-        const importedSymbols = new Map();
-        for (const imp of imports) {
-            // Try to resolve import source to a file in the project
-            const resolvedFile = resolveImportSource(imp.source, filePath, store);
-            if (resolvedFile) {
-                // Find exported symbols from target file
-                const targetNodes = store.nodesByFile(resolvedFile);
-                for (const tn of targetNodes) {
-                    if (tn.kind !== "import") {
-                        importedSymbols.set(tn.name, tn.id);
-                    }
-                }
-            }
-            // Also map the imported names directly
-            for (const name of imp.name.split(", ")) {
-                const trimmed = name.trim();
-                if (trimmed && trimmed !== "*") {
-                    const targetNodes = store.findByName(trimmed);
-                    if (targetNodes.length === 1) {
-                        importedSymbols.set(trimmed, targetNodes[0].id);
-                    }
-                }
-            }
-        }
-
-        // Determine caller context (which function contains each call)
-        for (const call of calls) {
-            const callerDef = findEnclosingDefinition(call.line, definitions);
-            const callerId = callerDef ? nodeIds.get(callerDef.key) : null;
-            if (!callerId) continue;
-
-            // Resolution hierarchy: same-class sibling -> local -> imported -> global unique
-            let targetId = null;
-            let confidence = "exact";
-
-            // 1. Same-class sibling method (highest priority)
-            if (callerDef.parent && classMethods.has(`${callerDef.parent}.${call.name}`)) {
-                targetId = classMethods.get(`${callerDef.parent}.${call.name}`);
-            }
-            // 2. Local symbol (skip if null = ambiguous due to same-name methods)
-            else if (localSymbols.has(call.name) && localSymbols.get(call.name) != null) {
-                targetId = localSymbols.get(call.name);
-            }
-            // 3. Imported symbol
-            else if (importedSymbols.has(call.name)) {
-                targetId = importedSymbols.get(call.name);
-            }
-            // 4. Global name match (unique only)
-            else {
-                const candidates = store.findByName(call.name);
-                const nonImport = candidates.filter(c => c.kind !== "import");
-                if (nonImport.length === 1) {
-                    targetId = nonImport[0].id;
-                    confidence = "ambiguous";
-                }
-                // Multiple candidates -> skip (too ambiguous)
-            }
-
-            if (targetId && targetId !== callerId) {
-                store.insertEdge({
-                    source_id: callerId,
-                    target_id: targetId,
-                    kind: "calls",
-                    confidence,
-                    file: filePath,
-                    line: call.line,
-                });
-                edgeCount++;
-            }
-        }
+        const { definitions, imports, calls, references, exports: fileExports, defaultExport, reexports, language, nodeIds } = data;
+        edgeCount += resolveFileEdges(store, filePath, { definitions, imports, calls, references, exports: fileExports, defaultExport, reexports, nodeIds, language });
     }
 
     const elapsed = Date.now() - t0;
@@ -223,14 +132,313 @@ export async function reindexFile(projectPath, filePath) {
     if (!language) return;
 
     const store = getStore(absPath);
-    const { definitions, imports } = await parseFile(fullPath, source, { cloneDetection: true });
+    const { definitions, imports, calls, references, exports: fileExports, defaultExport, reexports } = await parseFile(fullPath, source, { cloneDetection: true });
     const nodeIds = store.bulkInsert(filePath, stat.mtimeMs, hash, language, definitions, imports);
 
-    // Insert clone detection data for reindexed file
     persistCloneData(store, definitions, nodeIds);
+    resolveFileEdges(store, filePath, { definitions, imports, calls, references, exports: fileExports, defaultExport, reexports, nodeIds, language });
 }
 
 // --- Helpers ---
+
+/**
+ * Shared edge resolution for a single file.
+ * Creates synthetic reexport nodes, builds import/call/reexport edges,
+ * marks exported symbols, and persists module_edges.
+ * @returns {number} count of call edges created
+ */
+function resolveFileEdges(store, filePath, { definitions, imports, calls, references, exports: fileExports, defaultExport, reexports, nodeIds, language }) {
+    let callEdgeCount = 0;
+
+    // 1. Create synthetic reexport nodes
+    if (reexports && reexports.length > 0) {
+        for (const re of reexports) {
+            for (const spec of re.specifiers) {
+                if (spec.type === "namespace" && spec.local === "*") continue;
+
+                const reexportNodeId = store.insertNode({
+                    name: spec.local,
+                    qualified_name: `${filePath}:reexport:${spec.local}`,
+                    kind: "reexport",
+                    language,
+                    file: filePath,
+                    line_start: re.line || 1,
+                    line_end: re.line || 1,
+                    parent_id: null,
+                    signature: null,
+                });
+                store.markExported(reexportNodeId);
+                nodeIds.set(`reexport:${spec.local}:${re.line}`, reexportNodeId);
+            }
+        }
+    }
+
+    // 2. Build local symbol map (name -> nodeId, null = ambiguous)
+    const localSymbols = new Map();
+    const classMethods = new Map();
+
+    for (const def of definitions) {
+        if (!nodeIds.has(def.key)) continue;
+        const nodeId = nodeIds.get(def.key);
+
+        if (def.parent) {
+            classMethods.set(`${def.parent}.${def.name}`, nodeId);
+        }
+
+        if (localSymbols.has(def.name)) {
+            localSymbols.set(def.name, null);
+        } else {
+            localSymbols.set(def.name, nodeId);
+        }
+    }
+
+    // 3. Build imported symbol map (specifier-aware resolution)
+    const importedSymbols = new Map();
+    for (const imp of imports) {
+        const resolvedFile = resolveImportSource(imp.source, filePath, store);
+        if (!resolvedFile) continue;
+
+        const targetNodes = store.nodesByFile(resolvedFile);
+
+        if (imp.specifiers && imp.specifiers.length > 0) {
+            for (const spec of imp.specifiers) {
+                if (spec.type === "named") {
+                    const target = targetNodes.find(n => n.name === spec.imported && n.kind !== "import");
+                    if (target) importedSymbols.set(spec.local, target.id);
+                } else if (spec.type === "default") {
+                    const target = targetNodes.find(n => n.is_default_export && n.kind !== "import");
+                    if (target) importedSymbols.set(spec.local, target.id);
+                }
+            }
+        } else {
+            // Fallback for non-structured imports (Python etc.)
+            for (const name of imp.name.split(", ")) {
+                const trimmed = name.trim();
+                if (!trimmed || trimmed === "*") continue;
+                const target = targetNodes.find(n => n.name === trimmed && n.kind !== "import");
+                if (target) importedSymbols.set(trimmed, target.id);
+            }
+        }
+    }
+
+    // 4. Persist symbol-level import edges
+    for (const imp of imports) {
+        const resolvedFile = resolveImportSource(imp.source, filePath, store);
+        if (!resolvedFile) continue;
+        if (!imp.specifiers || imp.specifiers.length === 0) continue;
+
+        const sourceId = nodeIds.get(`import:${imp.source}:${imp.line}`);
+        if (!sourceId) continue;
+
+        const targetNodes = store.nodesByFile(resolvedFile);
+
+        for (const spec of imp.specifiers) {
+            let target;
+            const confidence = "exact";
+
+            if (spec.type === "default") {
+                target = targetNodes.find(n => n.is_default_export && n.kind !== "import");
+            } else if (spec.type === "namespace") {
+                for (const tn of targetNodes) {
+                    if (tn.kind !== "import" && tn.is_exported) {
+                        store.insertEdge({
+                            source_id: sourceId, target_id: tn.id,
+                            kind: "imports", confidence: "namespace",
+                            file: filePath, line: imp.line,
+                        });
+                    }
+                }
+                continue;
+            } else {
+                target = targetNodes.find(n => n.name === spec.imported && n.kind !== "import");
+            }
+
+            if (target) {
+                store.insertEdge({
+                    source_id: sourceId, target_id: target.id,
+                    kind: "imports", confidence,
+                    file: filePath, line: imp.line,
+                });
+            }
+        }
+    }
+
+    // 5. Persist module-level import edges (file-to-file)
+    store.clearModuleEdges(filePath);
+    for (const imp of imports) {
+        const resolvedFile = resolveImportSource(imp.source, filePath, store);
+        if (resolvedFile) {
+            const isSideEffect = !imp.name || imp.name === "*" || imp.name === "";
+            store.insertModuleEdge({
+                source_file: filePath,
+                target_file: resolvedFile,
+                line: imp.line,
+                is_side_effect: isSideEffect ? 1 : 0,
+                is_dynamic: 0,
+                is_reexport: 0,
+            });
+        }
+    }
+
+    // 6. Mark exported symbols
+    if (fileExports && fileExports.size > 0) {
+        for (const exportName of fileExports) {
+            for (const def of definitions) {
+                if (def.name === exportName && nodeIds.has(def.key)) {
+                    if (exportName === defaultExport) {
+                        store.markDefaultExport(nodeIds.get(def.key));
+                    } else {
+                        store.markExported(nodeIds.get(def.key));
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    if (defaultExport === "__default_export__") {
+        for (const def of definitions) {
+            if (def.name === "__default_export__" && nodeIds.has(def.key)) {
+                store.markDefaultExport(nodeIds.get(def.key));
+                break;
+            }
+        }
+    }
+
+    // 7. Wire reexport edges
+    if (reexports && reexports.length > 0) {
+        for (const re of reexports) {
+            const resolvedTarget = resolveImportSource(re.source, filePath, store);
+            if (!resolvedTarget) continue;
+
+            store.insertModuleEdge({
+                source_file: filePath,
+                target_file: resolvedTarget,
+                line: re.line || 0,
+                is_side_effect: 0,
+                is_dynamic: 0,
+                is_reexport: 1,
+            });
+
+            const targetNodes = store.nodesByFile(resolvedTarget);
+
+            for (const spec of re.specifiers) {
+                if (spec.type === "namespace" && spec.local === "*") continue;
+
+                let target;
+                if (spec.type === "default" || spec.imported === "default") {
+                    target = targetNodes.find(n => n.is_default_export && n.kind !== "import");
+                } else {
+                    target = targetNodes.find(n => n.name === spec.imported && n.kind !== "import");
+                }
+                if (!target) continue;
+
+                const reexportNodeId = nodeIds.get(`reexport:${spec.local}:${re.line}`);
+                if (!reexportNodeId) continue;
+
+                store.insertEdge({
+                    source_id: reexportNodeId,
+                    target_id: target.id,
+                    kind: "reexports",
+                    confidence: "exact",
+                    file: filePath,
+                    line: re.line || 0,
+                });
+            }
+        }
+    }
+
+    // 8. Resolve and persist call edges
+    for (const call of calls) {
+        const callerDef = findEnclosingDefinition(call.line, definitions);
+        const callerId = callerDef ? nodeIds.get(callerDef.key) : null;
+        if (!callerId) continue;
+
+        let targetId = null;
+        let confidence = "exact";
+
+        // 1. Same-class sibling method
+        if (callerDef.parent && classMethods.has(`${callerDef.parent}.${call.name}`)) {
+            targetId = classMethods.get(`${callerDef.parent}.${call.name}`);
+        }
+        // 2. Local symbol (skip null = ambiguous)
+        else if (localSymbols.has(call.name) && localSymbols.get(call.name) != null) {
+            targetId = localSymbols.get(call.name);
+        }
+        // 3. Imported symbol
+        else if (importedSymbols.has(call.name)) {
+            targetId = importedSymbols.get(call.name);
+        }
+        // 4. Module-connected or global unique
+        else {
+            const candidates = store.findByName(call.name);
+            const nonImport = candidates.filter(c => c.kind !== "import");
+
+            const moduleConnected = nonImport.filter(c => store.moduleEdgeExists(filePath, c.file));
+            if (moduleConnected.length === 1) {
+                targetId = moduleConnected[0].id;
+                confidence = "inferred";
+            } else if (nonImport.length === 1) {
+                targetId = nonImport[0].id;
+                confidence = "heuristic";
+            }
+        }
+
+        if (targetId && targetId !== callerId) {
+            store.insertEdge({
+                source_id: callerId,
+                target_id: targetId,
+                kind: "calls",
+                confidence,
+                file: filePath,
+                line: call.line,
+            });
+            callEdgeCount++;
+        }
+    }
+
+    // 9. Resolve reference edges
+    if (references && references.length > 0) {
+        for (const ref of references) {
+            const enclosingDef = findEnclosingDefinition(ref.line, definitions);
+
+            let targetId = null;
+            const confidence = "exact";
+
+            // Same-class sibling
+            if (enclosingDef?.parent && classMethods.has(`${enclosingDef.parent}.${ref.name}`)) {
+                targetId = classMethods.get(`${enclosingDef.parent}.${ref.name}`);
+            }
+            // Local symbol
+            else if (localSymbols.has(ref.name) && localSymbols.get(ref.name) != null) {
+                targetId = localSymbols.get(ref.name);
+            }
+            // Imported symbol
+            else if (importedSymbols.has(ref.name)) {
+                targetId = importedSymbols.get(ref.name);
+            }
+            // Skip global resolution for refs (too noisy)
+
+            if (!targetId) continue;
+
+            // Skip self-references: if target is the enclosing definition
+            const callerId = enclosingDef ? nodeIds.get(enclosingDef.key) : null;
+            if (!callerId) continue; // Skip top-level references — no source provenance
+            if (targetId === callerId) continue;
+
+            const edgeKind = ref.refKind === "type_ref" ? "ref_type" : "ref_read";
+            store.insertEdge({
+                source_id: callerId,
+                target_id: targetId,
+                kind: edgeKind,
+                confidence,
+                file: filePath,
+                line: ref.line,
+            });
+        }
+    }
+
+    return callEdgeCount;
+}
 
 function persistCloneData(store, definitions, nodeIds) {
     for (const def of definitions) {

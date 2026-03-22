@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # MCP Tool Preferences
 
-**MANDATORY:** NEVER use built-in Read, Edit, Write, Grep. Use hex-line MCP equivalents:
+**PREFER** hex-line MCP for code files — hash-annotated reads enable safe edits:
 
 | Instead of | Use | Why |
 |-----------|-----|-----|
@@ -17,14 +17,14 @@ keep-coding-instructions: true
 
 ## Efficient File Reading
 
-For code files >100 lines, ALWAYS:
+For UNFAMILIAR code files >100 lines, PREFER:
 1. `outline` first (10-20 lines of structure)
 2. `read_file` with offset/limit for the specific section you need
 
-NEVER read a large file in full — outline+targeted read saves 75% tokens.
+Avoid reading a large file in full — outline+targeted read saves 75% tokens.
 
 Bash OK for: npm/node/git/docker/curl, pipes, compound commands.
-**Exceptions** (use built-in Read): images, PDFs, Jupyter notebooks.
+**Built-in OK for:** images, PDFs, notebooks, Glob (always), `.claude/settings.json` and `.claude/settings.local.json`.
 
 # Explanatory Style
 

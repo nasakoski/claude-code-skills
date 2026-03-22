@@ -82,7 +82,7 @@ export function fileInfo(filePath) {
     const timeStr = `Modified: ${mtime.toISOString().replace("T", " ").slice(0, 19)} (${relativeTime(mtime)})`;
 
     return [
-        `File: ${filePath}`,
+        `File: ${normalized}`,
         sizeStr,
         timeStr,
         `Type: ${typeName}`,

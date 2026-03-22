@@ -2,8 +2,10 @@
 /**
  * hex-graph-mcp — Code knowledge graph MCP server.
  *
- * 8 tools: index_project, search_symbols, get_impact, trace_calls,
- *          get_context, get_architecture, watch_project, find_clones
+ * 14 tools: index_project, search_symbols, get_impact, trace_calls,
+ *          get_context, get_architecture, watch_project, find_clones,
+ *          find_hotspots, find_unused, impact_of_changes, find_cycles, module_metrics,
+ *          find_references
  * Tree-sitter AST → SQLite graph (nodes, edges, FTS5)
  * Transport: stdio
  */
@@ -14,7 +16,10 @@ const { version } = createRequire(import.meta.url)("./package.json");
 import { checkForUpdates } from "./lib/update-check.mjs";
 import { coerceParams } from "./lib/coerce.mjs";
 import { findClones } from "./lib/clones.mjs";
-import { resolveStore } from "./lib/store.mjs";
+import { impactOfChanges } from "./lib/impact.mjs";
+import { findCycles } from "./lib/cycles.mjs";
+import { resolveStore, getReferences } from "./lib/store.mjs";
+import { findUnused, formatUnusedText } from "./lib/unused.mjs";
 
 // LLM clients may send booleans/numbers as strings. Safe coercion.
 const flexBool = () => z.preprocess(
@@ -271,6 +276,297 @@ server.registerTool("find_clones", {
         return { content: [{ type: "text", text: typeof content === "string" ? content : JSON.stringify(content, null, 2) }] };
     } catch (e) {
         return graphError("DB_ERROR", e.message, "Re-run index_project to rebuild");
+    }
+});
+
+// ==================== find_hotspots ====================
+
+server.registerTool("find_hotspots", {
+    title: "Find Hotspots",
+    description:
+        "Find high-risk symbols by complexity \u00d7 caller count. Shows functions/methods that are both complex and widely depended on. " +
+        "Complexity = stmt_count from clone analysis, or line span as fallback. Requires index_project first.",
+    inputSchema: z.object({
+        path: z.string().describe("Project root (must be indexed)"),
+        min_callers: flexNum().describe("Minimum caller count to include (default: 2)"),
+        min_complexity: flexNum().describe("Minimum complexity to include (default: 15)"),
+        limit: flexNum().describe("Max results (default: 20)"),
+        scope: z.string().optional().describe("File path prefix filter (e.g. 'src/api')"),
+        format: z.enum(["json", "text"]).default("text").describe("Output format"),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+}, async (rawParams) => {
+    const { path, min_callers, min_complexity, limit, scope, format } = coerceParams(rawParams);
+    try {
+        const store = resolveStore(path);
+        if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first");
+
+        const rows = store.hotspots({
+            minCallers: min_callers ?? 2,
+            minComplexity: min_complexity ?? 15,
+            limit: limit ?? 20,
+            scopePath: scope,
+        });
+
+        if (format === "json") {
+            return { content: [{ type: "text", text: JSON.stringify(rows, null, 2) }] };
+        }
+
+        // Text format
+        const lines = [];
+        lines.push(`${rows.length} hotspots (risk = complexity \u00d7 callers)`);
+        lines.push("");
+        lines.push("  risk  complexity  callers  file");
+        for (const r of rows) {
+            const cLabel = r.complexity_source === "stmt_count"
+                ? `${r.complexity} stmts`
+                : `${r.complexity} lines*`;
+            lines.push(`  ${String(r.risk).padStart(4)}  ${cLabel.padEnd(10)}  ${String(r.callers).padStart(7)}  ${r.file}:${r.line_start}  ${r.name}()`);
+        }
+        if (rows.some(r => r.complexity_source === "line_span_fallback")) {
+            lines.push("");
+            lines.push("* = line_span_fallback (no clone_blocks data)");
+        }
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+    } catch (e) {
+        return graphError("DB_ERROR", e.message, "Re-run index_project to rebuild");
+    }
+});
+
+// ==================== find_unused ====================
+
+server.registerTool("find_unused", {
+    title: "Find Unused Exports",
+    description:
+        "Use find_unused when cleaning dead code. Finds exported symbols with zero imports. " +
+        "Shows dead exports that may be safe to remove. " +
+        "Static-analysis heuristic — no CJS/dynamic/reflection.",
+    inputSchema: z.object({
+        path: z.string().describe("Project root (must be indexed)"),
+        scope: z.string().optional().describe("File path prefix filter (e.g. 'src/lib')"),
+        kind: z.enum(["function", "class", "variable", "all"]).default("all").describe("Symbol kind filter (default: all)"),
+        show_suppressed: flexBool().describe("Include suppressed items (default: false)"),
+        format: z.enum(["json", "text"]).default("text").describe("Output format"),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+}, async (rawParams) => {
+    const { path, scope, kind, show_suppressed, format } = coerceParams(rawParams);
+    try {
+        const store = resolveStore(path);
+        if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first");
+
+        const result = findUnused(store, {
+            scopePath: scope,
+            kind: kind || "all",
+        });
+
+        if (format === "json") {
+            const output = show_suppressed
+                ? result
+                : { ...result, unused: result.unused.filter(u => !u.suppressed) };
+            return { content: [{ type: "text", text: JSON.stringify(output, null, 2) }] };
+        }
+
+        const text = formatUnusedText(result, show_suppressed ?? false);
+        return { content: [{ type: "text", text }] };
+    } catch (e) {
+        return graphError("DB_ERROR", e.message, "Re-run index_project to rebuild");
+    }
+});
+
+// ==================== impact_of_changes ====================
+
+server.registerTool("impact_of_changes", {
+    title: "Impact of Changes",
+    description:
+        "Estimate which files/tests are affected by recent code changes. " +
+        "Heuristic \u2014 based on static call graph, not authoritative.",
+    inputSchema: z.object({
+        path: z.string().describe("Project root directory"),
+        ref: z.string().default("HEAD").describe("Git ref to diff against (default: HEAD)"),
+        depth: flexNum().describe("Transitive caller depth (default: 2)"),
+        tests_only: flexBool().describe("Only show affected test files"),
+        format: z.enum(["json", "text"]).default("text").describe("Output format"),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+}, async (rawParams) => {
+    const { path: projectPath, ref, depth, tests_only, format } = coerceParams(rawParams);
+    try {
+        const store = resolveStore(projectPath);
+        if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first");
+
+        const result = impactOfChanges(store, projectPath, {
+            ref: ref || "HEAD",
+            depth: depth ?? 2,
+            testsOnly: tests_only ?? false,
+        });
+
+        if (format === "json") {
+            return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        }
+
+        // Text format
+        const lines = [];
+        lines.push(`Impact of changes (vs ${result.changed.length > 0 ? (ref || "HEAD") : "HEAD"}, depth=${depth ?? 2}, ${result.confidence})`);
+        lines.push("");
+
+        if (!tests_only) {
+            lines.push(`Changed files (${result.changed.length}):`);
+            for (const f of result.changed) lines.push(`  ${f}`);
+            lines.push("");
+
+            lines.push(`Affected files (${result.affected.length}):`);
+            for (const f of result.affected) lines.push(`  ${f}`);
+            lines.push("");
+        }
+
+        lines.push(`Affected tests (${result.affected_tests.length}):`);
+        for (const f of result.affected_tests) lines.push(`  ${f}`);
+        lines.push("");
+
+        lines.push(`Note: ${result.note}`);
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+    } catch (e) {
+        if (e.message.includes("Not a git repository") || e.message.includes("Unknown git ref")) {
+            return graphError("GIT_ERROR", e.message, "Check path is a git repo and ref exists");
+        }
+        return graphError("DB_ERROR", e.message, "Re-run index_project to rebuild");
+    }
+});
+
+// ==================== find_cycles ====================
+
+server.registerTool("find_cycles", {
+    title: "Find Cycles",
+    description:
+        "Detect circular module dependencies. Shows import cycles that increase coupling and block tree-shaking. " +
+        "Uses file-level import graph (module_edges). Requires index_project first.",
+    inputSchema: z.object({
+        path: z.string().describe("Project root (must be indexed)"),
+        scope: z.string().optional().describe("File path prefix filter (e.g. 'src/api')"),
+        format: z.enum(["json", "text"]).default("text").describe("Output format"),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+}, async (rawParams) => {
+    const { path, scope, format } = coerceParams(rawParams);
+    try {
+        const store = resolveStore(path);
+        if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first");
+
+        const result = findCycles(store, { scopePath: scope });
+
+        if (format === "json") {
+            return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        }
+
+        // Text format
+        const lines = [];
+        if (result.cycles.length === 0) {
+            lines.push(`No circular dependencies found (${result.total_modules} modules, ${result.total_edges} edges)`);
+        } else {
+            lines.push(`${result.cycles.length} circular dependenc${result.cycles.length === 1 ? "y" : "ies"} found (${result.total_modules} modules, ${result.total_edges} edges)`);
+            lines.push("");
+            for (let i = 0; i < result.cycles.length; i++) {
+                const c = result.cycles[i];
+                lines.push(`Cycle ${i + 1} (${c.length} files):`);
+                lines.push(`  ${c.files.join(" \u2192 ")}`);
+                lines.push("");
+            }
+        }
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+    } catch (e) {
+        return graphError("DB_ERROR", e.message, "Re-run index_project to rebuild");
+    }
+});
+
+// ==================== module_metrics ====================
+
+server.registerTool("module_metrics", {
+    title: "Module Metrics",
+    description:
+        "Calculate module coupling metrics (Ca/Ce/Instability) per file. Shows which modules are most coupled or unstable. " +
+        "Ca = afferent (who imports this), Ce = efferent (who this imports), I = Ce/(Ca+Ce). Requires index_project first.",
+    inputSchema: z.object({
+        path: z.string().describe("Project root (must be indexed)"),
+        scope: z.string().optional().describe("File path prefix filter (e.g. 'src/api')"),
+        sort: z.enum(["instability", "ca", "ce", "coupling"]).default("instability").describe("Sort order (default: instability)"),
+        min_coupling: flexNum().describe("Minimum total coupling Ca+Ce to include (default: 2)"),
+        format: z.enum(["json", "text"]).default("text").describe("Output format"),
+    }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+}, async (rawParams) => {
+    const { path, scope, sort, min_coupling, format } = coerceParams(rawParams);
+    try {
+        const store = resolveStore(path);
+        if (!store) return graphError("NOT_INDEXED", "No project indexed", "Run index_project first");
+
+        const rows = store.moduleMetrics({
+            scopePath: scope,
+            sort: sort ?? "instability",
+            minCoupling: min_coupling ?? 2,
+        });
+
+        if (format === "json") {
+            return { content: [{ type: "text", text: JSON.stringify(rows, null, 2) }] };
+        }
+
+        // Text format
+        const lines = [];
+        lines.push(`Module coupling metrics (${rows.length} files, sorted by ${sort ?? "instability"})`);
+        lines.push("");
+        lines.push("  I     Ca  Ce  File");
+        for (const r of rows) {
+            const iStr = r.instability.toFixed(2).padStart(5);
+            const caStr = String(r.ca).padStart(4);
+            const ceStr = String(r.ce).padStart(4);
+            lines.push(`  ${iStr} ${caStr} ${ceStr}  ${r.file}`);
+        }
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+    } catch (e) {
+        return graphError("DB_ERROR", e.message, "Re-run index_project to rebuild");
+    }
+});
+
+// ==================== find_references ====================
+
+server.registerTool("find_references", {
+    title: "Find References",
+    description:
+        "Use find_references when you need all usages of a symbol — calls, reads, type annotations, re-exports. " +
+        "Use instead of grep when you need semantic references, not text matches. " +
+        "Requires index_project first.",
+    inputSchema: z.object({
+        symbol: z.string().describe("Symbol name to find references for"),
+        kind: z.enum(["ref_read", "ref_type", "calls", "reexports", "imports", "all"]).default("all").describe("Filter by reference kind"),
+        limit: flexNum().describe("Max references (default: 50)"),
+        path: z.string().optional().describe("Project root"),
+        format: z.enum(["json", "text"]).default("text").describe("Output format"),
+    }),
+}, async (rawParams) => {
+    const { symbol, kind, limit, path, format } = coerceParams(rawParams);
+    try {
+        const result = getReferences(symbol, { kind, limit: limit ?? 50, path });
+        if (typeof result === "string") return { content: [{ type: "text", text: result }], isError: true };
+
+        if (format === "json") {
+            return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        }
+
+        // Text format
+        const lines = [];
+        lines.push(`${result.symbol} (${result.definition.kind} in ${result.definition.file}:${result.definition.line})`);
+        lines.push(`${result.total} references`);
+        if (Object.keys(result.total_by_kind).length > 0) {
+            lines.push(`  by kind: ${Object.entries(result.total_by_kind).map(([k, v]) => `${k}:${v}`).join(", ")}`);
+        }
+        lines.push("");
+        for (const ref of result.references) {
+            lines.push(`  ${ref.kind.padEnd(10)} ${ref.file}:${ref.line}`);
+        }
+
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+    } catch (e) {
+        return { content: [{ type: "text", text: e.message }], isError: true };
     }
 });
 

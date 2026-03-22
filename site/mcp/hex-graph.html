@@ -366,11 +366,11 @@
     </div>
   </section>
 
-  <!-- 7 TOOLS -->
+  <!-- 13 TOOLS -->
   <section>
     <div class="container">
-      <h2>7 tools</h2>
-      <p class="section-desc">Everything you need to query the knowledge graph.</p>
+      <h2>14 Tools</h2>
+      <p class="section-desc">Query, analyze, and maintain the knowledge graph.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -404,6 +404,77 @@
             <tr>
               <td class="tool-name">watch_project</td>
               <td class="tool-desc">File watcher for incremental graph updates. Singleton per project</td>
+            </tr>
+            <tr>
+              <td class="tool-name">find_hotspots</td>
+              <td class="tool-desc">Identify refactoring targets. Functions/methods ranked by risk = complexity &times; callers</td>
+            </tr>
+            <tr>
+              <td class="tool-name">impact_of_changes</td>
+              <td class="tool-desc">Estimate affected files/tests from git diff via static call graph</td>
+            </tr>
+            <tr>
+              <td class="tool-name">find_unused</td>
+              <td class="tool-desc">Find exported symbols with zero imports across the codebase</td>
+            </tr>
+            <tr>
+              <td class="tool-name">find_cycles</td>
+              <td class="tool-desc">Detect circular module dependencies via Tarjan&rsquo;s SCC algorithm</td>
+            </tr>
+            <tr>
+              <td class="tool-name">module_metrics</td>
+              <td class="tool-desc">Calculate coupling metrics (Ca/Ce/Instability) per file</td>
+            </tr>
+            <tr>
+              <td class="tool-name">find_references</td>
+              <td class="tool-desc">Find all usages of a symbol — calls, reads, type annotations, re-exports</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUPPORTED LANGUAGES -->
+  <section>
+    <div class="container">
+      <h2>Supported Languages</h2>
+      <p class="section-desc">Language-specific capabilities for graph and liveness analysis.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Language</th><th>Extensions</th><th>Graph Features</th><th>find_unused</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="tool-name">JavaScript</td>
+              <td class="tool-desc">.js .mjs .cjs .jsx</td>
+              <td class="tool-desc">Full</td>
+              <td class="tool-desc" style="color: var(--green);">Full liveness</td>
+            </tr>
+            <tr>
+              <td class="tool-name">TypeScript</td>
+              <td class="tool-desc">.ts .tsx</td>
+              <td class="tool-desc">Full</td>
+              <td class="tool-desc" style="color: var(--green);">Full liveness</td>
+            </tr>
+            <tr>
+              <td class="tool-name">Python</td>
+              <td class="tool-desc">.py</td>
+              <td class="tool-desc">Calls + exports</td>
+              <td class="tool-desc">Export detection only</td>
+            </tr>
+            <tr>
+              <td class="tool-name">C#</td>
+              <td class="tool-desc">.cs</td>
+              <td class="tool-desc">Calls + exports</td>
+              <td class="tool-desc">Export detection only</td>
+            </tr>
+            <tr>
+              <td class="tool-name">PHP</td>
+              <td class="tool-desc">.php</td>
+              <td class="tool-desc">Calls + exports</td>
+              <td class="tool-desc">Export detection only</td>
             </tr>
           </tbody>
         </table>

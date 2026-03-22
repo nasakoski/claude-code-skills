@@ -7,7 +7,7 @@
 
 import { statSync } from "node:fs";
 import { fnv1a, lineTag, rangeChecksum } from "./hash.mjs";
-import { validatePath } from "./security.mjs";
+import { validatePath, normalizePath } from "./security.mjs";
 import { getGraphDB, fileAnnotations, getRelativePath } from "./graph-enrich.mjs";
 import { relativeTime, listDirectory, readText, MAX_OUTPUT_CHARS } from "./format.mjs";
 
@@ -21,6 +21,7 @@ const DEFAULT_LIMIT = 2000;
  * @returns {string} formatted output
  */
 export function readFile(filePath, opts = {}) {
+    filePath = normalizePath(filePath);
     const real = validatePath(filePath);
     const stat = statSync(real);
 

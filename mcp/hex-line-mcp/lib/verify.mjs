@@ -4,7 +4,7 @@
  */
 
 import { fnv1a, rangeChecksum, parseChecksum } from "./hash.mjs";
-import { validatePath } from "./security.mjs";
+import { validatePath, normalizePath } from "./security.mjs";
 import { readText } from "./format.mjs";
 
 /**
@@ -15,6 +15,7 @@ import { readText } from "./format.mjs";
  * @returns {string} verification result
  */
 export function verifyChecksums(filePath, checksums) {
+    filePath = normalizePath(filePath);
     const real = validatePath(filePath);
     const content = readText(real);
     const lines = content.split("\n");

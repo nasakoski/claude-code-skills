@@ -11,7 +11,7 @@
 import { writeFileSync } from "node:fs";
 import { diffLines } from "diff";
 import { fnv1a, lineTag, rangeChecksum, parseChecksum, parseRef } from "./hash.mjs";
-import { validatePath } from "./security.mjs";
+import { validatePath, normalizePath } from "./security.mjs";
 import { getGraphDB, blastRadius, getRelativePath } from "./graph-enrich.mjs";
 import { readText } from "./format.mjs";
 
@@ -304,6 +304,7 @@ function textReplace(content, oldText, newText, all) {
  * @returns {string} result message with diff
  */
 export function editFile(filePath, edits, opts = {}) {
+    filePath = normalizePath(filePath);
     const real = validatePath(filePath);
     const original = readText(real);
     const lines = original.split("\n");

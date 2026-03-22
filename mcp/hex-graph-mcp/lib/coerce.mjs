@@ -27,6 +27,12 @@ const ALIASES = {
     function_name: "symbol",
     max_depth: "depth",
     maxDepth: "depth",
+
+    // impact_of_changes
+    git_ref: "ref",
+    revision: "ref",
+    tests: "tests_only",
+    testsOnly: "tests_only",
 };
 
 export function coerceParams(params) {

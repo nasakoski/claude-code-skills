@@ -3,6 +3,27 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execFile } from "node:child_process";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const HOOK_PATH = resolve(__dirname, "../hook.mjs");
+
+function runHook(hookEvent, toolName, toolInput, extra = {}) {
+    return new Promise((res) => {
+        const child = execFile("node", [HOOK_PATH], { stdio: ["pipe", "pipe", "pipe"] }, (error, stdout, stderr) => {
+            res({ code: error ? error.code : 0, stdout, stderr });
+        });
+        child.stdin.write(JSON.stringify({
+            hook_event_name: hookEvent,
+            tool_name: toolName,
+            tool_input: toolInput,
+            ...extra
+        }));
+        child.stdin.end();
+    });
+}
 
 const CWD = "d:/Development/LevNikolaevich/claude-code-skills/mcp/hex-line-mcp";
 
@@ -564,5 +585,175 @@ describe("isHexLineDisabled", () => {
             _resetHexLineDisabledCache();
             fs.unlinkSync(tmp);
         }
+    });
+});
+
+// ==================== hook subprocess ====================
+
+describe("hook — ls redirect", () => {
+    it("allows simple ls", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "ls src/" });
+        assert.equal(r.code, 0);
+    });
+    it("allows ls -la", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "ls -la src/" });
+        assert.equal(r.code, 0);
+    });
+    it("redirects ls -R", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "ls -R" });
+        assert.notEqual(r.code, 0);
+    });
+    it("redirects ls -R .", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "ls -R ." });
+        assert.notEqual(r.code, 0);
+    });
+    it("redirects ls -laR src/", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "ls -laR src/" });
+        assert.notEqual(r.code, 0);
+    });
+    it("redirects dir /s", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "dir /s" });
+        assert.notEqual(r.code, 0);
+    });
+    it("allows ls -al -R (documented limitation)", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "ls -al -R src/" });
+        assert.equal(r.code, 0, "accepted trade-off — unusual flag ordering not caught");
+    });
+});
+
+describe("hook — Read config exception", () => {
+    it("allows .claude/settings.json (relative)", async () => {
+        const r = await runHook("PreToolUse", "Read", { file_path: ".claude/settings.json" });
+        assert.equal(r.code, 0);
+    });
+    it("allows ./.claude/settings.json (dot-relative)", async () => {
+        const r = await runHook("PreToolUse", "Read", { file_path: "./.claude/settings.json" });
+        assert.equal(r.code, 0);
+    });
+    it("blocks src/.claude/settings.json (not under cwd/.claude/)", async () => {
+        const r = await runHook("PreToolUse", "Read", { file_path: "src/.claude/settings.json" });
+        assert.notEqual(r.code, 0);
+    });
+    it("blocks .claude/foo.ts", async () => {
+        const r = await runHook("PreToolUse", "Read", { file_path: ".claude/foo.ts" });
+        assert.notEqual(r.code, 0);
+    });
+    it("redirects src/index.ts", async () => {
+        const r = await runHook("PreToolUse", "Read", { file_path: "src/index.ts" });
+        assert.notEqual(r.code, 0);
+    });
+    it("allows image.png (binary)", async () => {
+        const r = await runHook("PreToolUse", "Read", { file_path: "image.png" });
+        assert.equal(r.code, 0);
+    });
+    it("allows ~/.claude/settings.json (home-relative)", async () => {
+        const r = await runHook("PreToolUse", "Read", { file_path: "~/.claude/settings.json" });
+        assert.equal(r.code, 0);
+    });
+    it("allows absolute .claude/settings.json (uppercase drive)", async () => {
+        const cwd = process.cwd().replace(/\\/g, "/");
+        const r = await runHook("PreToolUse", "Read", { file_path: cwd + "/.claude/settings.json" });
+        assert.equal(r.code, 0);
+    });
+    it("allows absolute .claude/settings.json (lowercase drive)", async () => {
+        const cwd = process.cwd().replace(/\\/g, "/");
+        const lower = cwd[0].toLowerCase() + cwd.slice(1);
+        const r = await runHook("PreToolUse", "Read", { file_path: lower + "/.claude/settings.json" });
+        assert.equal(r.code, 0);
+    });
+});
+
+describe("hook — regressions", () => {
+    it("redirects cat file.ts", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "cat file.ts" });
+        assert.notEqual(r.code, 0);
+    });
+    it("blocks rm -rf /", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "rm -rf /" });
+        assert.notEqual(r.code, 0);
+    });
+    it("allows # hex-confirmed bypass", async () => {
+        const r = await runHook("PreToolUse", "Bash", { command: "rm -rf / # hex-confirmed" });
+        assert.equal(r.code, 0);
+    });
+});
+
+// ==================== PostToolUse RTK ====================
+
+describe("PostToolUse RTK", () => {
+    function makeLines(n, prefix = "line") {
+        return Array.from({ length: n }, (_, i) => `${prefix} ${i + 1}`).join("\n");
+    }
+
+    it("short output passthrough (< threshold)", async () => {
+        const r = await runHook("PostToolUse", "Bash", { command: "echo ok" }, {
+            tool_response: makeLines(10)
+        });
+        assert.equal(r.code, 0);
+        assert.equal(r.stderr, "");
+    });
+
+    it("long output filtering (>= threshold)", async () => {
+        const r = await runHook("PostToolUse", "Bash", { command: "npm install" }, {
+            tool_response: makeLines(100)
+        });
+        assert.equal(r.code, 2);
+        assert.ok(r.stderr.includes("RTK FILTERED"), "should contain RTK FILTERED header");
+        assert.ok(r.stderr.includes("(100 lines ->"), "should contain original count");
+        assert.ok(r.stderr.includes("lines omitted"), "should contain truncation marker");
+        // Head preserved (lines 1-15)
+        assert.ok(r.stderr.includes("line 1"), "should contain first line");
+        assert.ok(r.stderr.includes("line 15"), "should contain 15th line");
+        // Tail preserved (lines 86-100)
+        assert.ok(r.stderr.includes("line 100"), "should contain last line");
+        // Middle omitted
+        assert.ok(!r.stderr.includes("line 50"), "should NOT contain middle line");
+    });
+
+    it("object with stdout", async () => {
+        const r = await runHook("PostToolUse", "Bash", { command: "npm install" }, {
+            tool_response: { stdout: makeLines(100) }
+        });
+        assert.equal(r.code, 2);
+        assert.ok(r.stderr.includes("RTK FILTERED"));
+    });
+
+    it("object with stderr only", async () => {
+        const r = await runHook("PostToolUse", "Bash", { command: "npm install" }, {
+            tool_response: { stderr: makeLines(100, "err") }
+        });
+        assert.equal(r.code, 2);
+        assert.ok(r.stderr.includes("RTK FILTERED"));
+        assert.ok(r.stderr.includes("err 1"), "should contain stderr content");
+    });
+
+    it("object with both streams — combined, stdout before stderr", async () => {
+        const r = await runHook("PostToolUse", "Bash", { command: "npm install" }, {
+            tool_response: {
+                stdout: makeLines(50, "STDOUT_MARKER"),
+                stderr: makeLines(60, "STDERR_MARKER")
+            }
+        });
+        assert.equal(r.code, 2);
+        assert.ok(r.stderr.includes("STDOUT_MARKER"), "should contain stdout content");
+        assert.ok(r.stderr.includes("STDERR_MARKER"), "should contain stderr content");
+        // Verify order: stdout before stderr
+        const stdoutPos = r.stderr.indexOf("STDOUT_MARKER");
+        const stderrPos = r.stderr.indexOf("STDERR_MARKER");
+        assert.ok(stdoutPos < stderrPos, "stdout should appear before stderr");
+    });
+
+    it("missing tool_response", async () => {
+        const r = await runHook("PostToolUse", "Bash", { command: "echo ok" });
+        assert.equal(r.code, 0);
+        assert.equal(r.stderr, "");
+    });
+
+    it("non-Bash tool", async () => {
+        const r = await runHook("PostToolUse", "Read", { file_path: "/tmp/x" }, {
+            tool_response: makeLines(100)
+        });
+        assert.equal(r.code, 0);
+        assert.equal(r.stderr, "");
     });
 });

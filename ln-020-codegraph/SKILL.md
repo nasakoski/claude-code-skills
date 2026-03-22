@@ -2,7 +2,7 @@
 name: ln-020-codegraph
 description: "Builds and queries code knowledge graph for dependency analysis, impact checking, and architecture overview. Use when starting work on unfamiliar codebase or before refactoring."
 license: MIT
-allowed-tools: mcp__hex-graph__index_project, mcp__hex-graph__search_symbols, mcp__hex-graph__get_impact, mcp__hex-graph__trace_calls, mcp__hex-graph__get_context, mcp__hex-graph__get_architecture, mcp__hex-graph__watch_project
+allowed-tools: mcp__hex-graph__index_project, mcp__hex-graph__search_symbols, mcp__hex-graph__get_impact, mcp__hex-graph__trace_calls, mcp__hex-graph__get_context, mcp__hex-graph__get_architecture, mcp__hex-graph__watch_project, mcp__hex-graph__find_clones, mcp__hex-graph__find_hotspots, mcp__hex-graph__find_unused, mcp__hex-graph__find_cycles, mcp__hex-graph__module_metrics, mcp__hex-graph__impact_of_changes, mcp__hex-graph__find_references
 ---
 
 > **Paths:** File paths are relative to skills repo root.
@@ -57,6 +57,12 @@ Route based on user intent:
 | "Project structure" / "Architecture" | `get_architecture` | `{ path?: "src/" }` |
 | "Find symbol X" | `search_symbols` | `{ query: "X" }` |
 | "Watch for changes" | `watch_project` | `{ path: "{project_path}" }` |
+| "Find duplicate code" | `find_clones` | `{ type: "all" }` |
+| "Risky hotspots" | `find_hotspots` | `{ minCallers: 2, minComplexity: 5 }` |
+| "Unused exports" | `find_unused` | `{}` |
+| "Circular dependencies" | `find_cycles` | `{}` |
+| "Module coupling" | `module_metrics` | `{ minCoupling: 0 }` |
+| "What changed?" / "Impact" | `impact_of_changes` | `{ ref: "HEAD" }` |
 
 ### Phase 3: Present Results
 

@@ -28,3 +28,11 @@
 
 ; --- Calls ---
 (call) @call
+
+; --- References (read position) ---
+(expression_statement (identifier) @reference.identifier)
+(return_statement (identifier) @reference.identifier)
+(assignment right: (identifier) @reference.identifier)
+(argument_list (identifier) @reference.identifier)
+(comparison_operator (identifier) @reference.identifier)
+(list (identifier) @reference.identifier)

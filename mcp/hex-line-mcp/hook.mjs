@@ -14,13 +14,14 @@
  *
  * PostToolUse:
  *   - RTK output filter: compresses verbose Bash output
- *     (npm install, test, build, pip, git) to save context tokens.
+ *     (npm install, test, build, pip, git). Stderr shown to
+ *     Claude as feedback.
  *
  * SessionStart:
  *   - Injects tool preference list into agent context.
  *
  * Exit 0 = approve / no feedback / systemMessage
- * Exit 2 = block (PreToolUse) or feedback via stderr (PostToolUse)
+ * Exit 2 = block (PreToolUse) or stderr feedback (PostToolUse)
  */
 
 import { normalizeOutput } from "./lib/normalize.mjs";
@@ -78,7 +79,8 @@ const BASH_REDIRECTS = [
     { regex: /^head\s+/, key: "head" },
     { regex: /^tail\s+(?!-[fF])/, key: "tail" },
     { regex: /^(less|more)\s+/, key: "cat" },
-    { regex: /^(ls|dir)(\s+-\S+)*\s+/, key: "ls" },
+    { regex: /^ls\s+-\S*R(\s|$)/, key: "ls" },   // ls -R, ls -laR (recursive only)
+    { regex: /^dir\s+\/[sS](\s|$)/, key: "ls" }, // dir /s, dir /S (recursive only)
     { regex: /^tree\s+/, key: "ls" },
     { regex: /^find\s+/, key: "ls" },
     { regex: /^(stat|wc)\s+/, key: "stat" },
@@ -152,6 +154,18 @@ function detectCommandType(cmd) {
     return "generic";
 }
 
+function extractBashText(response) {
+    if (typeof response === "string") return response;
+    if (response && typeof response === "object") {
+        // Combine stdout + stderr in stable order
+        const parts = [];
+        if (response.stdout) parts.push(response.stdout);
+        if (response.stderr) parts.push(response.stderr);
+        return parts.join("\n") || "";
+    }
+    return ""; // unknown shape \u2192 fail open
+}
+
 /** Cache: null = not computed yet */
 let _hexLineDisabled = null;
 
@@ -223,6 +237,25 @@ function handlePreToolUse(data) {
         const normalPath = filePath.replace(/\\/g, "/");
         if (normalPath.includes(".claude/plans/") || normalPath.includes("AppData")) {
             process.exit(0);
+        }
+
+        // Skip Claude config files (settings.json, settings.local.json)
+        const ALLOWED_CONFIGS = new Set(["settings.json", "settings.local.json"]);
+        const fileName = normalPath.split("/").pop();
+        if (ALLOWED_CONFIGS.has(fileName)) {
+            let candidate = filePath;
+            if (candidate.startsWith("~/")) {
+                candidate = homedir().replace(/\\/g, "/") + candidate.slice(1);
+            }
+            const absPath = resolve(process.cwd(), candidate).replace(/\\/g, "/");
+            const projectClaude = resolve(process.cwd(), ".claude").replace(/\\/g, "/") + "/";
+            const globalClaude = resolve(homedir(), ".claude").replace(/\\/g, "/") + "/";
+            const cmp = process.platform === "win32"
+                ? (a, b) => a.toLowerCase().startsWith(b.toLowerCase())
+                : (a, b) => a.startsWith(b);
+            if (cmp(absPath, projectClaude) || cmp(absPath, globalClaude)) {
+                process.exit(0);
+            }
         }
 
         // Block with redirect — include extracted path for instant retry
@@ -317,15 +350,15 @@ function handlePostToolUse(data) {
     }
 
     const toolInput = data.tool_input || {};
-    const toolResult = data.tool_result;
+    const rawText = extractBashText(data.tool_response);
     const command = toolInput.command || "";
 
     // Nothing to filter
-    if (!toolResult || typeof toolResult !== "string") {
+    if (!rawText) {
         process.exit(0);
     }
 
-    const lines = toolResult.split("\n");
+    const lines = rawText.split("\n");
     const originalCount = lines.length;
 
     // Short output - no filtering
@@ -390,9 +423,9 @@ function handleSessionStart() {
             lines.push(`- ${hint}`);
         }
     }
-    lines.push("Exceptions: images, PDFs, notebooks \u2192 built-in Read");
+    lines.push("Exceptions: images, PDFs, notebooks, .claude/settings.json, .claude/settings.local.json \u2192 built-in Read; Glob always OK");
     lines.push("Bash OK for: npm/node/git/docker/curl, pipes, scripts");
-    const msg = "Hex-line MCP available. ALWAYS prefer:\n" + lines.join("\n");
+    const msg = "Hex-line MCP available. PREFER:\n" + lines.join("\n");
     process.stdout.write(JSON.stringify({ systemMessage: msg }));
     process.exit(0);
 }

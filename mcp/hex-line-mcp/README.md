@@ -33,13 +33,13 @@ Every line carries an FNV-1a content hash. Every edit must present those hashes 
 |-------|---------|--------|
 | **PreToolUse** | Read/Edit/Write/Grep on text files | Blocks built-in, forces hex-line tools |
 | **PreToolUse** | Bash with dangerous commands | Blocks `rm -rf /`, `git push --force`, etc. Agent must confirm with user |
-| **PostToolUse** | Bash with 50+ lines output | RTK: deduplicates, truncates, summarizes |
+| **PostToolUse** | Bash with 50+ lines output | RTK: deduplicates, truncates, shows filtered summary to Claude as feedback |
 | **SessionStart** | Session begins | Injects full tool preference list into agent context |
 
 
 ### Bash Redirects
 
-PreToolUse also intercepts simple Bash commands: cat, head, tail, ls, tree, find, stat, wc -l, grep, rg, sed -i, diff — redirects to hex-line equivalents. Compound commands with pipes are allowed.
+PreToolUse also intercepts simple Bash commands: cat, head, tail, tree, find, stat, wc -l, grep, rg, sed -i — redirects to hex-line equivalents. `ls`/`dir` only redirected for recursive listing (`ls -R`, `dir /s`); simple `ls path` is allowed. Compound commands with pipes are allowed.
 ## Install
 
 ### MCP Server
@@ -336,9 +336,9 @@ Outline works on code files only (15+ languages via tree-sitter WASM). For markd
 </details>
 
 <details>
-<summary><b>How does the RTK filter reduce tokens?</b></summary>
+<summary><b>How does the RTK filter work?</b></summary>
 
-The PostToolUse hook normalizes Bash output (replaces UUIDs, timestamps, IPs with placeholders), deduplicates identical lines, and truncates to first 15 + last 15 lines. Average savings: 45% (flat) / 52% (weighted) across 18 benchmark scenarios.
+The PostToolUse hook normalizes Bash output (replaces UUIDs, timestamps, IPs with placeholders), deduplicates identical lines, and truncates to first 15 + last 15 lines. The filtered summary is shown to Claude as stderr feedback via exit code 2.
 
 </details>
 

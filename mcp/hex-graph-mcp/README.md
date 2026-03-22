@@ -19,6 +19,12 @@ Code knowledge graph MCP server. Indexes codebases into a SQLite graph via tree-
 | `get_architecture` | Project architecture overview | Module matrix, hotspots |
 | `watch_project` | File watcher for incremental graph updates | Singleton, CASCADE cleanup on delete |
 | `find_clones` | Detect code clones across codebase. 3-tier: exact (identical), normalized (renamed vars), near_miss (modified) | Impact scores, suppression heuristics |
+| `find_hotspots` | Find high-risk symbols by complexity x caller count | Risk = complexity x callers, stmt_count or line span fallback |
+| `impact_of_changes` | Estimate affected files/tests from recent code changes | Static call graph heuristic, includes untracked files |
+| `find_unused` | Find exported symbols with zero imports. Use when cleaning dead code | Confidence levels, suppression heuristics, multi-language |
+| `find_cycles` | Detect circular module dependencies | Tarjan SCC on module_edges |
+| `module_metrics` | Calculate coupling metrics (Ca/Ce/Instability) per file | File-level, from module_edges |
+| `find_references` | Find all usages of a symbol — calls, reads, type annotations, re-exports. Use instead of grep for semantic references | Grouped by kind, limit support |
 
 ## Install
 
@@ -140,11 +146,50 @@ Detects duplicated code at three confidence levels:
 **Languages with full AST fingerprinting:** JavaScript, TypeScript, Python
 **Other languages:** hash-only detection (exact + normalized tiers)
 
+### find_hotspots
+
+Find high-risk symbols ranked by risk = complexity x caller count. Complexity uses `stmt_count` from clone analysis when available, falls back to line span.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `path` | string | yes | Project root (must be indexed) |
+| `min_callers` | number | no | Minimum caller count to include (default: 2) |
+| `min_complexity` | number | no | Minimum complexity to include (default: 15) |
+| `limit` | number | no | Max results (default: 20) |
+| `scope` | string | no | File path prefix filter (e.g. `"src/api"`) |
+| `format` | string | no | `"json"` or `"text"` (default: `"text"`) |
+
+### impact_of_changes
+
+Heuristic estimator: which files and tests are affected by recent code changes. Based on static call graph -- not authoritative. Includes untracked files when `ref=HEAD`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `path` | string | yes | Project root directory |
+| `ref` | string | no | Git ref to diff against (default: `"HEAD"`) |
+| `depth` | number | no | Transitive caller depth (default: 2) |
+| `tests_only` | boolean | no | Only show affected test files |
+| `format` | string | no | `"json"` or `"text"` (default: `"text"`) |
+
 ## Architecture
+
+
+## Supported Languages
+
+| Language | Extensions | Definitions & Calls | Exports | Imports (structured) | find_unused |
+|----------|-----------|---------------------|---------|---------------------|-------------|
+| JavaScript | .js .mjs .cjs .jsx | Full | ESM (named, default, re-export) | Full (alias, default, namespace) | Full liveness |
+| TypeScript | .ts .tsx | Full | ESM (named, default, re-export) | Full (alias, default, namespace) | Full liveness |
+| Python | .py | Full | `__all__` or `_` convention | Structured (named, alias, wildcard, module) | Export detection only |
+| C# | .cs | Full | `public` access modifier | Basic (`type: "module"`) | Export detection only |
+| PHP | .php | Full | Top-level + `public` methods | Basic (`type: "module"`) | Export detection only |
+
+**Note:** Python/C#/PHP have no cross-file import resolver — `find_unused` detects exports but can't verify liveness.
+Additional languages can be added by creating a `.scm` query file and adding to `LANG_CONFIGS` in `parser.mjs`.
 
 ```
 hex-graph-mcp/
-  server.mjs          MCP server (stdio transport, 8 tools)
+  server.mjs          MCP server (stdio transport, 13 tools)
   package.json
   lib/
     indexer.mjs        Tree-sitter AST parsing, file scanning
@@ -183,6 +228,8 @@ hex-graph-mcp/
 | Codebase overview | `get_architecture` | First call after `index_project` |
 | Continuous sync | `watch_project` | Start once, graph stays current |
 | Detect duplicates | `find_clones` | `path: "/project", type: "near_miss", scope: "src/**"` |
+| Find risky code | `find_hotspots` | `path: "/project", min_callers: 3` |
+| Pre-PR impact check | `impact_of_changes` | `path: "/project", ref: "HEAD"` |
 
 
 ## Benchmark

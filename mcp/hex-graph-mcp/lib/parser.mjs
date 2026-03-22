@@ -117,7 +117,7 @@ function defKey(def) {
  * @param {string} filePath - absolute file path
  * @param {string} source - file content
  * @param {{cloneDetection?: boolean}} opts - options (default: {})
- * @returns {Promise<{definitions: Array, imports: Array, calls: Array}>}
+ * @returns {Promise<{definitions: Array, imports: Array, calls: Array, exports: Set<string>, defaultExport: string|null, reexports: Array}>}
  *
  * definitions: { name, kind, line_start, line_end, parent?, signature?, key, clone_data? }
  * imports:     { name, source, line, kind: "import" }
@@ -127,7 +127,7 @@ export async function parseFile(filePath, source, opts = {}) {
     const ext = extname(filePath).toLowerCase();
     const config = LANG_CONFIGS[ext];
     if (!config) {
-        return { definitions: [], imports: [], calls: [] };
+        return { definitions: [], imports: [], calls: [], references: [], exports: new Set(), defaultExport: null, reexports: [] };
     }
 
     const lang = await getLanguage(config.grammar);
@@ -141,6 +141,7 @@ export async function parseFile(filePath, source, opts = {}) {
     const definitions = [];
     const imports = [];
     const calls = [];
+    const references = [];
 
     for (const { name: captureName, node } of captures) {
         const startLine = node.startPosition.row + 1;
@@ -223,6 +224,14 @@ export async function parseFile(filePath, source, opts = {}) {
             if (callName) {
                 calls.push({ name: callName, line: startLine });
             }
+        } else if (captureName === "reference.identifier") {
+            if (node.type === "identifier" || node.type === "name") {
+                references.push({ name: node.text, line: startLine, refKind: "read" });
+            }
+        } else if (captureName === "reference.type") {
+            if (node.type === "type_identifier" || node.type === "identifier") {
+                references.push({ name: node.text, line: startLine, refKind: "type_ref" });
+            }
         }
     }
 
@@ -289,6 +298,34 @@ export async function parseFile(filePath, source, opts = {}) {
         }
     }
 
+    // Extract ESM exports before tree.delete()
+    const { exports: exportSet, defaultExport, reexports } = extractExports(tree, config.grammar);
+
+    // Create synthetic node for anonymous default export
+    if (defaultExport === "__default_export__") {
+        const root = tree.rootNode;
+        for (let i = 0; i < root.childCount; i++) {
+            const child = root.child(i);
+            if (child.type === "export_statement" && child.children.some(c => c.type === "default")) {
+                const decl = child.childForFieldName("declaration");
+                let kind = "function";
+                if (decl) {
+                    if (decl.type.includes("class")) kind = "class";
+                    else if (decl.type.includes("function") || decl.type === "arrow_function") kind = "function";
+                }
+                const def = {
+                    name: "__default_export__",
+                    kind,
+                    line_start: child.startPosition.row + 1,
+                    line_end: child.endPosition.row + 1,
+                };
+                def.key = defKey(def);
+                definitions.push(def);
+                break;
+            }
+        }
+    }
+
     // Clean up tree-sitter node references (can't survive tree.delete())
     for (const def of definitions) {
         delete def._node;
@@ -296,7 +333,7 @@ export async function parseFile(filePath, source, opts = {}) {
 
     tree.delete();
 
-    return { definitions, imports, calls };
+    return { definitions, imports, calls, references, exports: exportSet, defaultExport, reexports };
 }
 
 // --- Helpers ---
@@ -326,70 +363,380 @@ function extractCallName(node) {
 
 function extractImport(node, grammar) {
     if (grammar === "javascript" || grammar === "typescript" || grammar === "tsx") {
-        // import { X } from "source" or import X from "source"
         const source = node.childForFieldName("source");
         if (source) {
-            const specifiers = [];
+            const structuredSpecs = [];
+            const localNames = [];
+
             for (let i = 0; i < node.childCount; i++) {
                 const child = node.child(i);
                 if (child.type === "import_clause") {
-                    // default import or named imports
                     for (let j = 0; j < child.childCount; j++) {
                         const sub = child.child(j);
                         if (sub.type === "identifier") {
-                            specifiers.push(sub.text);
+                            // Default import: import Foo from "./a"
+                            structuredSpecs.push({ imported: "default", local: sub.text, type: "default" });
+                            localNames.push(sub.text);
+                        } else if (sub.type === "namespace_import") {
+                            // Namespace: import * as ns from "./a"
+                            const alias = sub.children?.find(c => c.type === "identifier");
+                            const localName = alias ? alias.text : "*";
+                            structuredSpecs.push({ imported: "*", local: localName, type: "namespace" });
+                            localNames.push(localName);
                         } else if (sub.type === "named_imports") {
                             for (let k = 0; k < sub.childCount; k++) {
                                 const spec = sub.child(k);
                                 if (spec.type === "import_specifier") {
-                                    const name = spec.childForFieldName("name") || spec.childForFieldName("alias");
-                                    if (name) specifiers.push(name.text);
+                                    const nameNode = spec.childForFieldName("name");
+                                    const aliasNode = spec.childForFieldName("alias");
+                                    if (nameNode) {
+                                        const imported = nameNode.text;
+                                        const local = aliasNode ? aliasNode.text : imported;
+                                        structuredSpecs.push({ imported, local, type: "named" });
+                                        localNames.push(local);
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+
             return {
-                name: specifiers.join(", ") || "*",
-                source: source.text.replace(/['"]/g, ""),
+                name: localNames.join(", ") || "*",
+                source: source.text.replace(/['\"]/g, ""),
                 kind: "import",
+                specifiers: structuredSpecs,
             };
         }
     } else if (grammar === "python") {
-        // import X or from X import Y
+        // P1b: Python structured import specifiers
         if (node.type === "import_from_statement") {
             const module = node.childForFieldName("module_name");
-            const names = [];
+            const structuredSpecs = [];
+            const localNames = [];
             for (let i = 0; i < node.childCount; i++) {
                 const child = node.child(i);
                 if (child.type === "dotted_name" && child !== module) {
-                    names.push(child.text);
+                    structuredSpecs.push({ imported: child.text, local: child.text, type: "named" });
+                    localNames.push(child.text);
                 } else if (child.type === "aliased_import") {
-                    const n = child.childForFieldName("name");
-                    if (n) names.push(n.text);
+                    const name = child.childForFieldName("name");
+                    const alias = child.childForFieldName("alias");
+                    if (name) {
+                        const local = alias ? alias.text : name.text;
+                        structuredSpecs.push({ imported: name.text, local, type: "named" });
+                        localNames.push(local);
+                    }
+                } else if (child.type === "wildcard_import") {
+                    structuredSpecs.push({ imported: "*", local: "*", type: "namespace" });
+                    localNames.push("*");
                 }
             }
             return {
-                name: names.join(", ") || "*",
+                name: localNames.join(", ") || "*",
                 source: module ? module.text : "",
                 kind: "import",
+                specifiers: structuredSpecs,
             };
         }
         if (node.type === "import_statement") {
+            const specs = [];
             const names = [];
             for (let i = 0; i < node.childCount; i++) {
                 const child = node.child(i);
-                if (child.type === "dotted_name") names.push(child.text);
+                if (child.type === "dotted_name") {
+                    specs.push({ imported: child.text, local: child.text, type: "module" });
+                    names.push(child.text);
+                } else if (child.type === "aliased_import") {
+                    const name = child.childForFieldName("name");
+                    const alias = child.childForFieldName("alias");
+                    if (name) {
+                        const local = alias ? alias.text : name.text;
+                        specs.push({ imported: name.text, local, type: "module" });
+                        names.push(local);
+                    }
+                }
             }
-            return {
-                name: names.join(", "),
-                source: names[0] || "",
-                kind: "import",
-            };
+            return { name: names.join(", "), source: names[0] || "", kind: "import", specifiers: specs };
+        }
+    } else if (grammar === "c_sharp") {
+        // P1d: C# using -> type: "module"
+        if (node.type === "using_directive") {
+            const ns = node.children?.find(c => c.type === "qualified_name" || c.type === "identifier");
+            const name = ns ? ns.text : node.text.replace(/using\s+/, "").replace(/;/, "").trim();
+            return { name, source: name, kind: "import", specifiers: [{ imported: name, local: name, type: "module" }] };
+        }
+    } else if (grammar === "php") {
+        // P1d: PHP use -> type: "module"
+        if (node.type === "namespace_use_declaration") {
+            const specs = [];
+            const names = [];
+            for (let i = 0; i < node.childCount; i++) {
+                const child = node.child(i);
+                if (child.type === "namespace_use_clause") {
+                    const qname = child.children?.find(c => c.type === "qualified_name" || c.type === "name");
+                    const alias = child.childForFieldName("alias");
+                    if (qname) {
+                        const imported = qname.text;
+                        const parts = imported.split("\\\\");
+                        const local = alias ? alias.text : parts[parts.length - 1];
+                        specs.push({ imported, local, type: "module" });
+                        names.push(local);
+                    }
+                }
+            }
+            if (specs.length > 0) {
+                return { name: names.join(", "), source: specs[0].imported, kind: "import", specifiers: specs };
+            }
         }
     }
 
     // Fallback: extract text
     return { name: node.text.slice(0, 100), source: "", kind: "import" };
+}
+
+/**
+ * Extract exported symbol names from ESM syntax.
+ * Scans top-level export statements for function/class/variable/re-export names.
+ * @param {object} tree - tree-sitter tree
+ * @param {string} grammar - language grammar name
+ * @returns {{ exports: Set<string>, defaultExport: string|null, reexports: Array }}
+ */
+function extractExports(tree, grammar) {
+    // P1a: Python export extraction
+    if (grammar === "python") {
+        const exports = new Set();
+        const root = tree.rootNode;
+
+        // Check for __all__ = ["foo", "bar"] (literal only, strict policy)
+        for (let i = 0; i < root.childCount; i++) {
+            const child = root.child(i);
+            if (child.type === "expression_statement") {
+                const assign = child.child(0);
+                if (assign?.type === "assignment") {
+                    const left = assign.childForFieldName("left");
+                    if (left?.text === "__all__") {
+                        const right = assign.childForFieldName("right");
+                        if (right && (right.type === "list" || right.type === "tuple")) {
+                            for (let j = 0; j < right.childCount; j++) {
+                                const elem = right.child(j);
+                                if (elem.type === "string") {
+                                    const val = elem.text.replace(/['\"`]/g, "");
+                                    if (val) exports.add(val);
+                                }
+                            }
+                            return { exports, defaultExport: null, reexports: [] };
+                        }
+                    }
+                }
+            }
+        }
+
+        // No __all__: convention — top-level def/class without _ prefix
+        for (let i = 0; i < root.childCount; i++) {
+            const child = root.child(i);
+            if (child.type === "function_definition" || child.type === "class_definition") {
+                const name = child.childForFieldName("name");
+                if (name && !name.text.startsWith("_")) {
+                    exports.add(name.text);
+                }
+            } else if (child.type === "decorated_definition") {
+                const inner = child.children?.find(c => c.type === "function_definition" || c.type === "class_definition");
+                if (inner) {
+                    const name = inner.childForFieldName("name");
+                    if (name && !name.text.startsWith("_")) {
+                        exports.add(name.text);
+                    }
+                }
+            }
+        }
+        return { exports, defaultExport: null, reexports: [] };
+    }
+
+    // P1c: C# export extraction (public modifier)
+    if (grammar === "c_sharp") {
+        const exports = new Set();
+        function walkCSharp(node) {
+            for (let i = 0; i < node.childCount; i++) {
+                const child = node.child(i);
+                const type = child.type;
+                if (type === "class_declaration" || type === "struct_declaration" ||
+                    type === "interface_declaration" || type === "enum_declaration" ||
+                    type === "record_declaration") {
+                    const hasPublic = child.children?.some(c => (c.type === "modifier" || c.type === "access_modifier") && c.text === "public");
+                    if (hasPublic) {
+                        const name = child.childForFieldName("name");
+                        if (name) exports.add(name.text);
+                    }
+                }
+                if (type === "method_declaration" || type === "property_declaration") {
+                    const hasPublic = child.children?.some(c => (c.type === "modifier" || c.type === "access_modifier") && c.text === "public");
+                    if (hasPublic) {
+                        const name = child.childForFieldName("name");
+                        if (name) exports.add(name.text);
+                    }
+                }
+                if (type === "namespace_declaration" || type === "file_scoped_namespace_declaration" ||
+                    type === "class_declaration" || type === "struct_declaration" ||
+                    type === "interface_declaration" || type === "record_declaration" ||
+                    type === "declaration_list") {
+                    walkCSharp(child);
+                }
+            }
+        }
+        walkCSharp(tree.rootNode);
+        return { exports, defaultExport: null, reexports: [] };
+    }
+
+    // P1e: PHP export extraction
+    if (grammar === "php") {
+        const exports = new Set();
+        function walkPHP(node) {
+            for (let i = 0; i < node.childCount; i++) {
+                const child = node.child(i);
+                const type = child.type;
+                if (type === "function_definition") {
+                    const name = child.childForFieldName("name");
+                    if (name) exports.add(name.text);
+                }
+                if (type === "class_declaration" || type === "interface_declaration" ||
+                    type === "trait_declaration" || type === "enum_declaration") {
+                    const name = child.childForFieldName("name");
+                    if (name) exports.add(name.text);
+                    const body = child.childForFieldName("body");
+                    if (body) {
+                        for (let j = 0; j < body.childCount; j++) {
+                            const member = body.child(j);
+                            if (member.type === "method_declaration") {
+                                const isPrivate = member.children?.some(c =>
+                                    c.type === "visibility_modifier" && (c.text === "private" || c.text === "protected")
+                                );
+                                if (!isPrivate) {
+                                    const mName = member.childForFieldName("name");
+                                    if (mName) exports.add(mName.text);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (type === "namespace_definition") {
+                    walkPHP(child);
+                }
+            }
+        }
+        walkPHP(tree.rootNode);
+        return { exports, defaultExport: null, reexports: [] };
+    }
+
+    // Unsupported grammar
+    if (grammar !== "javascript" && grammar !== "typescript" && grammar !== "tsx") {
+        return { exports: new Set(), defaultExport: null, reexports: [] };
+    }
+
+    const exports = new Set();
+    let defaultExport = null;
+    const reexports = [];
+    const root = tree.rootNode;
+
+    for (let i = 0; i < root.childCount; i++) {
+        const child = root.child(i);
+
+        if (child.type !== "export_statement") continue;
+
+        // Check if this is a re-export (has source/from clause)
+        const source = child.childForFieldName("source");
+        if (source) {
+            const sourceText = source.text.replace(/['"]/g, "");
+            const reexportSpecs = [];
+
+            // export { x, y } from "./a"
+            const exportClause = child.children.find(c => c.type === "export_clause");
+            if (exportClause) {
+                for (let j = 0; j < exportClause.childCount; j++) {
+                    const spec = exportClause.child(j);
+                    if (spec.type === "export_specifier") {
+                        const name = spec.childForFieldName("name");
+                        const alias = spec.childForFieldName("alias");
+                        if (name) {
+                            const imported = name.text;
+                            const local = alias ? alias.text : imported;
+                            const type = imported === "default" ? "default" : "named";
+                            reexportSpecs.push({ imported, local, type });
+                        }
+                    }
+                }
+            }
+
+            // export * from "./b" or export * as ns from "./c"
+            const hasStar = child.children.some(c => c.type === "*" || c.text === "*");
+            if (hasStar && reexportSpecs.length === 0) {
+                const nsAlias = child.children.find(c => c.type === "namespace_export");
+                if (nsAlias) {
+                    const nsName = nsAlias.childForFieldName("name");
+                    reexportSpecs.push({ imported: "*", local: nsName ? nsName.text : "*", type: "namespace" });
+                } else {
+                    reexportSpecs.push({ imported: "*", local: "*", type: "namespace" });
+                }
+            }
+
+            if (reexportSpecs.length > 0) {
+                reexports.push({ source: sourceText, specifiers: reexportSpecs, line: child.startPosition.row + 1 });
+            }
+
+            continue; // Don't process as regular export
+        }
+
+        // export function foo() {} / export class Foo {}
+        // export const x = ... / export let x = ...
+        const decl = child.childForFieldName("declaration");
+        if (decl) {
+            const nameNode = decl.childForFieldName("name");
+            if (nameNode) {
+                exports.add(nameNode.text);
+            } else if (decl.type === "lexical_declaration" || decl.type === "variable_declaration") {
+                for (let j = 0; j < decl.childCount; j++) {
+                    const declarator = decl.child(j);
+                    if (declarator.type === "variable_declarator") {
+                        const n = declarator.childForFieldName("name");
+                        if (n) exports.add(n.text);
+                    }
+                }
+            }
+        }
+
+        // export { x, y } (local re-grouping, no source)
+        if (!decl) {
+            const exportClause = child.children.find(c => c.type === "export_clause");
+            if (exportClause) {
+                for (let j = 0; j < exportClause.childCount; j++) {
+                    const spec = exportClause.child(j);
+                    if (spec.type === "export_specifier") {
+                        const name = spec.childForFieldName("name") || spec.childForFieldName("alias");
+                        if (name) exports.add(name.text);
+                    }
+                }
+            }
+        }
+
+        // export default ...
+        if (child.children.some(c => c.type === "default")) {
+            if (decl) {
+                const nameNode = decl.childForFieldName("name");
+                if (nameNode) {
+                    // Named default: export default function foo() {}
+                    exports.add(nameNode.text);
+                    defaultExport = nameNode.text;
+                } else {
+                    // Anonymous default: export default function() {} or expression
+                    defaultExport = "__default_export__";
+                }
+            } else {
+                // No declaration (e.g. export default expr)
+                defaultExport = "__default_export__";
+            }
+        }
+    }
+
+    return { exports, defaultExport, reexports };
 }

@@ -10,7 +10,7 @@
   "files": [
     "server.mjs",
     "hook.mjs",
-    "benchmark.mjs",
+    "benchmark/",
     "lib/",
     "README.md",
     "output-style.md"
@@ -20,6 +20,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node --test test/*.mjs",
+    "benchmark": "node benchmark/index.mjs",
     "check": "node --check server.mjs && node --check hook.mjs"
   },
   "dependencies": {

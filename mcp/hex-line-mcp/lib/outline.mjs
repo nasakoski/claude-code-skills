@@ -8,7 +8,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve, extname } from "node:path";
-import { validatePath } from "./security.mjs";
+import { validatePath, normalizePath } from "./security.mjs";
 import { getGraphDB, symbolAnnotation, getRelativePath } from "./graph-enrich.mjs";
 
 // Language configs: extension → { grammar, outline, skip, recurse }
@@ -185,6 +185,7 @@ function formatOutline(entries, skippedRanges, sourceLineCount, db, relFile) {
  * @returns {Promise<string>} formatted outline
  */
 export async function fileOutline(filePath) {
+    filePath = normalizePath(filePath);
     const real = validatePath(filePath);
     const ext = extname(real).toLowerCase();
 

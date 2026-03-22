@@ -66,6 +66,7 @@ export function watchProject(projectPath) {
         try {
             const store = getStore(absPath);
             store.deleteFile(relPath);
+            store.cleanupOrphanModuleEdges();
         } catch (e) {
             process.stderr.write(`codegraph watcher: delete error ${relPath}: ${e.message}\n`);
         }

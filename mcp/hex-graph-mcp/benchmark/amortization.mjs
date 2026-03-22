@@ -1,0 +1,79 @@
+/**
+ * TEST 13: Index cost and break-even calculation.
+ */
+
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { performance } from "node:perf_hooks";
+import { RUNS, rg } from "./helpers.mjs";
+import {
+    searchSymbols,
+    getImpact,
+    traceCalls,
+    getContext,
+    getArchitecture,
+    getHotspots,
+    getModuleMetrics,
+    getReferences,
+} from "../lib/store.mjs";
+import { findClones } from "../lib/clones.mjs";
+import { findCycles } from "../lib/cycles.mjs";
+import { findUnused } from "../lib/unused.mjs";
+import { impactOfChanges } from "../lib/impact.mjs";
+import { indexProject } from "../lib/indexer.mjs";
+
+/**
+ * @param {object} store  — initialized graph store
+ * @param {object} config — { repoRoot, searchSym, contextSym, impactSym, traceSym }
+ * @returns {{ indexTimeMs: number, avgQueryMs: number, breakEven: number, avgBuiltinMs: number }}
+ */
+export async function runAmortization(store, config) {
+    const { repoRoot, searchSym, contextSym, impactSym, traceSym } = config;
+
+    // Measure index time (re-index -- mostly skips unchanged files)
+    const t0 = performance.now();
+    await indexProject(repoRoot);
+    const indexTimeMs = performance.now() - t0;
+
+    // Measure average query time from tests 1-12
+    const queryTimes = [];
+    const queries = [
+        () => searchSymbols(searchSym.name, { limit: 20 }),
+        () => getContext(contextSym.name),
+        () => getImpact(impactSym.name, { depth: 3, limit: 50 }),
+        () => traceCalls(traceSym.name, { direction: "callers", depth: 3, limit: 50 }),
+        () => getArchitecture(),
+        () => findClones(store, { type: "all", threshold: 0.80, minStmts: 3, crossFile: true, format: "text", suppress: true }),
+        () => getHotspots({ limit: 10 }),
+        () => impactOfChanges(store, repoRoot, { ref: "HEAD", depth: 2 }),
+        () => findUnused(store),
+        () => findCycles(store),
+        () => getModuleMetrics(),
+        () => getReferences(searchSym.name),
+    ];
+    for (const q of queries) {
+        const qt0 = performance.now();
+        for (let i = 0; i < RUNS; i++) q();
+        queryTimes.push((performance.now() - qt0) / RUNS);
+    }
+    const avgQueryMs = queryTimes.reduce((a, b) => a + b, 0) / queryTimes.length;
+
+    // Measure average built-in query time for break-even calculation
+    const builtinTimes = [];
+    const builtinQueries = [
+        () => rg(`-n "${searchSym.name}" --type js "${repoRoot}" --max-count 30`),
+        () => { readFileSync(resolve(repoRoot, contextSym.file), "utf-8"); },
+        () => rg(`-l "${impactSym.name}" --type js "${repoRoot}"`),
+    ];
+    for (const q of builtinQueries) {
+        const qt0 = performance.now();
+        for (let i = 0; i < RUNS; i++) q();
+        builtinTimes.push((performance.now() - qt0) / RUNS);
+    }
+    const avgBuiltinMs = builtinTimes.reduce((a, b) => a + b, 0) / builtinTimes.length;
+
+    const savingsPerQuery = avgBuiltinMs - avgQueryMs;
+    const breakEven = savingsPerQuery > 0 ? Math.ceil(indexTimeMs / savingsPerQuery) : Infinity;
+
+    return { indexTimeMs, avgQueryMs, breakEven, avgBuiltinMs };
+}

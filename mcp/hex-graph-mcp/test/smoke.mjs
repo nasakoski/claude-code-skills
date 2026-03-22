@@ -64,8 +64,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { indexProject, reindexFile } from "../lib/indexer.mjs";
-import { getStore } from "../lib/store.mjs";
+import { getStore, getReferences } from "../lib/store.mjs";
 import { findClones } from "../lib/clones.mjs";
+import { findCycles } from "../lib/cycles.mjs";
+import { findUnused } from "../lib/unused.mjs";
 
 function makeTempDir() {
     return mkdtempSync(join(tmpdir(), "hex-graph-clone-"));
@@ -295,6 +297,93 @@ export class B {
     });
 });
 
+// ==================== find_hotspots ====================
+
+describe("find_hotspots", () => {
+    it("high-complexity function with multiple callers appears in hotspots", async () => {
+        const dir = makeTempDir();
+        try {
+            // A complex function (many statements) called by multiple others
+            writeFileSync(
+                join(dir, "core.mjs"),
+                [
+                    "export function complexEngine(data) {",
+                    "    const a = validate(data);",
+                    "    const b = transform(a);",
+                    "    const c = normalize(b);",
+                    "    const d = enrich(c);",
+                    "    const e = filter(d);",
+                    "    const f = sort(e);",
+                    "    const g = paginate(f);",
+                    "    const h = format(g);",
+                    "    const i = cache(h);",
+                    "    const j = serialize(i);",
+                    "    const k = compress(j);",
+                    "    const l = encrypt(k);",
+                    "    const m = sign(l);",
+                    "    const n = wrap(m);",
+                    "    const o = deliver(n);",
+                    "    const p = log(o);",
+                    "    return p;",
+                    "}",
+                    "",
+                    "export function callerA() { return complexEngine(1); }",
+                    "export function callerB() { return complexEngine(2); }",
+                    "export function callerC() { return complexEngine(3); }",
+                    "",
+                    "export function trivial() { return 1; }",
+                    "",
+                ].join("\n"),
+            );
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+            const rows = store.hotspots({ minCallers: 2, minComplexity: 5, limit: 20 });
+
+            const names = rows.map(r => r.name);
+            assert.ok(names.includes("complexEngine"), "complexEngine appears in hotspots");
+            assert.ok(!names.includes("trivial"), "trivial (0 callers) excluded by AND filter");
+
+            const hit = rows.find(r => r.name === "complexEngine");
+            assert.ok(hit.callers >= 3, "at least 3 callers");
+            assert.ok(hit.complexity >= 5, "complexity >= 5");
+            assert.ok(hit.risk > 0, "risk is positive");
+            assert.ok(
+                hit.complexity_source === "stmt_count" || hit.complexity_source === "line_span_fallback",
+                "complexity_source is valid",
+            );
+
+            store.close();
+        } finally {
+            rmSync(dir, { recursive: true });
+        }
+    });
+});
+
+// ==================== impact_of_changes ====================
+
+describe("impact_of_changes", () => {
+    it("returns expected shape on real git repo", async () => {
+        const { impactOfChanges } = await import("../lib/impact.mjs");
+        const projectPath = "d:/Development/LevNikolaevich/claude-code-skills/mcp/hex-graph-mcp";
+
+        await indexProject(projectPath);
+        const store = getStore(projectPath);
+
+        const result = impactOfChanges(store, projectPath, { ref: "HEAD", depth: 2 });
+
+        assert.ok(Array.isArray(result.changed), "changed is array");
+        assert.ok(Array.isArray(result.affected), "affected is array");
+        assert.ok(Array.isArray(result.affected_tests), "affected_tests is array");
+        assert.strictEqual(result.confidence, "heuristic", "confidence is heuristic");
+        assert.ok(typeof result.note === "string" && result.note.length > 0, "note is non-empty string");
+
+        store.close();
+    });
+});
+
 describe("find_clones schema validation", () => {
     it("rejects threshold out of range", async () => {
         const z = await import("zod");
@@ -327,3 +416,560 @@ describe("find_clones schema validation", () => {
     });
 });
 
+// ==================== find_unused ====================
+
+describe("find_unused", () => {
+    it("imported export NOT flagged, unused export IS flagged", async () => {
+        const dir = makeTempDir();
+        try {
+            writeFileSync(
+                join(dir, "a.mjs"),
+                'export function foo() {}\nexport function bar() {}\n',
+            );
+            writeFileSync(
+                join(dir, "b.mjs"),
+                'import { foo } from "./a.mjs";\nfoo();\n',
+            );
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+            const result = findUnused(store);
+
+            const unusedNames = result.unused.map(u => u.name);
+            assert.ok(unusedNames.includes("bar"), "bar (never imported) is in unused list");
+            assert.ok(!unusedNames.includes("foo"), "foo (imported by b) is NOT in unused list");
+
+            store.close();
+        } finally {
+            rmSync(dir, { recursive: true });
+        }
+    });
+});
+
+// ==================== find_cycles ====================
+
+describe("find_cycles", () => {
+    it("detects A->B->C->A circular dependency", async () => {
+        const dir = makeTempDir();
+        try {
+            writeFileSync(
+                join(dir, "a.mjs"),
+                'import { b } from "./b.mjs";\nexport function a() { b(); }\n',
+            );
+            writeFileSync(
+                join(dir, "b.mjs"),
+                'import { c } from "./c.mjs";\nexport function b() { c(); }\n',
+            );
+            writeFileSync(
+                join(dir, "c.mjs"),
+                'import { a } from "./a.mjs";\nexport function a_caller() { a(); }\n',
+            );
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+            const result = findCycles(store);
+
+            assert.strictEqual(result.cycles.length, 1, "exactly 1 cycle");
+            assert.strictEqual(result.cycles[0].length, 3, "cycle has 3 files");
+
+            store.close();
+        } finally {
+            rmSync(dir, { recursive: true });
+        }
+    });
+});
+
+// ==================== module_metrics ====================
+
+describe("module_metrics", () => {
+    it("Ca/Ce correct for shared module", async () => {
+        const dir = makeTempDir();
+        try {
+            writeFileSync(
+                join(dir, "a.mjs"),
+                'import { shared } from "./shared.mjs";\nshared();\n',
+            );
+            writeFileSync(
+                join(dir, "b.mjs"),
+                'import { shared } from "./shared.mjs";\nshared();\n',
+            );
+            writeFileSync(
+                join(dir, "shared.mjs"),
+                'export function shared() {}\n',
+            );
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+            const rows = store.moduleMetrics({ minCoupling: 0 });
+
+            const sharedMetric = rows.find(r => r.file.includes("shared"));
+            assert.ok(sharedMetric, "shared.mjs appears in metrics");
+            assert.ok(sharedMetric.ca >= 2, "shared.mjs has Ca >= 2 (imported by a and b)");
+            assert.strictEqual(sharedMetric.ce, 0, "shared.mjs has Ce === 0 (imports nothing)");
+
+            store.close();
+        } finally {
+            rmSync(dir, { recursive: true });
+        }
+    });
+});
+
+// ==================== alias import ====================
+
+describe("alias import resolution", () => {
+    it("aliased import resolves to original symbol", async () => {
+        const dir = makeTempDir();
+        try {
+            writeFileSync(
+                join(dir, "a.mjs"),
+                'export function original() {}\n',
+            );
+            writeFileSync(
+                join(dir, "b.mjs"),
+                'import { original as renamed } from "./a.mjs";\nexport function caller() { renamed(); }\n',
+            );
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+            // Find the caller node
+            const callerNodes = store.findByName("caller");
+            assert.ok(callerNodes.length > 0, "caller node exists");
+            const callerId = callerNodes[0].id;
+
+            // Check edges from caller
+            const edges = store.edgesFrom(callerId).filter(e => e.kind === "calls");
+            const callsOriginal = edges.some(e => e.target_name === "original");
+            assert.ok(callsOriginal, "caller -> original call edge exists (alias resolved)");
+
+            store.close();
+        } finally {
+            rmSync(dir, { recursive: true });
+        }
+    });
+});
+
+// ==================== default import ====================
+
+describe("default import resolution", () => {
+    it("default import resolves to default-exported symbol", async () => {
+        const dir = makeTempDir();
+        try {
+            writeFileSync(
+                join(dir, "a.mjs"),
+                'export default function handler() {}\n',
+            );
+            writeFileSync(
+                join(dir, "b.mjs"),
+                'import H from "./a.mjs";\nexport function user() { H(); }\n',
+            );
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+            const userNodes = store.findByName("user");
+            assert.ok(userNodes.length > 0, "user node exists");
+
+            const edges = store.edgesFrom(userNodes[0].id).filter(e => e.kind === "calls");
+            const callsHandler = edges.some(e => e.target_name === "handler");
+            assert.ok(callsHandler, "user -> handler call edge exists (default import resolved)");
+
+            store.close();
+        } finally {
+            rmSync(dir, { recursive: true });
+        }
+    });
+});
+
+// ==================== incremental reindex ====================
+
+describe("incremental reindex", () => {
+    it("reindex of target file preserves incoming module_edges", async () => {
+        const dir = makeTempDir();
+        try {
+            writeFileSync(
+                join(dir, "a.mjs"),
+                'import { x } from "./b.mjs";\nx();\n',
+            );
+            writeFileSync(
+                join(dir, "b.mjs"),
+                'export function x() {}\n',
+            );
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+
+            // Verify module_edge a->b exists
+            const edgesBefore = store.allModuleEdges();
+            const hasEdge = edgesBefore.some(
+                e => e.source_file.includes("a.mjs") && e.target_file.includes("b.mjs")
+            );
+            assert.ok(hasEdge, "module_edge a->b exists after full index");
+
+            // Reindex ONLY b.mjs (the target)
+            writeFileSync(
+                join(dir, "b.mjs"),
+                'export function x() { return 42; }\n',
+            );
+            await reindexFile(dir, "b.mjs");
+
+            // module_edge a->b should still exist (a was not reindexed)
+            const edgesAfter = store.allModuleEdges();
+            const stillHasEdge = edgesAfter.some(
+                e => e.source_file.includes("a.mjs") && e.target_file.includes("b.mjs")
+            );
+            assert.ok(stillHasEdge, "module_edge a->b preserved after reindexing b.mjs");
+
+            store.close();
+        } finally {
+            rmSync(dir, { recursive: true });
+        }
+    });
+});
+
+// ==================== barrel re-export ====================
+
+describe("barrel re-export", () => {
+    it("consumer importing from barrel marks target symbol as used", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-reexport-"));
+        const codegraph = join(tmp, ".codegraph");
+        mkdirSync(codegraph);
+
+        writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
+        writeFileSync(join(tmp, "barrel.mjs"), 'export { foo } from "./a.mjs";\n');
+        writeFileSync(join(tmp, "consumer.mjs"), 'import { foo } from "./barrel.mjs";\nfoo();\n');
+
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+
+            // barrel should have a reexport node
+            const barrelNodes = store.nodesByFile("barrel.mjs");
+            const reexportNode = barrelNodes.find(n => n.kind === "reexport" && n.name === "foo");
+            assert.ok(reexportNode, "barrel has synthetic reexport node for foo");
+            assert.equal(reexportNode.is_exported, 1, "reexport node is exported");
+
+            // find_unused should NOT flag foo in a.mjs
+            const result = findUnused(store);
+            const fooUnused = result.unused.find(u => u.name === "foo" && u.file === "a.mjs");
+            assert.equal(fooUnused, undefined, "foo in a.mjs is used via barrel, not flagged");
+
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+// ==================== namespace import confidence ====================
+
+describe("namespace import confidence", () => {
+    it("namespace-only usage reported as low confidence", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-ns-"));
+        const codegraph = join(tmp, ".codegraph");
+        mkdirSync(codegraph);
+
+        writeFileSync(join(tmp, "a.mjs"), 'export function x() {}\nexport function y() {}\n');
+        writeFileSync(join(tmp, "b.mjs"), 'import * as ns from "./a.mjs";\nns.x();\n');
+
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const result = findUnused(store);
+
+            // Both x and y should be reported as low confidence (namespace-only usage)
+            const xResult = result.unused.find(u => u.name === "x");
+            const yResult = result.unused.find(u => u.name === "y");
+
+            // With namespace import, both get edges — but confidence is "low"
+            if (xResult) assert.equal(xResult.confidence, "low");
+            if (yResult) assert.equal(yResult.confidence, "low");
+
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+// ==================== unused barrel ====================
+
+describe("unused barrel", () => {
+    it("barrel with no consumer does not make target used", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-nocons-"));
+        const codegraph = join(tmp, ".codegraph");
+        mkdirSync(codegraph);
+
+        writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
+        writeFileSync(join(tmp, "barrel.mjs"), 'export { foo } from "./a.mjs";\n');
+        // No consumer!
+
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const result = findUnused(store);
+
+            // foo should be flagged as unused (barrel exists but nobody imports from it)
+            const fooUnused = result.unused.find(u => u.name === "foo" && u.file === "a.mjs");
+            assert.ok(fooUnused, "foo in a.mjs is unused when barrel has no consumers");
+            assert.equal(fooUnused.confidence, "high");
+
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+
+
+// ==================== P1g: Multi-language export/import tests ====================
+
+describe("Python __all__ export extraction", () => {
+    it("__all__ is authoritative, convention fallback without it", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-pyall-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "with_all.py"), '__all__ = ["foo"]\n\ndef foo():\n    pass\n\ndef bar():\n    pass\n');
+        writeFileSync(join(tmp, "no_all.py"), 'def pub():\n    pass\n\ndef _priv():\n    pass\n\nclass MyClass:\n    pass\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            // with_all.py: only foo exported (bar excluded by __all__)
+            const withAllNodes = store.nodesByFile("with_all.py");
+            const fooNode = withAllNodes.find(n => n.name === "foo" && n.kind !== "import");
+            const barNode = withAllNodes.find(n => n.name === "bar" && n.kind !== "import");
+            assert.ok(fooNode?.is_exported, "foo exported via __all__");
+            assert.ok(!barNode?.is_exported, "bar NOT exported (excluded from __all__)");
+            // no_all.py: convention — pub and MyClass exported, _priv not
+            const noAllNodes = store.nodesByFile("no_all.py");
+            const pubNode = noAllNodes.find(n => n.name === "pub");
+            const privNode = noAllNodes.find(n => n.name === "_priv");
+            const classNode = noAllNodes.find(n => n.name === "MyClass");
+            assert.ok(pubNode?.is_exported, "pub exported by convention");
+            assert.ok(!privNode?.is_exported, "_priv NOT exported");
+            assert.ok(classNode?.is_exported, "MyClass exported by convention");
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("Python dynamic __all__", () => {
+    it("dynamic __all__ falls back to underscore convention", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-pydyn-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "dynamic.py"), '__all__ = get_exports()\n\ndef visible():\n    pass\n\ndef _hidden():\n    pass\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const nodes = store.nodesByFile("dynamic.py");
+            const vis = nodes.find(n => n.name === "visible");
+            const hid = nodes.find(n => n.name === "_hidden");
+            assert.ok(vis?.is_exported, "visible exported (convention fallback)");
+            assert.ok(!hid?.is_exported, "_hidden NOT exported");
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("C# public vs internal", () => {
+    it("only public declarations are exported", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-cs-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "test.cs"), 'using System;\n\npublic class Foo {\n    public void PubMethod() {}\n    private void PrivMethod() {}\n}\n\ninternal class Bar {}\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const nodes = store.nodesByFile("test.cs");
+            const foo = nodes.find(n => n.name === "Foo" && n.kind === "class");
+            const bar = nodes.find(n => n.name === "Bar" && n.kind === "class");
+            assert.ok(foo?.is_exported, "public class Foo exported");
+            assert.ok(!bar?.is_exported, "internal class Bar NOT exported");
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("PHP export extraction", () => {
+    it("top-level + public methods exported, private not", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-php-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "test.php"), '<?php\nfunction top() {}\nclass C {\n    public function pub() {}\n    private function priv() {}\n}\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const nodes = store.nodesByFile("test.php");
+            const topFn = nodes.find(n => n.name === "top" && n.kind === "function");
+            const cls = nodes.find(n => n.name === "C" && n.kind === "class");
+            const pub = nodes.find(n => n.name === "pub" && n.kind === "method");
+            const priv = nodes.find(n => n.name === "priv" && n.kind === "method");
+            assert.ok(topFn?.is_exported, "top-level function exported");
+            assert.ok(cls?.is_exported, "class exported");
+            assert.ok(pub?.is_exported, "public method exported");
+            assert.ok(!priv?.is_exported, "private method NOT exported");
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("Non-JS find_unused confidence", () => {
+    it("Python exports get export_only confidence, not high", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-pyunused-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "lib.py"), 'def helper():\n    pass\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const result = findUnused(store);
+            const helper = result.unused.find(u => u.name === "helper" && u.file === "lib.py");
+            assert.ok(helper, "Python export detected");
+            assert.equal(helper.confidence, "export_only", "Python gets export_only, not high");
+            assert.equal(helper.reason, "no_cross_file_resolver");
+            store.close();
+        } finally {
+            rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
+// ==================== find_references ====================
+
+describe("find_references", () => {
+    it("detects call + read reference for same symbol", async () => {
+        const dir = makeTempDir();
+        try {
+            // a.mjs exports a function
+            writeFileSync(join(dir, "a.mjs"), 'export function helper() { return 1; }\n');
+            // b.mjs calls it AND passes it as value (inside a function so call edges resolve)
+            writeFileSync(join(dir, "b.mjs"), 'import { helper } from "./a.mjs";\nexport function caller() { const result = helper(); const fn = helper; return fn; }\n');
+
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const store = getStore(dir);
+
+            // Find the helper node
+            const nodes = store.findByName("helper");
+            const helperNode = nodes.find(n => n.kind === "function");
+            assert.ok(helperNode, "helper function found");
+
+            // Should have at least a call edge
+            const refs = store.findReferences(helperNode.id);
+            const callRefs = refs.filter(r => r.kind === "calls");
+            assert.ok(callRefs.length > 0, "has call references");
+
+            // Should have ref_read edge (from `const fn = helper`)
+            const readRefs = refs.filter(r => r.kind === "ref_read");
+            assert.ok(readRefs.length > 0, "has read references from value usage");
+
+            store.close();
+        } finally {
+            try { rmSync(dir, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+});
+
+// ==================== Bug 1: barrel find_references ====================
+
+describe("find_references through barrel", () => {
+    it("consumer usage through barrel is included in references", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-barrelref-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
+        writeFileSync(join(tmp, "barrel.mjs"), 'export { foo } from "./a.mjs";\n');
+        writeFileSync(join(tmp, "consumer.mjs"), 'import { foo } from "./barrel.mjs";\nfoo();\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const result = getReferences("foo", { path: tmp });
+            // Should include consumer's call, not just reexport
+            assert.ok(result.total >= 2, `Should have >= 2 refs (got ${result.total}): reexport + consumer call`);
+            const hasConsumerRef = result.references.some(r => r.file.includes("consumer"));
+            assert.ok(hasConsumerRef, "Consumer usage through barrel is included");
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+});
+
+// ==================== Bug 2: C# public method export ====================
+
+describe("C# public method export", () => {
+    it("public methods are marked exported", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-csmethod-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "test.cs"), 'public class Foo {\n    public void PubMethod() {}\n    private void PrivMethod() {}\n}\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const nodes = store.nodesByFile("test.cs");
+            const pub = nodes.find(n => n.name === "PubMethod");
+            const priv = nodes.find(n => n.name === "PrivMethod");
+            assert.ok(pub?.is_exported, "PubMethod is exported");
+            assert.ok(!priv?.is_exported, "PrivMethod is NOT exported");
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+});
+
+// ==================== Bug 3: find_unused text reason ====================
+
+describe("find_unused text reason", () => {
+    it("text output includes reason for non-JS exports", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-unusedreason-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "lib.py"), 'def helper():\n    pass\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            const result = findUnused(store);
+            const { formatUnusedText } = await import("../lib/unused.mjs");
+            const text = formatUnusedText(result, true);
+            assert.ok(text.includes("no_cross_file_resolver"), "Text output shows reason");
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+});
+
+// ==================== Bug 4: no self-edge for top-level refs ====================
+
+describe("no self-edge for top-level references", () => {
+    it("top-level identifier usage does not create self-referencing edge", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-selfedge-"));
+        mkdirSync(join(tmp, ".codegraph"));
+        writeFileSync(join(tmp, "a.mjs"), 'export const config = { key: "value" };\n');
+        writeFileSync(join(tmp, "b.mjs"), 'import { config } from "./a.mjs";\nconfig;\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+            // Check no self-referencing edges exist
+            const allEdges = store.db.prepare("SELECT * FROM edges WHERE source_id = target_id AND kind IN ('ref_read', 'ref_type')").all();
+            assert.equal(allEdges.length, 0, "No self-referencing reference edges");
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+});

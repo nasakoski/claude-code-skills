@@ -9,7 +9,7 @@
 import { execFileSync } from "node:child_process";
 import { statSync } from "node:fs";
 import { extname } from "node:path";
-import { validatePath } from "./security.mjs";
+import { validatePath, normalizePath } from "./security.mjs";
 import { readText } from "./format.mjs";
 import { outlineFromContent } from "./outline.mjs";
 
@@ -75,6 +75,7 @@ function gitRelativePath(absPath) {
  * @returns {Promise<string>}      Formatted diff
  */
 export async function fileChanges(filePath, compareAgainst = "HEAD") {
+    filePath = normalizePath(filePath);
     const real = validatePath(filePath);
 
     // Directory: return git diff --stat (compact file list, no content reads)
