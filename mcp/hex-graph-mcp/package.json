@@ -1,6 +1,6 @@
 {
   "name": "@levnikolaevich/hex-graph-mcp",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "description": "Deterministic layered code graph MCP server. Indexes codebases into a SQLite graph via tree-sitter AST, canonical symbol identities, hashes, and semantic overlays for navigation, architecture, clones, references, implementations, and flow analysis.",
   "main": "server.mjs",
