@@ -16,42 +16,27 @@
 import { z } from "zod";
 import { createRequire } from "node:module";
 const { version } = createRequire(import.meta.url)("./package.json");
+import { createServerRuntime } from "@levnikolaevich/hex-common/runtime/mcp-bootstrap";
+import { flexBool, flexNum } from "@levnikolaevich/hex-common/runtime/schema";
+import { textResult, errorResult } from "@levnikolaevich/hex-common/runtime/results";
+import { coerceParams } from "@levnikolaevich/hex-common/runtime/coerce";
+import { checkForUpdates } from "@levnikolaevich/hex-common/runtime/update-check";
+import { fnv1a, lineTag, rangeChecksum, parseChecksum, parseRef } from "@levnikolaevich/hex-common/text-protocol/hash";
+import { deduplicateLines, normalizeOutput } from "@levnikolaevich/hex-common/output/normalize";
 
 // LLM clients may send booleans as strings ("true"/"false").
 // z.coerce.boolean() is unsafe: Boolean("false") === true.
-const flexBool = () => z.preprocess(
-    v => typeof v === "string" ? v === "true" : v,
-    z.boolean().optional()
-);
-const flexNum = () => z.preprocess(
-    v => typeof v === "string" ? Number(v) : v,
-    z.number().optional()
-);
 import { diffLines } from "diff";
-import { fnv1a, lineTag, rangeChecksum, parseChecksum } from "./lib/hash.mjs";
 import { executeCommand, validateRemotePath } from "./lib/ssh-client.mjs";
 import { shellQuote, assertSafeArg } from "./lib/shell-escape.mjs";
 import { validateCommand } from "./lib/command-policy.mjs";
-import { deduplicateLines, normalizeOutput } from "./lib/normalize.mjs";
-import { coerceParams } from "./lib/coerce.mjs";
 import { validateEditArgs } from "./lib/edit-validation.mjs";
-import { checkForUpdates } from "./lib/update-check.mjs";
 
-// --- SDK ---
-
-let McpServer, StdioServerTransport;
-try {
-    ({ McpServer } = await import("@modelcontextprotocol/sdk/server/mcp.js"));
-    ({ StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js"));
-} catch {
-    process.stderr.write(
-        "hex-ssh-mcp: @modelcontextprotocol/sdk not found.\n" +
-        "Run: cd mcp/hex-ssh-mcp && npm install\n"
-    );
-    process.exit(1);
-}
-
-const server = new McpServer({ name: "hex-ssh-mcp", version });
+const { server, StdioServerTransport } = await createServerRuntime({
+    name: "hex-ssh-mcp",
+    version,
+    installDir: "mcp/hex-ssh-mcp",
+});
 
 // --- Common connection args for reuse ---
 
@@ -85,7 +70,7 @@ async function sshExec(args, command) {
  * Standard error response.
  */
 function errResult(msg) {
-    return { content: [{ type: "text", text: `Error: ${msg}` }], isError: true };
+    return errorResult(`Error: ${msg}`);
 }
 
 /**
@@ -99,7 +84,7 @@ function sshError(code, message, recovery) {
  * Standard success response.
  */
 function okResult(text) {
-    return { content: [{ type: "text", text }] };
+    return textResult(text);
 }
 
 
@@ -300,10 +285,12 @@ server.registerTool("ssh-edit-block", {
         // Anchor-based editing (preferred path)
         if (args.anchor || args.startAnchor || args.insertAfter) {
             // Parse anchor ref: "ab.42" -> { tag: "ab", line: 42 }
-            function parseRef(ref) {
-                const m = ref.trim().match(/^([a-z2-7]{2})\.(\d+)$/);
-                if (!m) return errResult(`Bad anchor: "${ref}". Expected "ab.42"`);
-                return { tag: m[1], line: parseInt(m[2], 10) };
+            function parseRemoteRef(ref) {
+                try {
+                    return parseRef(ref);
+                } catch {
+                    return errResult(`Bad anchor: "${ref}". Expected "ab.42"`);
+                }
             }
 
             // Read current content with line context
@@ -315,8 +302,9 @@ server.registerTool("ssh-edit-block", {
 
             // Verify anchor hash matches
             function verifyAnchor(ref) {
-                const { tag, line, content: errContent } = parseRef(ref);
-                if (errContent) return parseRef(ref); // error result
+                const parsedRef = parseRemoteRef(ref);
+                if (parsedRef.content) return parsedRef;
+                const { tag, line } = parsedRef;
                 const idx = line - 1;
                 if (idx < 0 || idx >= allLines.length) {
                     const start = idx >= allLines.length

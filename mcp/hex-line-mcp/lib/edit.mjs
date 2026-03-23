@@ -2,18 +2,25 @@
  * Hash-verified file editing with diff output.
  *
  * Supports:
- * - Range-based: range "ab.12-cd.15" + checksum
- * - Anchor-based: set_line, replace_lines, insert_after
+ * - set_line / replace_lines / insert_after / replace_between
  * - dry_run preview, noop detection, diff output
+ * - optional revision-aware conservative auto-rebase
  */
 
-import { writeFileSync } from "node:fs";
+import { statSync, writeFileSync } from "node:fs";
 import { diffLines } from "diff";
-import { fnv1a, lineTag, rangeChecksum, parseChecksum, parseRef } from "./hash.mjs";
+import { fnv1a, lineTag, parseChecksum, parseRef, rangeChecksum } from "@levnikolaevich/hex-common/text-protocol/hash";
 import { validatePath, normalizePath } from "./security.mjs";
 import { getGraphDB, callImpact, getRelativePath } from "./graph-enrich.mjs";
-import { readText } from "./format.mjs";
-
+import {
+    buildRangeChecksum,
+    computeChangedRanges,
+    describeChangedRanges,
+    getSnapshotByRevision,
+    overlapsChangedRanges,
+    readSnapshot,
+    rememberSnapshot,
+} from "./revisions.mjs";
 
 /**
  * Restore indentation from original lines onto replacement lines.
@@ -25,18 +32,14 @@ function restoreIndent(origLines, newLines) {
     const newIndent = newLines[0].match(/^\s*/)[0];
     if (origIndent === newIndent) return newLines;
     return newLines.map(line => {
-        if (!line.trim()) return line; // skip empty lines
+        if (!line.trim()) return line;
         if (line.startsWith(newIndent)) return origIndent + line.slice(newIndent.length);
         return line;
     });
 }
 
 /**
- * Build hash-annotated snippet around a position for error messages.
- * @param {string[]} lines - file lines
- * @param {number} centerIdx - 0-based center index
- * @param {number} radius - lines before/after center (default 5)
- * @returns {{ start: number, end: number, text: string }}
+ * Build hash-annotated snippet around a position for error or conflict messages.
  */
 function buildErrorSnippet(lines, centerIdx, radius = 5) {
     const start = Math.max(0, centerIdx - radius);
@@ -47,24 +50,6 @@ function buildErrorSnippet(lines, centerIdx, radius = 5) {
         return `${tag}.${num}\t${line}`;
     }).join("\n");
     return { start: start + 1, end, text };
-}
-
-/**
- * Build a hash index of all lines, keeping only unique tags.
- * 2-char tags have collisions — duplicates are excluded to avoid wrong relocations.
- * @param {string[]} lines
- * @returns {Map<string, number>} tag → line index (0-based)
- */
-function buildHashIndex(lines) {
-    const hashIndex = new Map();
-    const duplicates = new Set();
-    for (let i = 0; i < lines.length; i++) {
-        const tag = lineTag(fnv1a(lines[i]));
-        if (duplicates.has(tag)) continue;
-        if (hashIndex.has(tag)) { hashIndex.delete(tag); duplicates.add(tag); continue; }
-        hashIndex.set(tag, i);
-    }
-    return hashIndex;
 }
 
 /**
@@ -86,7 +71,6 @@ function findLine(lines, lineNum, expectedTag, hashIndex) {
     const actual = lineTag(fnv1a(lines[idx]));
     if (actual === expectedTag) return idx;
 
-    // Fuzzy: search +-5
     for (let d = 1; d <= 5; d++) {
         for (const off of [d, -d]) {
             const c = idx + off;
@@ -94,7 +78,6 @@ function findLine(lines, lineNum, expectedTag, hashIndex) {
         }
     }
 
-    // Whitespace-tolerant
     const stripped = lines[idx].replace(/\s+/g, "");
     if (stripped.length > 0) {
         for (let j = Math.max(0, idx - 5); j <= Math.min(lines.length - 1, idx + 5); j++) {
@@ -102,7 +85,6 @@ function findLine(lines, lineNum, expectedTag, hashIndex) {
         }
     }
 
-    // Confusable normalization: try matching after normalizing unicode hyphens
     const CONFUSABLE_RE = /[\u2010\u2011\u2012\u2013\u2014\u2212\uFE63\uFF0D]/g;
     const norm = t => t.replace(CONFUSABLE_RE, "-");
     const normalizedExpected = norm(expectedTag);
@@ -111,7 +93,6 @@ function findLine(lines, lineNum, expectedTag, hashIndex) {
         if (normalizedActual === normalizedExpected) return i;
     }
 
-    // Global hash relocation: search entire file via pre-built unique-tag index
     if (hashIndex) {
         const relocated = hashIndex.get(expectedTag);
         if (relocated !== undefined) return relocated;
@@ -124,7 +105,6 @@ function findLine(lines, lineNum, expectedTag, hashIndex) {
         `Tip: Use updated hashes above for retry.`
     );
 }
-
 
 /**
  * Context diff via `diff` package (Myers O(ND) algorithm).
@@ -155,13 +135,13 @@ export function simpleDiff(oldLines, newLines, ctx = 3) {
                 let start = 0, end = lines.length;
                 if (!lastChange) start = Math.max(0, end - ctx);
                 if (!next && end - start > ctx) end = start + ctx;
-                if (start > 0) { out.push(`...`); oldNum += start; newNum += start; }
+                if (start > 0) { out.push("..."); oldNum += start; newNum += start; }
                 for (let k = start; k < end; k++) {
                     out.push(` ${oldNum}| ${lines[k]}`);
                     oldNum++; newNum++;
                 }
                 if (end < lines.length) {
-                    out.push(`...`);
+                    out.push("...");
                     oldNum += lines.length - end;
                     newNum += lines.length - end;
                 }
@@ -175,36 +155,80 @@ export function simpleDiff(oldLines, newLines, ctx = 3) {
     return out.length ? out.join("\n") : null;
 }
 
+function verifyChecksumAgainstSnapshot(snapshot, rc) {
+    const { start, end, hex } = parseChecksum(rc);
+    const actual = buildRangeChecksum(snapshot, start, end);
+    if (!actual) return { ok: false, actual: null, start, end };
+    return { ok: actual.split(":")[1] === hex, actual, start, end };
+}
 
+function buildConflictMessage({
+    filePath,
+    reason,
+    revision,
+    fileChecksum,
+    lines,
+    centerIdx,
+    changedRanges,
+    retryChecksum,
+    details,
+}) {
+    const safeCenter = Math.max(0, Math.min(lines.length - 1, centerIdx));
+    const snip = buildErrorSnippet(lines, safeCenter);
+    let msg =
+        `status: CONFLICT\n` +
+        `reason: ${reason}\n` +
+        `revision: ${revision}\n` +
+        `file: ${fileChecksum}`;
+    if (changedRanges) msg += `\nchanged_ranges: ${describeChangedRanges(changedRanges)}`;
+    if (retryChecksum) msg += `\nretry_checksum: ${retryChecksum}`;
+    msg += `\n\n${details}\n\nCurrent content (lines ${snip.start}-${snip.end}):\n${snip.text}`;
+    msg += `\n\nTip: Retry from the fresh local snippet above.`;
+    if (filePath) msg += `\npath: ${filePath}`;
+    return msg;
+}
+
+function targetRangeForReplaceBetween(startIdx, endIdx, boundaryMode) {
+    if (boundaryMode === "exclusive") {
+        return { start: startIdx + 2, end: Math.max(startIdx + 1, endIdx) };
+    }
+    return { start: startIdx + 1, end: endIdx + 1 };
+}
 
 /**
  * Apply edits to a file.
  *
  * @param {string} filePath
  * @param {Array} edits - parsed edit objects
- * @param {object} opts - { dryRun }
+ * @param {object} opts - { dryRun, restoreIndent, baseRevision, conflictPolicy }
  * @returns {string} result message with diff
  */
 export function editFile(filePath, edits, opts = {}) {
     filePath = normalizePath(filePath);
     const real = validatePath(filePath);
-    const original = readText(real);
-    const lines = original.split("\n");
-    const origLines = [...lines];
-    const hadTrailingNewline = original.endsWith("\n");
+    const currentSnapshot = readSnapshot(real);
+    const baseSnapshot = opts.baseRevision ? getSnapshotByRevision(opts.baseRevision) : null;
+    const hasBaseSnapshot = !!(baseSnapshot && baseSnapshot.path === real);
+    const staleRevision = !!opts.baseRevision && opts.baseRevision !== currentSnapshot.revision;
+    const changedRanges = staleRevision && hasBaseSnapshot
+        ? computeChangedRanges(baseSnapshot.lines, currentSnapshot.lines)
+        : [];
+    const conflictPolicy = opts.conflictPolicy || "conservative";
 
-    // Build hash index once for global relocation in findLine
-    const hashIndex = buildHashIndex(lines);
+    const original = currentSnapshot.content;
+    const lines = [...currentSnapshot.lines];
+    const origLines = [...currentSnapshot.lines];
+    const hadTrailingNewline = original.endsWith("\n");
+    const hashIndex = currentSnapshot.uniqueTagIndex;
+    let autoRebased = false;
 
     const anchored = [];
-
     for (const e of edits) {
-        if (e.set_line || e.replace_lines || e.insert_after) anchored.push(e);
-        else if (e.replace) throw new Error('REPLACE_REMOVED: replace is no longer supported in edit_file. Use set_line/replace_lines for single edits, bulk_replace tool for rename/refactor.');
+        if (e.set_line || e.replace_lines || e.insert_after || e.replace_between) anchored.push(e);
+        else if (e.replace) throw new Error("REPLACE_REMOVED: replace is no longer supported in edit_file. Use set_line/replace_lines for single edits, bulk_replace tool for rename/refactor.");
         else throw new Error(`BAD_INPUT: unknown edit type: ${JSON.stringify(e)}`);
     }
 
-    // Overlap validation: reject duplicate/overlapping edit targets
     const editTargets = [];
     for (const e of anchored) {
         if (e.set_line) {
@@ -217,12 +241,16 @@ export function editFile(filePath, edits, opts = {}) {
         } else if (e.insert_after) {
             const line = parseRef(e.insert_after.anchor).line;
             editTargets.push({ start: line, end: line, insert: true });
+        } else if (e.replace_between) {
+            const s = parseRef(e.replace_between.start_anchor).line;
+            const en = parseRef(e.replace_between.end_anchor).line;
+            editTargets.push({ start: s, end: en });
         }
     }
     for (let i = 0; i < editTargets.length; i++) {
         for (let j = i + 1; j < editTargets.length; j++) {
             const a = editTargets[i], b = editTargets[j];
-            if (a.insert || b.insert) continue; // insert_after doesn't overlap
+            if (a.insert || b.insert) continue;
             if (a.start <= b.end && b.start <= a.end) {
                 throw new Error(
                     `OVERLAPPING_EDITS: lines ${a.start}-${a.end} and ${b.start}-${b.end} overlap. ` +
@@ -232,20 +260,72 @@ export function editFile(filePath, edits, opts = {}) {
         }
     }
 
-    // Sort anchor edits bottom-to-top
     const sorted = anchored.map((e) => {
         let sortKey;
         if (e.set_line) sortKey = parseRef(e.set_line.anchor).line;
         else if (e.replace_lines) sortKey = parseRef(e.replace_lines.start_anchor).line;
         else if (e.insert_after) sortKey = parseRef(e.insert_after.anchor).line;
+        else if (e.replace_between) sortKey = parseRef(e.replace_between.start_anchor).line;
         return { ...e, _k: sortKey };
     }).sort((a, b) => b._k - a._k);
 
-    // Apply anchor edits
+    const conflictIfNeeded = (reason, centerIdx, retryChecksum, details) => {
+        if (conflictPolicy !== "conservative") {
+            throw new Error(details);
+        }
+        return buildConflictMessage({
+            filePath,
+            reason,
+            revision: currentSnapshot.revision,
+            fileChecksum: currentSnapshot.fileChecksum,
+            lines,
+            centerIdx,
+            changedRanges: staleRevision && hasBaseSnapshot ? changedRanges : null,
+            retryChecksum,
+            details,
+        });
+    };
+
+    const locateOrConflict = (ref, reason = "stale_anchor") => {
+        try {
+            return findLine(lines, ref.line, ref.tag, hashIndex);
+        } catch (e) {
+            if (conflictPolicy !== "conservative" || !staleRevision) throw e;
+            const centerIdx = Math.max(0, Math.min(lines.length - 1, ref.line - 1));
+            return conflictIfNeeded(reason, centerIdx, null, e.message);
+        }
+    };
+
+    const ensureRevisionContext = (actualStart, actualEnd, centerIdx) => {
+        if (!staleRevision || conflictPolicy !== "conservative") return null;
+        if (!hasBaseSnapshot) {
+            return conflictIfNeeded(
+                "base_revision_evicted",
+                centerIdx,
+                null,
+                `Base revision ${opts.baseRevision} is not available in the local revision cache.`
+            );
+        }
+        if (overlapsChangedRanges(changedRanges, actualStart, actualEnd)) {
+            return conflictIfNeeded(
+                "overlap",
+                centerIdx,
+                null,
+                `Changes since ${opts.baseRevision} overlap edit range ${actualStart}-${actualEnd}.`
+            );
+        }
+        autoRebased = true;
+        return null;
+    };
+
     for (const e of sorted) {
         if (e.set_line) {
             const { tag, line } = parseRef(e.set_line.anchor);
-            const idx = findLine(lines, line, tag, hashIndex);
+            const idx = locateOrConflict({ tag, line });
+            if (typeof idx === "string") return idx;
+            const conflict = ensureRevisionContext(idx + 1, idx + 1, idx);
+            if (conflict) return conflict;
+
             const txt = e.set_line.new_text;
             if (!txt && txt !== 0) {
                 lines.splice(idx, 1);
@@ -255,70 +335,114 @@ export function editFile(filePath, edits, opts = {}) {
                 const newLines = opts.restoreIndent ? restoreIndent(origLine, raw) : raw;
                 lines.splice(idx, 1, ...newLines);
             }
-        } else if (e.replace_lines) {
+            continue;
+        }
+
+        if (e.insert_after) {
+            const { tag, line } = parseRef(e.insert_after.anchor);
+            const idx = locateOrConflict({ tag, line });
+            if (typeof idx === "string") return idx;
+            const conflict = ensureRevisionContext(idx + 1, idx + 1, idx);
+            if (conflict) return conflict;
+
+            let insertLines = e.insert_after.text.split("\n");
+            if (opts.restoreIndent) insertLines = restoreIndent([lines[idx]], insertLines);
+            lines.splice(idx + 1, 0, ...insertLines);
+            continue;
+        }
+
+        if (e.replace_lines) {
             const s = parseRef(e.replace_lines.start_anchor);
             const en = parseRef(e.replace_lines.end_anchor);
-            const si = findLine(lines, s.line, s.tag, hashIndex);
-            const ei = findLine(lines, en.line, en.tag, hashIndex);
-
-            // Range checksum verification (mandatory)
+            const si = locateOrConflict(s);
+            if (typeof si === "string") return si;
+            const ei = locateOrConflict(en);
+            if (typeof ei === "string") return ei;
+            const actualStart = si + 1;
+            const actualEnd = ei + 1;
             const rc = e.replace_lines.range_checksum;
             if (!rc) throw new Error("range_checksum required for replace_lines. Read the range first via read_file, then pass its checksum.");
 
-            // Checksum's range is authoritative (from read_file), not anchor range
-            const { start: csStart, end: csEnd, hex: csHex } = parseChecksum(rc);
-
-            // Coverage check: checksum range must contain ACTUAL edit range (after relocation)
-            const actualStart = si + 1;
-            const actualEnd = ei + 1;
-            if (csStart > actualStart || csEnd < actualEnd) {
-                const snip = buildErrorSnippet(origLines, actualStart - 1);
-                throw new Error(
-                    `CHECKSUM_RANGE_GAP: range ${csStart}-${csEnd} does not cover edit range ${actualStart}-${actualEnd}.\n\n` +
-                    `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
-                    `Tip: Use updated hashes above for retry.`
-                );
-            }
-
-            // Verify freshness over checksum's own range using origLines snapshot
-            const csStartIdx = csStart - 1;
-            const csEndIdx = csEnd - 1;
-            if (csStartIdx < 0 || csEndIdx >= origLines.length) {
-                const snip = buildErrorSnippet(origLines, origLines.length - 1);
-                throw new Error(
-                    `CHECKSUM_OUT_OF_BOUNDS: range ${csStart}-${csEnd} exceeds file length ${origLines.length}.\n\n` +
-                    `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
-                    `Tip: Use updated hashes above for retry.`
-                );
-            }
-            const lineHashes = [];
-            for (let i = csStartIdx; i <= csEndIdx; i++) lineHashes.push(fnv1a(origLines[i]));
-            const actual = rangeChecksum(lineHashes, csStart, csEnd);
-            const actualHex = actual.split(":")[1];
-            if (csHex !== actualHex) {
-                const snip = buildErrorSnippet(origLines, csStartIdx);
-                throw new Error(
-                    `CHECKSUM_MISMATCH: expected ${rc}, got ${actual}. File changed \u2014 re-read lines ${csStart}-${csEnd}.\n\n` +
-                    `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
-                    `Retry with fresh checksum ${actual}, or use set_line with hashes above.`
-                );
+            if (staleRevision && conflictPolicy === "conservative") {
+                const conflict = ensureRevisionContext(actualStart, actualEnd, si);
+                if (conflict) return conflict;
+                const baseCheck = hasBaseSnapshot ? verifyChecksumAgainstSnapshot(baseSnapshot, rc) : null;
+                if (!baseCheck?.ok) {
+                    return conflictIfNeeded(
+                        "stale_checksum",
+                        si,
+                        baseCheck?.actual || null,
+                        baseCheck?.actual
+                            ? `Provided checksum ${rc} does not match base revision ${opts.baseRevision}.`
+                            : `Checksum range from ${rc} is outside the available base revision.`
+                    );
+                }
+            } else {
+                const { start: csStart, end: csEnd, hex: csHex } = parseChecksum(rc);
+                if (csStart > actualStart || csEnd < actualEnd) {
+                    const snip = buildErrorSnippet(origLines, actualStart - 1);
+                    throw new Error(
+                        `CHECKSUM_RANGE_GAP: range ${csStart}-${csEnd} does not cover edit range ${actualStart}-${actualEnd}.\n\n` +
+                        `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
+                        `Tip: Use updated hashes above for retry.`
+                    );
+                }
+                const actual = buildRangeChecksum(currentSnapshot, csStart, csEnd);
+                const actualHex = actual?.split(":")[1];
+                if (!actual || csHex !== actualHex) {
+                    const details =
+                        `CHECKSUM_MISMATCH: expected ${rc}, got ${actual}. File changed — re-read lines ${csStart}-${csEnd}.`;
+                    if (conflictPolicy === "conservative") {
+                        return conflictIfNeeded("stale_checksum", csStart - 1, actual, details);
+                    }
+                    const snip = buildErrorSnippet(origLines, csStart - 1);
+                    throw new Error(
+                        `${details}\n\n` +
+                        `Current content (lines ${snip.start}-${snip.end}):\n${snip.text}\n\n` +
+                        `Retry with fresh checksum ${actual}, or use set_line with hashes above.`
+                    );
+                }
             }
 
             const txt = e.replace_lines.new_text;
             if (!txt && txt !== 0) {
                 lines.splice(si, ei - si + 1);
             } else {
-                const origLines = lines.slice(si, ei + 1);
+                const origRange = lines.slice(si, ei + 1);
                 let newLines = String(txt).split("\n");
-                if (opts.restoreIndent) newLines = restoreIndent(origLines, newLines);
+                if (opts.restoreIndent) newLines = restoreIndent(origRange, newLines);
                 lines.splice(si, ei - si + 1, ...newLines);
             }
-        } else if (e.insert_after) {
-            const { tag, line } = parseRef(e.insert_after.anchor);
-            const idx = findLine(lines, line, tag, hashIndex);
-            let insertLines = e.insert_after.text.split("\n");
-            if (opts.restoreIndent) insertLines = restoreIndent([lines[idx]], insertLines);
-            lines.splice(idx + 1, 0, ...insertLines);
+            continue;
+        }
+
+        if (e.replace_between) {
+            const boundaryMode = e.replace_between.boundary_mode || "inclusive";
+            if (boundaryMode !== "inclusive" && boundaryMode !== "exclusive") {
+                throw new Error(`BAD_INPUT: replace_between boundary_mode must be inclusive or exclusive, got ${boundaryMode}`);
+            }
+            const s = parseRef(e.replace_between.start_anchor);
+            const en = parseRef(e.replace_between.end_anchor);
+            const si = locateOrConflict(s);
+            if (typeof si === "string") return si;
+            const ei = locateOrConflict(en);
+            if (typeof ei === "string") return ei;
+            if (si > ei) {
+                throw new Error(`BAD_INPUT: replace_between start anchor resolves after end anchor (${si + 1} > ${ei + 1})`);
+            }
+
+            const targetRange = targetRangeForReplaceBetween(si, ei, boundaryMode);
+            const conflict = ensureRevisionContext(targetRange.start, targetRange.end, si);
+            if (conflict) return conflict;
+
+            const txt = e.replace_between.new_text;
+            let newLines = String(txt ?? "").split("\n");
+            const sliceStart = boundaryMode === "exclusive" ? si + 1 : si;
+            const removeCount = boundaryMode === "exclusive" ? Math.max(0, ei - si - 1) : (ei - si + 1);
+            const origRange = lines.slice(sliceStart, sliceStart + removeCount);
+            if (opts.restoreIndent && origRange.length > 0) newLines = restoreIndent(origRange, newLines);
+            if (txt === "" || txt === null) newLines = [];
+            lines.splice(sliceStart, removeCount, ...newLines);
         }
     }
 
@@ -336,65 +460,75 @@ export function editFile(filePath, edits, opts = {}) {
     }
 
     if (opts.dryRun) {
-        let msg = `Dry run: ${filePath} would change (${content.split("\n").length} lines)`;
+        let msg = `status: ${autoRebased ? "AUTO_REBASED" : "OK"}\nrevision: ${currentSnapshot.revision}\nfile: ${currentSnapshot.fileChecksum}\nDry run: ${filePath} would change (${content.split("\n").length} lines)`;
+        if (staleRevision && hasBaseSnapshot) msg += `\nchanged_ranges: ${describeChangedRanges(changedRanges)}`;
         if (diff) msg += `\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``;
         return msg;
     }
 
     writeFileSync(real, content, "utf-8");
-    let msg = `Updated ${filePath} (${content.split("\n").length} lines)`;
+    const nextStat = statSync(real);
+    const nextSnapshot = rememberSnapshot(real, content, { mtimeMs: nextStat.mtimeMs, size: nextStat.size });
+    let msg =
+        `status: ${autoRebased ? "AUTO_REBASED" : "OK"}\n` +
+        `revision: ${nextSnapshot.revision}\n` +
+        `file: ${nextSnapshot.fileChecksum}`;
+    if (autoRebased && staleRevision && hasBaseSnapshot) {
+        msg += `\nchanged_ranges: ${describeChangedRanges(changedRanges)}`;
+    }
+    msg += `\nUpdated ${filePath} (${content.split("\n").length} lines)`;
     if (diff) msg += `\n\nDiff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
-    // Call impact warning (optional — silent if no graph DB)
     try {
         const db = getGraphDB(real);
         const relFile = db ? getRelativePath(real) : null;
-        if (db && relFile) {
-            // Find changed line range from diff
-            const diffLines = diff.split("\n");
+        if (db && relFile && diff) {
+            const diffLinesOut = diff.split("\n");
             let minLine = Infinity, maxLine = 0;
-            for (const dl of diffLines) {
+            for (const dl of diffLinesOut) {
                 const m = dl.match(/^[+-](\d+)\|/);
-                if (m) { const n = +m[1]; if (n < minLine) minLine = n; if (n > maxLine) maxLine = n; }
+                if (m) {
+                    const n = +m[1];
+                    if (n < minLine) minLine = n;
+                    if (n > maxLine) maxLine = n;
+                }
             }
             if (minLine <= maxLine) {
                 const affected = callImpact(db, relFile, minLine, maxLine);
                 if (affected.length > 0) {
                     const list = affected.map(a => `${a.name} (${a.file}:${a.line})`).join(", ");
-                    msg += `\n\n\u26A0 Call impact: ${affected.length} callers in other files\n  ${list}`;
+                    msg += `\n\n⚠ Call impact: ${affected.length} callers in other files\n  ${list}`;
                 }
             }
         }
     } catch { /* silent */ }
 
-    // Post-edit context: hash-annotated lines around changed region + checksums
-    const newLines = content.split("\n");
+    const newLinesAll = content.split("\n");
     if (diff) {
         const diffArr = diff.split("\n");
         let minLine = Infinity, maxLine = 0;
         for (const dl of diffArr) {
             const m = dl.match(/^[+-](\d+)\|/);
-            if (m) { const n = +m[1]; if (n < minLine) minLine = n; if (n > maxLine) maxLine = n; }
+            if (m) {
+                const n = +m[1];
+                if (n < minLine) minLine = n;
+                if (n > maxLine) maxLine = n;
+            }
         }
         if (minLine <= maxLine) {
             const ctxStart = Math.max(0, minLine - 6);
-            const ctxEnd = Math.min(newLines.length, maxLine + 5);
+            const ctxEnd = Math.min(newLinesAll.length, maxLine + 5);
             const ctxLines = [];
             const ctxHashes = [];
             for (let i = ctxStart; i < ctxEnd; i++) {
-                const h = fnv1a(newLines[i]);
+                const h = fnv1a(newLinesAll[i]);
                 ctxHashes.push(h);
-                ctxLines.push(`${lineTag(h)}.${i + 1}\t${newLines[i]}`);
+                ctxLines.push(`${lineTag(h)}.${i + 1}\t${newLinesAll[i]}`);
             }
             const ctxCs = rangeChecksum(ctxHashes, ctxStart + 1, ctxEnd);
             msg += `\n\nPost-edit (lines ${ctxStart + 1}-${ctxEnd}):\n${ctxLines.join("\n")}\nchecksum: ${ctxCs}`;
         }
     }
-    // File-level checksum
-    const fileHashes = [];
-    for (let i = 0; i < newLines.length; i++) fileHashes.push(fnv1a(newLines[i]));
-    const fileCs = rangeChecksum(fileHashes, 1, newLines.length);
-    msg += `\nfile: ${fileCs}`;
 
     return msg;
 }

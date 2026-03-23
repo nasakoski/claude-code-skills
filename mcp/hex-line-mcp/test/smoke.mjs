@@ -234,7 +234,7 @@ describe("edit business logic", () => {
                         new_text: "replaced",
                         range_checksum: rc
                     }
-                }]);
+                }], { conflictPolicy: "strict" });
             }, /mismatch/i, "Stale content outside anchors detected");
         } finally {
             fs.unlinkSync(tmp);
@@ -269,6 +269,114 @@ describe("edit business logic", () => {
             assert.ok(e.message.includes("REPLACE_REMOVED"), "Error is REPLACE_REMOVED");
             assert.ok(e.message.includes("set_line"), "Mentions set_line alternative");
             assert.ok(e.message.includes("bulk_replace"), "Mentions bulk_replace alternative");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("conservative mode auto-rebases non-overlapping stale replace_lines edits", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const { editFile } = await import("../lib/edit.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const tmp = "d:/tmp/hex-test-autorebase.js";
+        const content = "head1\nhead2\ntargetA\ntargetB\ntail\n";
+        fs.writeFileSync(tmp, content);
+        try {
+            const lines = content.split("\n");
+            const baseRead = readFile(tmp, { offset: 1, limit: 5 });
+            const baseRevision = baseRead.match(/revision: (\S+)/)?.[1];
+            assert.ok(baseRevision, "read_file returns revision");
+
+            const headTag = lineTag(fnv1a(lines[0]));
+            editFile(tmp, [{ insert_after: { anchor: `${headTag}.1`, text: "inserted" } }]);
+
+            const startTag = lineTag(fnv1a(lines[2]));
+            const endTag = lineTag(fnv1a(lines[3]));
+            const rc = rangeChecksum([fnv1a(lines[2]), fnv1a(lines[3])], 3, 4);
+            const result = editFile(tmp, [{
+                replace_lines: {
+                    start_anchor: `${startTag}.3`,
+                    end_anchor: `${endTag}.4`,
+                    new_text: "targetA\nupdatedB",
+                    range_checksum: rc,
+                }
+            }], { baseRevision, conflictPolicy: "conservative" });
+
+            assert.ok(result.includes("status: AUTO_REBASED"), "Auto-rebase status returned");
+            assert.ok(result.includes("changed_ranges:"), "Changed ranges included");
+            const written = fs.readFileSync(tmp, "utf-8");
+            assert.ok(written.includes("inserted"), "Prior insert preserved");
+            assert.ok(written.includes("updatedB"), "Target block updated without reread");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("conservative mode returns CONFLICT for overlapping stale edits", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const { editFile } = await import("../lib/edit.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const tmp = "d:/tmp/hex-test-conflict.js";
+        const content = "head1\nhead2\ntargetA\ntargetB\ntail\n";
+        fs.writeFileSync(tmp, content);
+        try {
+            const lines = content.split("\n");
+            const baseRead = readFile(tmp, { offset: 1, limit: 5 });
+            const baseRevision = baseRead.match(/revision: (\S+)/)?.[1];
+            assert.ok(baseRevision, "read_file returns revision");
+
+            const targetTag = lineTag(fnv1a(lines[2]));
+            editFile(tmp, [{ set_line: { anchor: `${targetTag}.3`, new_text: "otherChange" } }]);
+
+            const startTag = lineTag(fnv1a(lines[2]));
+            const endTag = lineTag(fnv1a(lines[3]));
+            const rc = rangeChecksum([fnv1a(lines[2]), fnv1a(lines[3])], 3, 4);
+            const result = editFile(tmp, [{
+                replace_lines: {
+                    start_anchor: `${startTag}.3`,
+                    end_anchor: `${endTag}.4`,
+                    new_text: "targetA\nupdatedB",
+                    range_checksum: rc,
+                }
+            }], { baseRevision, conflictPolicy: "conservative" });
+
+            assert.ok(result.includes("status: CONFLICT"), "Conflict status returned");
+            assert.ok(/reason: (overlap|stale_anchor)/.test(result), "Structured conflict reason returned");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("replace_between rewrites a block without reciting old content", async () => {
+        const { editFile } = await import("../lib/edit.mjs");
+        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const tmp = "d:/tmp/hex-test-replace-between.js";
+        const content = [
+            "function demo() {",
+            "    const a = 1;",
+            "    const b = 2;",
+            "    return a + b;",
+            "}",
+            "",
+        ].join("\n");
+        fs.writeFileSync(tmp, content);
+        try {
+            const lines = content.split("\n");
+            const startTag = lineTag(fnv1a(lines[0]));
+            const endTag = lineTag(fnv1a(lines[4]));
+            const result = editFile(tmp, [{
+                replace_between: {
+                    start_anchor: `${startTag}.1`,
+                    end_anchor: `${endTag}.5`,
+                    new_text: "function demo() {\n    return 42;\n}",
+                    boundary_mode: "inclusive",
+                }
+            }]);
+
+            assert.ok(result.includes("status: OK"), "Successful block rewrite");
+            const written = fs.readFileSync(tmp, "utf-8");
+            assert.ok(written.includes("return 42;"), "New block content written");
+            assert.ok(!written.includes("const b = 2;"), "Old interior removed");
         } finally {
             fs.unlinkSync(tmp);
         }
@@ -344,6 +452,19 @@ describe("directory_tree gitignore", () => {
 // ==================== read_file ====================
 
 describe("read_file output", () => {
+    it("includes revision and file checksum metadata", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const tmp = "d:/tmp/hex-test-read-revision.js";
+        fs.writeFileSync(tmp, "const x = 1;\n");
+        try {
+            const result = readFile(tmp);
+            assert.match(result, /revision: \S+/, "Read includes revision");
+            assert.match(result, /file: 1-\d+:[0-9a-f]{8}/, "Read includes file checksum");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
     it("character cap triggers for files with very long lines", async () => {
         const { readFile } = await import("../lib/read.mjs");
         const tmp = "d:/tmp/hex-test-longlines.js";

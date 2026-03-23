@@ -13,14 +13,31 @@ Every line carries an FNV-1a content hash. Every edit must present those hashes 
 
 ### 11 MCP Tools
 
+Core day-to-day tools:
+
+- `read_file`
+- `edit_file`
+- `grep_search`
+- `outline`
+- `verify`
+- `bulk_replace`
+
+Advanced / occasional:
+
+- `write_file`
+- `directory_tree`
+- `get_file_info`
+- `changes`
+- `setup_hooks`
+
 | Tool | Description | Key Feature |
 |------|-------------|-------------|
-| `read_file` | Read file with hash-annotated lines and range checksums | Partial reads via `offset`/`limit` |
-| `edit_file` | Hash-verified anchor edits (set_line, replace_lines, insert_after) | Returns compact diff via `diff` package |
+| `read_file` | Read file with hash-annotated lines, checksums, and revision | Partial reads via `offset`/`limit` |
+| `edit_file` | Revision-aware anchor edits (`set_line`, `replace_lines`, `insert_after`, `replace_between`) | Batched same-file edits + conservative auto-rebase |
 | `write_file` | Create new file or overwrite, auto-creates parent dirs | Path validation, no hash overhead |
 | `grep_search` | Search with ripgrep, 3 output modes, per-group checksums | Edit-ready: grep -> edit directly with checksums |
 | `outline` | AST-based structural overview via tree-sitter WASM | 95% token reduction (10 lines instead of 500) |
-| `verify` | Check if held range checksums are still valid | Single-line response avoids full re-read |
+| `verify` | Check if held checksums / revision are still current | Staleness check without full re-read |
 | `directory_tree` | Compact directory tree with root .gitignore support | Skips node_modules/.git, shows file sizes |
 | `get_file_info` | File metadata without reading content | Size, lines, mtime, type, binary detection |
 | `setup_hooks` | Configure Claude hooks + install output style | Gemini/Codex get guidance only; no hooks |
@@ -48,6 +65,8 @@ PreToolUse also intercepts simple Bash commands: cat, head, tail, tree, find, st
 npm i -g @levnikolaevich/hex-line-mcp
 claude mcp add -s user hex-line -- hex-line-mcp
 ```
+
+ripgrep is bundled via `@vscode/ripgrep` — no manual install needed for `grep_search`.
 
 ### Hooks
 
@@ -121,9 +140,31 @@ If a project already has `.codegraph/index.db`, `hex-line` can add lightweight g
 
 ## Tools Reference
 
+## Common Workflows
+
+### Local code edit in one file
+
+1. `outline` for large code files
+2. `read_file` for the exact range you need
+3. `edit_file` with all known hunks in one call
+
+### Follow-up edit on the same file
+
+1. Carry `revision` from the earlier `read_file` or `edit_file`
+2. Pass it back as `base_revision`
+3. Use `verify` before rereading the file
+
+### Rewrite a long block
+
+Use `replace_between` inside `edit_file` when you know stable start/end anchors and want to replace a large function, class, or config block without reciting the old body.
+
+### Literal rename / refactor
+
+Use `bulk_replace` for text rename patterns across one or more files. Do not use it as a substitute for structured block rewrites.
+
 ### read_file
 
-Read a file with FNV-1a hash-annotated lines and range checksums. Supports directory listing.
+Read a file with FNV-1a hash-annotated lines, range checksums, file checksum, and revision. Supports directory listing.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -140,11 +181,13 @@ ab.1    import { resolve } from "node:path";
 cd.2    import { readFileSync } from "node:fs";
 ...
 checksum: 1-50:f7e2a1b0
+revision: rev-12-a1b2c3d4
+file: 1-120:beefcafe
 ```
 
 ### edit_file
 
-Edit using hash-verified anchors. For text rename use bulk_replace.
+Edit using revision-aware hash-verified anchors. Prefer one batched call per file. For text rename use bulk_replace.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -152,16 +195,27 @@ Edit using hash-verified anchors. For text rename use bulk_replace.
 | `edits` | string | yes | JSON array of edit operations (see below) |
 | `dry_run` | boolean | no | Preview changes without writing |
 | `restore_indent` | boolean | no | Auto-fix indentation to match anchor context (default: false) |
+| `base_revision` | string | no | Prior revision from `read_file` / `edit_file` for same-file follow-up edits |
+| `conflict_policy` | enum | no | `conservative` or `strict` (default: `conservative`) |
 
 Edit operations (JSON array):
 
 ```json
 [
   {"set_line": {"anchor": "ab.12", "new_text": "replacement line"}},
-  {"replace_lines": {"start_anchor": "ab.10", "end_anchor": "cd.15", "new_text": "..."}},
+  {"replace_lines": {"start_anchor": "ab.10", "end_anchor": "cd.15", "new_text": "...", "range_checksum": "10-15:a1b2c3d4"}},
   {"insert_after": {"anchor": "ab.20", "text": "inserted line"}},
+  {"replace_between": {"start_anchor": "ab.30", "end_anchor": "cd.80", "new_text": "...", "boundary_mode": "inclusive"}}
 ]
 ```
+
+Result footer includes:
+
+- `status: OK | AUTO_REBASED | CONFLICT`
+- `revision: ...`
+- `file: ...`
+- `changed_ranges: ...` when relevant
+- `retry_checksum: ...` on local conflicts
 
 ### write_file
 
@@ -210,12 +264,13 @@ Not for `.md`, `.json`, `.yaml`, `.txt` -- use `read_file` directly for those.
 
 ### verify
 
-Check if range checksums from a prior read are still valid.
+Check if range checksums from a prior read are still valid, optionally relative to a prior `base_revision`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `path` | string | yes | File path |
 | `checksums` | string | yes | JSON array of checksum strings, e.g. `["1-50:f7e2a1b0"]` |
+| `base_revision` | string | no | Prior revision to compare against latest state |
 
 Returns a single-line confirmation or lists changed ranges.
 

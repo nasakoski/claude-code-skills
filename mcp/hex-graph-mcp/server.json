@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.levnikolaevich/hex-graph-mcp",
+  "title": "Hex Graph",
+  "description": "Deterministic layered code graph MCP server. Indexes codebases into a SQLite graph via tree-sitter AST for navigation, architecture, clones, references, implementations, and flow analysis.",
+  "repository": {
+    "url": "https://github.com/levnikolaevich/claude-code-skills",
+    "source": "github"
+  },
+  "version": "0.3.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@levnikolaevich/hex-graph-mcp",
+      "version": "0.3.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

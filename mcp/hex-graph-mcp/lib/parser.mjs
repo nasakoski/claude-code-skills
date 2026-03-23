@@ -11,6 +11,8 @@
  */
 
 import { readFileSync } from "node:fs";
+import { getParser, getLanguage } from "@levnikolaevich/hex-common/parser/tree-sitter";
+import { grammarForExtension } from "@levnikolaevich/hex-common/parser/languages";
 import {
     BODY_EXTRACTORS, walkLeaves, countStatements,
     normalizeTokens, computeRawHash, computeNormHash,
@@ -22,47 +24,20 @@ import { fileURLToPath } from "node:url";
 // --- Language configs ---
 
 const LANG_CONFIGS = {
-    ".js":    { grammar: "javascript", queryFile: "javascript.scm" },
-    ".mjs":   { grammar: "javascript", queryFile: "javascript.scm" },
-    ".cjs":   { grammar: "javascript", queryFile: "javascript.scm" },
-    ".jsx":   { grammar: "javascript", queryFile: "javascript.scm" },
-    ".ts":    { grammar: "typescript", queryFile: "typescript.scm" },
-    ".tsx":   { grammar: "tsx",        queryFile: "typescript.scm" },
-    ".py":    { grammar: "python",     queryFile: "python.scm" },
-    ".cs":    { grammar: "c_sharp",    queryFile: "c_sharp.scm" },
-    ".php":   { grammar: "php",        queryFile: "php.scm" },
+    ".js":    { queryFile: "javascript.scm" },
+    ".mjs":   { queryFile: "javascript.scm" },
+    ".cjs":   { queryFile: "javascript.scm" },
+    ".jsx":   { queryFile: "javascript.scm" },
+    ".ts":    { queryFile: "typescript.scm" },
+    ".tsx":   { queryFile: "typescript.scm" },
+    ".py":    { queryFile: "python.scm" },
+    ".cs":    { queryFile: "c_sharp.scm" },
+    ".php":   { queryFile: "php.scm" },
 };
 
 const SUPPORTED_EXTENSIONS = new Set(Object.keys(LANG_CONFIGS));
 
-// --- Parser cache ---
-
-let _parser = null;
-const _langCache = new Map();
 const _queryCache = new Map();
-
-async function getParser() {
-    if (_parser) return _parser;
-    const { Parser } = await import("web-tree-sitter");
-    await Parser.init();
-    _parser = new Parser();
-    return _parser;
-}
-
-async function getLanguage(grammar) {
-    if (_langCache.has(grammar)) return _langCache.get(grammar);
-    await getParser();
-    const { Language } = await import("web-tree-sitter");
-    const { createRequire } = await import("node:module");
-    const require = createRequire(import.meta.url);
-    const wasmPath = resolve(
-        require.resolve("tree-sitter-wasms/package.json"),
-        "..", "out", `tree-sitter-${grammar}.wasm`
-    );
-    const lang = await Language.load(wasmPath);
-    _langCache.set(grammar, lang);
-    return lang;
-}
 
 async function getQuery(lang, grammar, queryFile) {
     const key = `${grammar}:${queryFile}`;
@@ -91,8 +66,7 @@ export function isSupported(ext) {
  * @returns {string|null}
  */
 export function languageFor(ext) {
-    const cfg = LANG_CONFIGS[ext.toLowerCase()];
-    return cfg ? cfg.grammar : null;
+    return grammarForExtension(ext);
 }
 
 /**
@@ -134,12 +108,13 @@ export async function parseFile(filePath, source, opts = {}) {
         return { definitions: [], imports: [], calls: [], references: [], exports: new Set(), defaultExport: null, reexports: [] };
     }
 
-    const lang = await getLanguage(config.grammar);
+    const grammar = grammarForExtension(ext);
+    const lang = await getLanguage(grammar);
     const parser = await getParser();
     parser.setLanguage(lang);
 
     const tree = parser.parse(source);
-    const query = await getQuery(lang, config.grammar, config.queryFile);
+    const query = await getQuery(lang, grammar, config.queryFile);
     const captures = query.captures(tree.rootNode);
 
     const definitions = [];
@@ -221,7 +196,7 @@ export async function parseFile(filePath, source, opts = {}) {
                 definitions.push(def);
             }
         } else if (captureName === "import") {
-            const imp = extractImport(node, config.grammar);
+            const imp = extractImport(node, grammar);
             if (imp) imports.push({ ...imp, line: startLine });
         } else if (captureName === "call") {
             const callName = extractCallName(node);
@@ -241,7 +216,7 @@ export async function parseFile(filePath, source, opts = {}) {
 
     // --- Clone detection (opt-in) ---
     if (opts.cloneDetection) {
-        const extractor = BODY_EXTRACTORS.get(config.grammar);
+        const extractor = BODY_EXTRACTORS.get(grammar);
 
         for (const def of definitions) {
             if (def.kind !== "function" && def.kind !== "method") continue;
@@ -303,8 +278,8 @@ export async function parseFile(filePath, source, opts = {}) {
     }
 
     // Extract ESM exports before tree.delete()
-    const { exports: exportSet, defaultExport, reexports } = extractExports(tree, config.grammar);
-    attachTypeMetadata(source, config.grammar, definitions);
+    const { exports: exportSet, defaultExport, reexports } = extractExports(tree, grammar);
+    attachTypeMetadata(source, grammar, definitions);
 
     // Create synthetic node for anonymous default export
     if (defaultExport === "__default_export__") {

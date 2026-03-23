@@ -105,17 +105,17 @@ Run these bash blocks in parallel. All read from `/tmp/audit_*.txt` created in S
 ```bash
 echo "=== CLAUDE TOOL CALLS ==="
 while IFS= read -r f; do
-  grep -oP '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null
+  grep -oE '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null
 done < /tmp/audit_claude.txt | sed 's/"name"\s*:\s*"//;s/"//' | sort | uniq -c | sort -rn | head -50
 
 echo "=== CODEX TOOL CALLS ==="
 while IFS= read -r f; do
-  grep -oP '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null
+  grep -oE '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null
 done < /tmp/audit_codex.txt | sed 's/"name"\s*:\s*"//;s/"//' | sort | uniq -c | sort -rn | head -50
 
 echo "=== GEMINI TOOL CALLS ==="
 while IFS= read -r f; do
-  grep -oP '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null
+  grep -oE '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null
 done < /tmp/audit_gemini.txt | sed 's/"name"\s*:\s*"//;s/"//' | sort | uniq -c | sort -rn | head -50
 ```
 
@@ -124,7 +124,7 @@ done < /tmp/audit_gemini.txt | sed 's/"name"\s*:\s*"//;s/"//' | sort | uniq -c |
 ```bash
 echo "=== BUILT-IN vs MCP RATIO ==="
 while IFS= read -r f; do
-  grep -oP '"name"\s*:\s*"(Read|Edit|Write|Grep|mcp__hex-line__read_file|mcp__hex-line__edit_file|mcp__hex-line__write_file|mcp__hex-line__grep_search|mcp__sharpline__read_file|mcp__sharpline__edit_file|mcp__sharpline__write_file|mcp__sharpline__grep_search)"' "$f" 2>/dev/null
+  grep -oE '"name"\s*:\s*"(Read|Edit|Write|Grep|mcp__hex-line__read_file|mcp__hex-line__edit_file|mcp__hex-line__write_file|mcp__hex-line__grep_search|mcp__sharpline__read_file|mcp__sharpline__edit_file|mcp__sharpline__write_file|mcp__sharpline__grep_search)"' "$f" 2>/dev/null
 done < /tmp/audit_claude.txt | sed 's/.*"name"\s*:\s*"//;s/"//' | sort | uniq -c | sort -rn
 ```
 
@@ -136,10 +136,10 @@ while IFS= read -r f; do
   SESSION=$(basename "$f" .jsonl | sed 's/rollout-//' | cut -c1-19)
   LAST=$(grep '"token_count"' "$f" | tail -1)
   [ -z "$LAST" ] && continue
-  TOTAL_IN=$(echo "$LAST" | grep -oP '"input_tokens":\K[0-9]+' | head -1)
-  TOTAL_OUT=$(echo "$LAST" | grep -oP '"output_tokens":\K[0-9]+' | head -1)
-  CACHED=$(echo "$LAST" | grep -oP '"cached_input_tokens":\K[0-9]+' | head -1)
-  REASONING=$(echo "$LAST" | grep -oP '"reasoning_output_tokens":\K[0-9]+' | head -1)
+  TOTAL_IN=$(echo "$LAST" | grep -oE '"input_tokens":[0-9]+' | head -1 | grep -oE '[0-9]+')
+  TOTAL_OUT=$(echo "$LAST" | grep -oE '"output_tokens":[0-9]+' | head -1 | grep -oE '[0-9]+')
+  CACHED=$(echo "$LAST" | grep -oE '"cached_input_tokens":[0-9]+' | head -1 | grep -oE '[0-9]+')
+  REASONING=$(echo "$LAST" | grep -oE '"reasoning_output_tokens":[0-9]+' | head -1 | grep -oE '[0-9]+')
   echo "$SESSION: in=${TOTAL_IN:-0} out=${TOTAL_OUT:-0} cached=${CACHED:-0} reasoning=${REASONING:-0}"
 done < /tmp/audit_codex.txt
 
@@ -157,28 +157,28 @@ Note: Claude JSONL does not include token usage data. Use tool call count as pro
 ```bash
 echo "=== CLAUDE ERRORS (by session) ==="
 while IFS= read -r f; do
-  ERRS=$(grep -cP 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|DANGEROUS|out of range|mismatch|tool_use_error' "$f" 2>/dev/null | tr -d '[:space:]')
+  ERRS=$(grep -cE 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|DANGEROUS|out of range|mismatch|tool_use_error' "$f" 2>/dev/null | tr -d '[:space:]')
   [ "${ERRS:-0}" -gt 0 ] 2>/dev/null && echo "$(basename "$(dirname "$f")")/$(basename "$f" .jsonl | cut -c1-8): $ERRS"
 done < /tmp/audit_claude.txt | sort -t: -k2 -rn | head -20
 
 echo "=== CLAUDE ERROR TYPES ==="
 while IFS= read -r f; do
-  grep -oP 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|DANGEROUS|out of range|mismatch|tool_use_error|permission denied' "$f" 2>/dev/null
+  grep -oE 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|DANGEROUS|out of range|mismatch|tool_use_error|permission denied' "$f" 2>/dev/null
 done < /tmp/audit_claude.txt | sort | uniq -c | sort -rn
 
 echo "=== CLAUDE HOOK EVENTS ==="
 while IFS= read -r f; do
-  grep -oP 'hook_progress|blocking error|PreToolUse|PostToolUse|hex-confirmed|Obligatory use|Use mcp__hex-line|Use mcp__sharpline' "$f" 2>/dev/null
+  grep -oE 'hook_progress|blocking error|PreToolUse|PostToolUse|hex-confirmed|Obligatory use|Use mcp__hex-line|Use mcp__sharpline' "$f" 2>/dev/null
 done < /tmp/audit_claude.txt | sort | uniq -c | sort -rn
 
 echo "=== CODEX ERROR TYPES ==="
 while IFS= read -r f; do
-  grep -oP 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|mismatch|out of range' "$f" 2>/dev/null
+  grep -oE 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|mismatch|out of range' "$f" 2>/dev/null
 done < /tmp/audit_codex.txt | sort | uniq -c | sort -rn
 
 echo "=== GEMINI ERROR TYPES ==="
 while IFS= read -r f; do
-  grep -oP 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|mismatch|out of range' "$f" 2>/dev/null
+  grep -oE 'NOOP_EDIT|TEXT_NOT_FOUND|FILE_NOT_FOUND|HASH_HINT|mismatch|out of range' "$f" 2>/dev/null
 done < /tmp/audit_gemini.txt | sort | uniq -c | sort -rn
 ```
 
@@ -187,13 +187,13 @@ done < /tmp/audit_gemini.txt | sort | uniq -c | sort -rn
 ```bash
 echo "=== SKILL INVOCATIONS ==="
 while IFS= read -r f; do
-  grep -oP '"skill"\s*:\s*"[^"]*"' "$f" 2>/dev/null | sed 's/"skill"\s*:\s*"//;s/"//'
+  grep -oE '"skill"\s*:\s*"[^"]*"' "$f" 2>/dev/null | sed 's/"skill"\s*:\s*"//;s/"//'
 done < /tmp/audit_claude.txt | sort | uniq -c | sort -rn
 
 echo "=== /COMMAND INVOCATIONS ==="
 while IFS= read -r f; do
   # Match actual user prompts: "display":"/command-name"
-  grep -oP '"display":\s*"/[a-z-]+' "$f" 2>/dev/null | sed 's/"display":\s*"//'
+  grep -oE '"display":\s*"/[a-z-]+' "$f" 2>/dev/null | sed 's/"display":\s*"//'
 done < /tmp/audit_claude.txt | sort | uniq -c | sort -rn
 ```
 
@@ -202,20 +202,20 @@ done < /tmp/audit_claude.txt | sort | uniq -c | sort -rn
 ```bash
 echo "=== TOOL LOOPS (>=5 consecutive same tool) ==="
 while IFS= read -r f; do
-  LOOPS=$(grep -oP '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null | sed 's/"name"\s*:\s*"//;s/"//' | uniq -c | sort -rn | awk '$1 >= 5' | head -5)
+  LOOPS=$(grep -oE '"name"\s*:\s*"[^"]*"' "$f" 2>/dev/null | sed 's/"name"\s*:\s*"//;s/"//' | uniq -c | sort -rn | awk '$1 >= 5' | head -5)
   [ -n "$LOOPS" ] && echo "$(basename "$f" .jsonl | cut -c1-8):" && echo "$LOOPS"
 done < /tmp/audit_claude.txt
 
 echo "=== OUTLINE USAGE (read without outline) ==="
 while IFS= read -r f; do
-  READS=$(grep -cP 'mcp__hex-line__read_file|mcp__sharpline__read_file' "$f" 2>/dev/null | tr -d '[:space:]')
-  OUTLINES=$(grep -cP 'mcp__hex-line__outline|mcp__sharpline__outline' "$f" 2>/dev/null | tr -d '[:space:]')
+  READS=$(grep -cE 'mcp__hex-line__read_file|mcp__sharpline__read_file' "$f" 2>/dev/null | tr -d '[:space:]')
+  OUTLINES=$(grep -cE 'mcp__hex-line__outline|mcp__sharpline__outline' "$f" 2>/dev/null | tr -d '[:space:]')
   [ "${READS:-0}" -gt 5 ] 2>/dev/null && [ "${OUTLINES:-0}" -lt 2 ] 2>/dev/null && echo "$(basename "$f" .jsonl | cut -c1-8): $READS reads, $OUTLINES outlines"
 done < /tmp/audit_claude.txt
 
 echo "=== BASH REDIRECT CANDIDATES ==="
 while IFS= read -r f; do
-  grep -oP '"command"\s*:\s*"(cat |head |tail |ls |find |wc |stat |diff )[^"]*"' "$f" 2>/dev/null
+  grep -oE '"command"\s*:\s*"(cat |head |tail |ls |find |wc |stat |diff )[^"]*"' "$f" 2>/dev/null
 done < /tmp/audit_claude.txt | sed 's/"command"\s*:\s*"//;s/"//' | sort | uniq -c | sort -rn | head -20
 ```
 
@@ -230,10 +230,10 @@ while IFS= read -r f; do
   DAY=$(stat -c %Y "$f" 2>/dev/null | xargs -I{} date -d @{} +%m-%d 2>/dev/null)
   [ -z "$DAY" ] && continue
   # Count tool categories
-  HEX=$(grep -cP 'mcp__hex-line__' "$f" 2>/dev/null | tr -d '[:space:]')
-  SHARP=$(grep -cP 'mcp__sharpline__' "$f" 2>/dev/null | tr -d '[:space:]')
-  BUILTIN=$(grep -cP '"name"\s*:\s*"(Read|Edit|Write|Grep)"' "$f" 2>/dev/null | tr -d '[:space:]')
-  ERRS=$(grep -cP 'NOOP_EDIT|TEXT_NOT_FOUND|mismatch|HASH_HINT|out of range' "$f" 2>/dev/null | tr -d '[:space:]')
+  HEX=$(grep -cE 'mcp__hex-line__' "$f" 2>/dev/null | tr -d '[:space:]')
+  SHARP=$(grep -cE 'mcp__sharpline__' "$f" 2>/dev/null | tr -d '[:space:]')
+  BUILTIN=$(grep -cE '"name"\s*:\s*"(Read|Edit|Write|Grep)"' "$f" 2>/dev/null | tr -d '[:space:]')
+  ERRS=$(grep -cE 'NOOP_EDIT|TEXT_NOT_FOUND|mismatch|HASH_HINT|out of range' "$f" 2>/dev/null | tr -d '[:space:]')
   echo "$DAY hex-line=${HEX:-0} sharpline=${SHARP:-0} built-in=${BUILTIN:-0} errors=${ERRS:-0}"
 done < /tmp/audit_claude.txt | sort | awk '
 {
@@ -251,12 +251,12 @@ END {
 
 echo "=== DAILY TOOL TRENDS (Codex) ==="
 while IFS= read -r f; do
-  DAY=$(basename "$f" | grep -oP '\d{4}-\d{2}-\d{2}' | tail -1 | cut -c6-)
+  DAY=$(basename "$f" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | tail -1 | cut -c6-)
   [ -z "$DAY" ] && continue
-  HEX=$(grep -cP 'mcp__hex.line|mcp__hex_line' "$f" 2>/dev/null | tr -d '[:space:]')
-  HASH=$(grep -cP 'mcp__hashline' "$f" 2>/dev/null | tr -d '[:space:]')
-  SHARP=$(grep -cP 'mcp__sharpline' "$f" 2>/dev/null | tr -d '[:space:]')
-  SHELL=$(grep -cP '"shell_command"' "$f" 2>/dev/null | tr -d '[:space:]')
+  HEX=$(grep -cE 'mcp__hex.line|mcp__hex_line' "$f" 2>/dev/null | tr -d '[:space:]')
+  HASH=$(grep -cE 'mcp__hashline' "$f" 2>/dev/null | tr -d '[:space:]')
+  SHARP=$(grep -cE 'mcp__sharpline' "$f" 2>/dev/null | tr -d '[:space:]')
+  SHELL=$(grep -cE '"shell_command"' "$f" 2>/dev/null | tr -d '[:space:]')
   echo "$DAY hex-line=${HEX:-0} hashline=${HASH:-0} sharpline=${SHARP:-0} shell=${SHELL:-0}"
 done < /tmp/audit_codex.txt | sort | awk '
 {
@@ -282,11 +282,11 @@ echo "  - error count declining → fixes taking effect"
 echo "=== COMMUNICATION PATTERNS (Claude) ==="
 while IFS= read -r f; do
   # Over-explanation: assistant messages > 500 chars
-  LONG=$(grep -cP '"role":\s*"assistant".*".{500,}"' "$f" 2>/dev/null | tr -d '[:space:]')
+  LONG=$(grep -cE '"role":\s*"assistant".*".{500,}"' "$f" 2>/dev/null | tr -d '[:space:]')
   # Unnecessary confirmations: "shall I", "should I", "let me know"
-  CONFIRMS=$(grep -ciP 'shall I|should I proceed|let me know|would you like me' "$f" 2>/dev/null | tr -d '[:space:]')
+  CONFIRMS=$(grep -ciE 'shall I|should I proceed|let me know|would you like me' "$f" 2>/dev/null | tr -d '[:space:]')
   # Dead ends: tool_use_error followed by different approach
-  DEADENDS=$(grep -cP 'tool_use_error' "$f" 2>/dev/null | tr -d '[:space:]')
+  DEADENDS=$(grep -cE 'tool_use_error' "$f" 2>/dev/null | tr -d '[:space:]')
   [ "${LONG:-0}" -gt 5 ] 2>/dev/null || [ "${CONFIRMS:-0}" -gt 3 ] 2>/dev/null || [ "${DEADENDS:-0}" -gt 3 ] 2>/dev/null && \
     echo "$(basename "$f" .jsonl | cut -c1-8): long=$LONG confirms=$CONFIRMS dead_ends=$DEADENDS"
 done < /tmp/audit_claude.txt | sort -t= -k2 -rn | head -10

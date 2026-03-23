@@ -10,9 +10,12 @@
 
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import { fnv1a, lineTag, rangeChecksum } from "./hash.mjs";
+import { fnv1a, lineTag, rangeChecksum } from "@levnikolaevich/hex-common/text-protocol/hash";
 import { getGraphDB, matchAnnotation, getRelativePath } from "./graph-enrich.mjs";
 import { normalizePath } from "./security.mjs";
+
+let rgBin = "rg";
+try { rgBin = (await import("@vscode/ripgrep")).rgPath; } catch { /* system rg */ }
 
 const DEFAULT_LIMIT = 100;
 const MAX_OUTPUT = 10 * 1024 * 1024; // 10 MB
@@ -31,7 +34,7 @@ function spawnRg(args) {
         let killed = false;
         let stderrBuf = "";
 
-        const child = spawn("rg", args, { timeout: TIMEOUT });
+        const child = spawn(rgBin, args, { timeout: TIMEOUT });
 
         child.stdout.on("data", (chunk) => {
             totalBytes += chunk.length;
@@ -46,11 +49,7 @@ function spawnRg(args) {
         child.stderr.on("data", (chunk) => { stderrBuf += chunk.toString("utf-8"); });
 
         child.on("error", (err) => {
-            if (err.code === "ENOENT") {
-                reject(new Error("ripgrep (rg) not found. Install: https://github.com/BurntSushi/ripgrep#installation"));
-            } else {
-                reject(new Error(`rg spawn error: ${err.message}`));
-            }
+            reject(new Error(`rg spawn error: ${err.message}`));
         });
 
         child.on("close", (code) => {

@@ -13,20 +13,16 @@ import { dirname } from "node:path";
 import { createRequire } from "node:module";
 const { version } = createRequire(import.meta.url)("./package.json");
 import { z } from "zod";
+import { createServerRuntime } from "@levnikolaevich/hex-common/runtime/mcp-bootstrap";
+import { flexBool, flexNum } from "@levnikolaevich/hex-common/runtime/schema";
+import { coerceParams } from "@levnikolaevich/hex-common/runtime/coerce";
+import { checkForUpdates } from "@levnikolaevich/hex-common/runtime/update-check";
 // LLM clients may send booleans as strings ("true"/"false").
 // z.coerce.boolean() is unsafe: Boolean("false") === true.
-const flexBool = () => z.preprocess(
-    v => typeof v === "string" ? v === "true" : v,
-    z.boolean().optional()
-).optional();
 // LLM clients may send numbers as strings ("5" instead of 5).
 // z.coerce.number() generates {"type":"number"} → strict MCP clients reject strings.
 // flexNum generates schema accepting both, coerces at runtime.
 // Outer .optional() ensures JSON Schema marks field as not-required.
-const flexNum = () => z.preprocess(
-    v => typeof v === "string" ? Number(v) : v,
-    z.number().optional()
-).optional();
 
 import { readFile } from "./lib/read.mjs";
 import { editFile } from "./lib/edit.mjs";
@@ -39,24 +35,12 @@ import { fileInfo } from "./lib/info.mjs";
 import { setupHooks } from "./lib/setup.mjs";
 import { fileChanges } from "./lib/changes.mjs";
 import { bulkReplace } from "./lib/bulk-replace.mjs";
-import { coerceParams } from "./lib/coerce.mjs";
-import { checkForUpdates } from "./lib/update-check.mjs";
 
-// --- SDK ---
-
-let McpServer, StdioServerTransport;
-try {
-    ({ McpServer } = await import("@modelcontextprotocol/sdk/server/mcp.js"));
-    ({ StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js"));
-} catch {
-    process.stderr.write(
-        "hex-line-mcp: @modelcontextprotocol/sdk not found.\n" +
-        "Run: cd mcp/hex-line-mcp && npm install\n"
-    );
-    process.exit(1);
-}
-
-const server = new McpServer({ name: "hex-line-mcp", version });
+const { server, StdioServerTransport } = await createServerRuntime({
+    name: "hex-line-mcp",
+    version,
+    installDir: "mcp/hex-line-mcp",
+});
 
 
 // ==================== read_file ====================
@@ -64,10 +48,8 @@ const server = new McpServer({ name: "hex-line-mcp", version });
 server.registerTool("read_file", {
     title: "Read File",
     description:
-        "Read a file with FNV-1a hash-annotated lines and range checksums. " +
-        "Directory listing if path is a directory. " +
-        "For files >100 lines: ALWAYS use outline first, then read_file with offset/limit for specific sections. " +
-        "Reading a 500+ line file in full wastes 75% of context tokens.",
+        "Read a file with hash-annotated lines, range checksums, and current revision. " +
+        "Use offset/limit for targeted reads; use outline first for large code files.",
     inputSchema: z.object({
         path: z.string().optional().describe("File or directory path"),
         paths: z.array(z.string()).optional().describe("Array of file paths to read (batch mode)"),
@@ -103,28 +85,40 @@ server.registerTool("read_file", {
 server.registerTool("edit_file", {
     title: "Edit File",
     description:
-        "Edit a file using hash-verified anchor edits (set_line, replace_lines, insert_after). Returns diff + post-edit checksums. " +
-        "Batch multiple edits in ONE call for atomicity (bottom-to-top auto-sorted). " +
-        "set_line: single line (from grep/read). replace_lines: range with checksum. " +
-        "insert_after: add below anchor. For text rename use bulk_replace tool.",
+        "Apply revision-aware partial edits to one file. " +
+        "Prefer one batched call per file. Supports set_line, replace_lines, insert_after, and replace_between. " +
+        "For text rename/refactor use bulk_replace.",
     inputSchema: z.object({
         path: z.string().describe("File to edit"),
         edits: z.string().describe(
             'JSON array. Examples:\n' +
             '{"set_line":{"anchor":"ab.12","new_text":"new"}} — replace line\n' +
             '{"replace_lines":{"start_anchor":"ab.10","end_anchor":"cd.15","new_text":"...","range_checksum":"10-15:a1b2c3d4"}} — range\n' +
+            '{"replace_between":{"start_anchor":"ab.10","end_anchor":"cd.40","new_text":"...","boundary_mode":"inclusive"}} — block rewrite\n' +
             '{"insert_after":{"anchor":"ab.20","text":"inserted"}} — insert below. For text rename use bulk_replace tool.',
         ),
         dry_run: flexBool().describe("Preview changes without writing"),
         restore_indent: flexBool().describe("Auto-fix indentation to match anchor (default: false)"),
+        base_revision: z.string().optional().describe("Prior revision from read_file/edit_file. Enables conservative auto-rebase for same-file follow-up edits."),
+        conflict_policy: z.enum(["strict", "conservative"]).optional().describe('Conflict handling (default: "conservative"). "conservative" returns structured CONFLICT output for stale edits instead of forcing reread.'),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
 }, async (rawParams) => {
-    const { path: p, edits: json, dry_run, restore_indent } = coerceParams(rawParams);
+    const { path: p, edits: json, dry_run, restore_indent, base_revision, conflict_policy } = coerceParams(rawParams);
     try {
         const parsed = JSON.parse(json);
         if (!Array.isArray(parsed) || !parsed.length) throw new Error("Edits: non-empty JSON array required");
-        return { content: [{ type: "text", text: editFile(p, parsed, { dryRun: dry_run, restoreIndent: restore_indent }) }] };
+        return {
+            content: [{
+                type: "text",
+                text: editFile(p, parsed, {
+                    dryRun: dry_run,
+                    restoreIndent: restore_indent,
+                    baseRevision: base_revision,
+                    conflictPolicy: conflict_policy,
+                }),
+            }],
+        };
     } catch (e) {
         return { content: [{ type: "text", text: e.message }], isError: true };
     }
@@ -227,19 +221,19 @@ server.registerTool("outline", {
 server.registerTool("verify", {
     title: "Verify Checksums",
     description:
-        "Check if range checksums from prior reads are still valid. " +
-        "Single-line response when nothing changed. Use to check file staleness without re-reading.",
+        "Check whether held checksums and optional base_revision are still current, without rereading the file.",
     inputSchema: z.object({
         path: z.string().describe("File path"),
         checksums: z.string().describe('JSON array of checksum strings, e.g. ["1-50:f7e2a1b0", "51-100:abcd1234"]'),
+        base_revision: z.string().optional().describe("Optional prior revision to compare against latest state."),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, checksums } = coerceParams(rawParams);
+    const { path: p, checksums, base_revision } = coerceParams(rawParams);
     try {
         const parsed = JSON.parse(checksums);
         if (!Array.isArray(parsed)) throw new Error("checksums must be a JSON array of strings");
-        return { content: [{ type: "text", text: verifyChecksums(p, parsed) }] };
+        return { content: [{ type: "text", text: verifyChecksums(p, parsed, { baseRevision: base_revision }) }] };
     } catch (e) {
         return { content: [{ type: "text", text: e.message }], isError: true };
     }

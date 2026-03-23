@@ -2,7 +2,7 @@ import { readFileSync, statSync, readdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { resolve, extname, join } from "node:path";
-import { fnv1a, lineTag } from "./hash.mjs";
+import { fnv1a, lineTag } from "@levnikolaevich/hex-common/text-protocol/hash";
 import { readFile } from "./read.mjs";
 
 // ---------------------------------------------------------------------------

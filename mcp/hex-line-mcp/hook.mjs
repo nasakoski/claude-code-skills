@@ -24,7 +24,7 @@
  * Exit 2 = block (PreToolUse) or stderr feedback (PostToolUse)
  */
 
-import { normalizeOutput } from "./lib/normalize.mjs";
+import { normalizeOutput } from "@levnikolaevich/hex-common/output/normalize";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { homedir } from "node:os";
@@ -42,13 +42,13 @@ const BINARY_EXT = new Set([
 
 const REVERSE_TOOL_HINTS = {
     "mcp__hex-line__read_file":      "Read (file_path, offset, limit)",
-    "mcp__hex-line__edit_file":      "Edit (anchor-based hash edits only)",
+    "mcp__hex-line__edit_file":      "Edit (revision-aware hash edits, block rewrite, auto-rebase)",
     "mcp__hex-line__write_file":     "Write (file_path, content)",
     "mcp__hex-line__grep_search":    "Grep (pattern, path)",
     "mcp__hex-line__directory_tree": "Glob (pattern) or Bash(ls)",
     "mcp__hex-line__get_file_info":  "Bash(stat/wc)",
     "mcp__hex-line__outline":        "Read with offset/limit",
-    "mcp__hex-line__verify":         "Read the file again with Read",
+    "mcp__hex-line__verify":         "Verify held checksums / revision without reread",
     "mcp__hex-line__changes":        "Bash(git diff)",
     "mcp__hex-line__bulk_replace":   "Edit (text rename/refactor across files)",
     "mcp__hex-line__setup_hooks":    "Not available (hex-line disabled)",
@@ -56,7 +56,7 @@ const REVERSE_TOOL_HINTS = {
 
 const TOOL_HINTS = {
     Read:  "mcp__hex-line__read_file (not Read). For writing: write_file (no prior Read needed)",
-    Edit:  "mcp__hex-line__edit_file for hash-verified edits (not Edit). For text rename use bulk_replace",
+    Edit:  "mcp__hex-line__edit_file for revision-aware hash edits. Batch same-file hunks, carry base_revision, use replace_between for block rewrites",
     Write: "mcp__hex-line__write_file (not Write). No prior Read needed",
     Grep:  "mcp__hex-line__grep_search (not Grep). Params: output, literal, context_before, context_after, multiline",
     cat:   "mcp__hex-line__read_file (not cat/head/tail/less/more)",
@@ -68,7 +68,7 @@ const TOOL_HINTS = {
     sed:   "mcp__hex-line__edit_file for hash edits, or mcp__hex-line__bulk_replace for text rename (not sed -i)",
     diff:  "mcp__hex-line__changes (not diff). Git-based semantic diff",
     outline: "mcp__hex-line__outline (before reading large code files)",
-    verify:  "mcp__hex-line__verify (staleness check without re-read)",
+    verify:  "mcp__hex-line__verify (staleness / revision check without re-read)",
     changes: "mcp__hex-line__changes (semantic AST diff)",
     bulk:    "mcp__hex-line__bulk_replace (multi-file search-replace)",
     setup:   "mcp__hex-line__setup_hooks (configure hooks for agents)",
@@ -425,7 +425,7 @@ function handleSessionStart() {
     }
     lines.push("Exceptions: images, PDFs, notebooks, .claude/settings.json, .claude/settings.local.json \u2192 built-in Read; Glob always OK");
     lines.push("Bash OK for: npm/node/git/docker/curl, pipes, scripts");
-    const msg = "Hex-line MCP available. Workflow:\n- Discovery: read_file, grep_search, outline, directory_tree\n- Hash edits: edit_file (set_line, replace_lines, insert_after)\n- Text rename: bulk_replace (multi-file search-replace)\n- Write new: write_file\n" + lines.join("\n");
+    const msg = "Hex-line MCP available. Workflow:\n- Discovery: read_file, grep_search, outline, directory_tree\n- Same-file edits: prefer ONE edit_file call per file, carry revision/base_revision\n- Hash edits: edit_file (set_line, replace_lines, insert_after, replace_between)\n- Large rewrites: replace_between instead of reciting old blocks\n- Text rename: bulk_replace (multi-file search-replace)\n- Verify staleness: verify before considering reread\n- Write new: write_file\n" + lines.join("\n");
     process.stdout.write(JSON.stringify({ systemMessage: msg }));
     process.exit(0);
 }

@@ -12,7 +12,7 @@
 > [!TIP]
 > **Multi-Model AI Review** — Delegate code & story reviews to Codex and Gemini agents running in parallel, with automatic fallback to Claude Opus. Ship faster with 3x review coverage.
 
-[Plugins](#plugins) · [Quick Start](#quick-start) · [Workflow](#workflow) · [Hooks](#hooks-optional) · [MCP](#mcp-servers-optional) · [AI Review](#ai-review-models-optional) · [FAQ](#faq) · [Full Skill Tree](#whats-inside) · [Links](#links)
+[Plugins](#plugins) · [Installation](#installation) · [Quick Start](#quick-start) · [Workflow](#workflow) · [MCP](#mcp-servers-optional) · [AI Review](#ai-review-models-optional) · [FAQ](#faq) · [Full Skill Tree](#whats-inside) · [Links](#links)
 
 ---
 
@@ -51,13 +51,25 @@ Browse and discover individual skills at [skills.sh](https://skills.sh/LevNikola
 
 ---
 
+## Installation
+
+**Prerequisites:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+
+```bash
+/plugin add levnikolaevich/claude-code-skills
+```
+
+Verify: run `ln-010-dev-environment-setup`
+
+---
+
 ## Quick Start
 
 **Standalone** (works immediately, no setup):
 ```bash
-ln-620-codebase-auditor    # Audit your code for issues
-ln-700-project-bootstrap   # CREATE or TRANSFORM project
-ln-100-documents-pipeline  # Generate documentation
+ln-010-dev-environment-setup  # Set up agents, MCP, sync configs
+ln-620-codebase-auditor       # Audit your code for issues
+ln-100-documents-pipeline     # Generate documentation
 ```
 
 **Full Agile workflow** (Linear or File Mode — auto-detected):
@@ -77,7 +89,7 @@ ln-500-story-quality-gate  # Quality gate + test planning
 ## Workflow
 
 ```
-ln-700-project-bootstrap        # 0. CREATE or TRANSFORM to production
+ln-010-dev-environment-setup    # 0. Set up dev environment (once)
          ↓
 ln-100-documents-pipeline       # 1. Documentation
          ↓
@@ -88,32 +100,25 @@ ln-1000-pipeline-orchestrator   # 3. Full pipeline: 300 → 310 → 400 → 500 
 
 ---
 
-## Hooks (Optional)
-
-Automated validation hooks that run during development:
-
-| Hook | Trigger | Action |
-|------|---------|--------|
-| **secret-scanner** | `git commit` | Blocks commits containing secrets |
-| **story-validator** | `ln-400` prompt | Validates Story before execution |
-| **code-quality** | After Edit/Write | Reports DRY/KISS/YAGNI violations |
-
-**Installation:** Copy hooks config to `~/.claude/settings.json`. See [hooks/README.md](hooks/README.md)
-
----
-
 ## MCP Servers (Optional)
 
-Skills use MCP servers for research, documentation lookup, file editing, and task tracking. All skills work without MCP — they automatically fallback to File Mode (local markdown) when Linear is unavailable, and to WebSearch when research MCPs are missing.
+Bundled MCP servers extend agent capabilities — hash-verified editing, code intelligence, and remote access. All skills work without MCP (fallback to built-in tools), but MCP servers improve accuracy and save tokens.
 
-| Server | Purpose | Transport | API Key | Used by |
-|--------|---------|-----------|---------|---------|
-| **[hex-line-mcp](mcp/hex-line-mcp/)** | Hash-verified file editing + AST outline | stdio | Bundled | ln-310, ln-401, ln-403, ln-510+ |
-| **[hex-ssh-mcp](mcp/hex-ssh-mcp/)** | Token-efficient SSH with hash-verified ops | stdio | Bundled | Remote server work |
-| **[hex-graph-mcp](mcp/hex-graph-mcp/)** | Code knowledge graph with AST indexing | stdio | Bundled | Architecture analysis |
-| **[Context7](https://context7.com)** | Library docs, APIs, migration guides | HTTP | Optional ([dashboard](https://context7.com/dashboard)) | ln-310, ln-511, ln-640+ |
-| **[Ref](https://docs.ref.tools/install)** | Standards, RFCs, best practices | HTTP | Required ([ref.tools/keys](https://ref.tools/keys)) | ln-310, ln-511, ln-640+ |
-| **[Linear](https://linear.app/docs/mcp)** | Issue tracking (Agile workflow) | HTTP | OAuth via browser | ln-300+, ln-400+, ln-500+ |
+### Bundled servers
+
+| Server | What it does | Tools | Docs |
+|--------|-------------|-------|------|
+| **[hex-line-mcp](mcp/hex-line-mcp/)** | Every line carries a content hash — edits prove the agent sees current content. Prevents stale-context corruption. Includes validation hooks. | 11 | [README](mcp/hex-line-mcp/README.md) · [npm](https://www.npmjs.com/package/@levnikolaevich/hex-line-mcp) |
+| **[hex-graph-mcp](mcp/hex-graph-mcp/)** | Indexes codebase into a SQLite graph via tree-sitter AST. Find references, cycles, clones, unused exports, architecture overview. | 15 | [README](mcp/hex-graph-mcp/README.md) · [npm](https://www.npmjs.com/package/@levnikolaevich/hex-graph-mcp) |
+| **[hex-ssh-mcp](mcp/hex-ssh-mcp/)** | Hash-verified remote file editing over SSH. Normalized output for minimal token usage. | 6 | [README](mcp/hex-ssh-mcp/README.md) · [npm](https://www.npmjs.com/package/@levnikolaevich/hex-ssh-mcp) |
+
+### External servers
+
+| Server | Purpose | API Key | Used by |
+|--------|---------|---------|---------|
+| **[Context7](https://context7.com)** | Library docs, APIs, migration guides | Optional ([dashboard](https://context7.com/dashboard)) | ln-310, ln-511, ln-640+ |
+| **[Ref](https://docs.ref.tools/install)** | Standards, RFCs, best practices | Required ([ref.tools/keys](https://ref.tools/keys)) | ln-310, ln-511, ln-640+ |
+| **[Linear](https://linear.app/docs/mcp)** | Issue tracking (Agile workflow) | OAuth via browser | ln-300+, ln-400+, ln-500+ |
 
 **CLI setup:**
 ```bash
@@ -139,43 +144,20 @@ claude mcp add -s user --transport http --header "x-ref-api-key: YOUR_KEY" Ref h
 claude mcp add -s user --transport http linear-server https://mcp.linear.app/mcp
 ```
 
-<details>
-<summary><b>JSON config alternative</b></summary>
 
-Add to `~/.claude.json` → `mcpServers`:
-```json
-{
-  "mcpServers": {
-    "hex-line": {
-      "command": "npx",
-      "args": ["-y", "@levnikolaevich/hex-line-mcp"]
-    },
-    "hex-ssh": {
-      "command": "npx",
-      "args": ["-y", "@levnikolaevich/hex-ssh-mcp"],
-      "env": { "MCP_SSH_ALLOWED_HOSTS": "your-server" }
-    },
-    "hex-graph": {
-      "command": "npx",
-      "args": ["-y", "@levnikolaevich/hex-graph-mcp"]
-    },
-    "context7": {
-      "type": "http",
-      "url": "https://mcp.context7.com/mcp"
-    },
-    "Ref": {
-      "type": "http",
-      "url": "https://api.ref.tools/mcp",
-      "headers": { "x-ref-api-key": "YOUR_API_KEY" }
-    },
-    "linear-server": {
-      "type": "http",
-      "url": "https://mcp.linear.app/mcp"
-    }
-  }
-}
-```
-</details>
+### Agent steering
+
+MCP servers are installed but Claude won't prefer them over built-ins by default. hex-line-mcp includes tools that teach the agent to use MCP:
+
+| Mechanism | How it works |
+|-----------|-------------|
+| **[Output style](mcp/hex-line-mcp/output-style.md)** | Injected into system prompt — maps built-in tools to MCP equivalents (`Read` → `hex-line read_file`, `Edit` → `hex-line edit_file`) |
+| **PostToolUse hook** | When Claude uses a built-in, the hook reminds it to use the MCP tool next time |
+| **secret-scanner hook** | Blocks `git commit` if secrets detected |
+| **story-validator hook** | Validates Story context before `ln-400` execution |
+| **code-quality hook** | Reports DRY/KISS/YAGNI violations after Edit/Write |
+
+Run `hex-line setup_hooks` to install all hooks + output style.
 
 ---
 
@@ -185,7 +167,7 @@ Multi-model review uses external AI agents (Codex + Gemini) for parallel code/st
 
 | Model | CLI | Version | Used by | Settings |
 |-------|-----|---------|---------|----------|
-| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.3-codex | ln-310, ln-510, ln-813 | `--json --full-auto` (read-only, internet access) |
+| **[Codex](https://github.com/anthropics/codex-cli)** | `codex` | gpt-5.4 | ln-310, ln-510, ln-813 | `--json --full-auto` (read-only, internet access) |
 | **[Gemini](https://github.com/google/gemini-cli)** | `gemini` | gemini-3-flash-preview | ln-310, ln-510, ln-813 | `--yolo -m gemini-3-flash-preview` (sandbox, auto-approve) |
 
 **Review Workflow:**
@@ -202,7 +184,7 @@ npm install -g @anthropic/codex-cli
 codex login
 
 # Gemini (Google)
-pip install google-gemini-cli
+npm install -g @google/gemini-cli
 gemini auth login
 ```
 
@@ -307,6 +289,7 @@ Claude Opus is the primary model. For code and story reviews, skills delegate to
 /plugin add levnikolaevich/claude-code-skills --plugin project-bootstrap
 /plugin add levnikolaevich/claude-code-skills --plugin optimization-suite
 /plugin add levnikolaevich/claude-code-skills --plugin community-engagement
+/plugin add levnikolaevich/claude-code-skills --plugin setup-environment
 
 # Git Clone (alternative)
 git clone https://github.com/levnikolaevich/claude-code-skills.git ~/.claude/skills
@@ -414,14 +397,16 @@ Yes — create symlinks/junctions to the plugin directory, or use `ln-013-config
 ## What's Inside
 
 <details>
-<summary><b>Full Skill Tree (127 skills)</b></summary>
+<summary><b>Full Skill Tree (128 skills)</b></summary>
 
 ```
 claude-code-skills/                      # MARKETPLACE
-|
-|  ┌─ Plugin: agile-workflow ──────────────────────┐
-|
-|-- ln-2XX-*/                          # PLANNING
+|-- skills/                              # ALL SKILLS + SHARED
+|   |-- shared/                          # References, templates, agents
+|   |
+|   |  ┌─ Plugin: agile-workflow ──────────────────────┐
+|   |
+|   |-- ln-2XX-*/                        # PLANNING
 |   |-- ln-200-scope-decomposer/       # TOP: scope -> Epics -> Stories (one command)
 |   |-- ln-201-opportunity-discoverer/ # Traffic-First KILL funnel for growth direction
 |   |-- ln-210-epic-coordinator/       # CREATE/REPLAN 3-7 Epics
@@ -524,14 +509,30 @@ claude-code-skills/                      # MARKETPLACE
 |-- ln-7XX-*/                          # BOOTSTRAP
 |   |-- ln-700-project-bootstrap/      # L1: CREATE or TRANSFORM project
 |   |-- ln-720-structure-migrator/     # SCAFFOLD or RESTRUCTURE to Clean Architecture
+|   |   |-- ln-721-frontend-restructure/ # React component-based architecture
+|   |   |-- ln-722-backend-generator/    # .NET Clean Architecture from entities
+|   |   |-- ln-723-seed-data-generator/  # Generate seed data from ORM schemas
+|   |   |-- ln-724-artifact-cleaner/     # Remove platform-specific artifacts
 |   |-- ln-730-devops-setup/           # Docker, CI/CD, env
 |   |   |-- ln-731-docker-generator/      # Dockerfiles, docker-compose
 |   |   |-- ln-732-cicd-generator/        # GitHub Actions
 |   |   |-- ln-733-env-configurator/      # .env.example
 |   |-- ln-740-quality-setup/          # Linters, pre-commit, tests
+|   |   |-- ln-741-linter-configurator/  # ESLint, Prettier, Ruff, mypy
+|   |   |-- ln-742-precommit-setup/      # Husky, lint-staged, commitlint
+|   |   |-- ln-743-test-infrastructure/  # Vitest, xUnit, pytest setup
 |   |-- ln-760-security-setup/         # Security scanning
+|   |   |-- ln-761-secret-scanner/       # Detect hardcoded secrets
 |   |-- ln-770-crosscutting-setup/     # Logging, CORS, health checks
+|   |   |-- ln-771-logging-configurator/ # Structured JSON logging
+|   |   |-- ln-772-error-handler-setup/  # Global exception middleware
+|   |   |-- ln-773-cors-configurator/    # CORS policy config
+|   |   |-- ln-774-healthcheck-setup/    # K8s readiness/liveness probes
+|   |   |-- ln-775-api-docs-generator/   # Swagger/OpenAPI docs
 |   |-- ln-780-bootstrap-verifier/     # Build, test, Docker verification
+|   |   |-- ln-781-build-verifier/       # Verify compilation
+|   |   |-- ln-782-test-runner/          # Run test suites
+|   |   |-- ln-783-container-launcher/   # Docker health check
 |
 |  └──────────────────────────────────────────────┘
 |  ┌─ Plugin: optimization-suite ──────────────────┐
@@ -564,6 +565,7 @@ claude-code-skills/                      # MARKETPLACE
 |  ┌─ Plugin: setup-environment ──────────────────────┐
 |
 |-- ln-001-push-all/                   # Commit and push all changes in one command
+|-- ln-002-session-analyzer/           # Analyze sessions for optimization opportunities
 |-- ln-0XX-*/                          # SETUP ENVIRONMENT
 |   |-- ln-010-dev-environment-setup/  # L2: Full environment setup coordinator
 |   |-- ln-011-agent-installer/        # Install/update Codex, Gemini & Claude CLI
@@ -574,11 +576,6 @@ claude-code-skills/                      # MARKETPLACE
 |
 |  └──────────────────────────────────────────────┘
 |
-|-- hooks/                             # AUTOMATED VALIDATION HOOKS
-|   |-- hooks.json                     # Hook configuration (copy to settings.json)
-|   |-- secret-scanner.mjs             # PreToolUse: blocks commits with secrets
-|   |-- story-validator.mjs            # UserPromptSubmit: validates Story before execution
-|   |-- code-quality.mjs               # PostToolUse: DRY/KISS/YAGNI checks
 |
 |-- docs/
 |   |-- architecture/                  # Skill patterns & delegation runtime
@@ -612,20 +609,26 @@ Papers, docs, and methodologies studied and implemented in the skill architectur
 
 | Source | Learned | Changed |
 |--------|---------|---------|
-| [STAR Framework](https://arxiv.org/abs/2602.21814) (2025) | Forced goal articulation: +85pp accuracy; structured reasoning > context injection 2.83x | [`goal_articulation_gate.md`](shared/references/goal_articulation_gate.md) — 4-question gate in 6 skills + 6 templates |
+| [STAR Framework](https://arxiv.org/abs/2602.21814) (2025) | Forced goal articulation: +85pp accuracy; structured reasoning > context injection 2.83x | [`goal_articulation_gate.md`](skills/shared/references/goal_articulation_gate.md) — 4-question gate in 6 skills + 6 templates |
 | [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) (Anthropic, 2024) | Orchestrator-Worker, prompt chaining, evaluator-optimizer patterns | Core 4-level hierarchy (L0→L3), single responsibility per skill |
 | [Multi-Agent Research System](https://www.anthropic.com/engineering/multi-agent-research-system) (Anthropic, 2025) | Production orchestration: 90.2% perf improvement with specialized agents | `ln-1000` pipeline orchestrator, parallel agent reviews (`ln-310`, `ln-510`) |
 | [Scheduler Agent Supervisor](https://learn.microsoft.com/azure/architecture/patterns/scheduler-agent-supervisor) (Microsoft) | Separation of scheduling, execution, and supervision | `ln-400`/`ln-402`/`ln-500` executor-reviewer-gate split |
 | [DIATAXIS](https://diataxis.fr) | 4-type docs: Tutorial / How-to / Reference / Explanation | Documentation levels in CLAUDE.md, progressive disclosure |
-| [Sinks, Not Pipes](https://ianbull.com/posts/software-architecture) (Ian Bull, 2026) | "The architecture is the prompt" — AI agents can't reason about side-effect chains >2 levels deep; sinks (self-contained) > pipes (cascading) | [`ai_ready_architecture.md`](shared/references/ai_ready_architecture.md) — cascade depth, architectural honesty, flat orchestration checks across 12 skills |
-| [Test Desiderata](https://testdesiderata.com/) (Kent Beck, 2019) | 12 properties of valuable tests — behavioral, predictive, specific, inspiring, deterministic... No numerical targets, only usefulness | [`risk_based_testing_guide.md`](shared/references/risk_based_testing_guide.md) — 6 Test Usefulness Criteria (Risk Priority ≥15, Confidence ROI, Behavioral, Predictive, Specific, Non-Duplicative) |
+| [Sinks, Not Pipes](https://ianbull.com/posts/software-architecture) (Ian Bull, 2026) | "The architecture is the prompt" — AI agents can't reason about side-effect chains >2 levels deep; sinks (self-contained) > pipes (cascading) | [`ai_ready_architecture.md`](skills/shared/references/ai_ready_architecture.md) — cascade depth, architectural honesty, flat orchestration checks across 12 skills |
+| [Test Desiderata](https://testdesiderata.com/) (Kent Beck, 2019) | 12 properties of valuable tests — behavioral, predictive, specific, inspiring, deterministic... No numerical targets, only usefulness | [`risk_based_testing_guide.md`](skills/shared/references/risk_based_testing_guide.md) — 6 Test Usefulness Criteria (Risk Priority ≥15, Confidence ROI, Behavioral, Predictive, Specific, Non-Duplicative) |
 | Vertical Slicing ([Humanizing Work](https://www.humanizingwork.com/the-humanizing-work-guide-to-splitting-user-stories/)) | "Never split by architectural layer" | Foundation-First task ordering |
 | [Claude Code Picks](https://amplifying.ai/research/claude-code-picks) (Amplifying AI, 2026) | Claude's tool preferences are learned maturity signals, not bias — Drizzle/Vitest/Zustand chosen for objective quality. Build-not-buy in 12/20 categories. "Correcting" valid preferences = recommending worse tools | Research-to-Action Gate in CLAUDE.md — require concrete defect before turning research into skill changes |
-| [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-814-optimization-executor`](ln-814-optimization-executor/SKILL.md) — keep/discard with adaptive thresholds, multi-file support, compound baselines, experiment log |
+| [autoresearch](https://github.com/karpathy/autoresearch) (Karpathy, 2025) | Autoresearch loop: modify → benchmark → binary keep/discard; compound baselines; simplicity criterion (marginal gain + ugly code = discard) | [`ln-814-optimization-executor`](skills/ln-814-optimization-executor/SKILL.md) — keep/discard with adaptive thresholds, multi-file support, compound baselines, experiment log |
 | [The Complete Guide to Building Skills](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf) (Anthropic, 2026) | WHAT+WHEN descriptions, trigger testing, capability vs preference classification, negative triggers, 3-level progressive disclosure | Check #14 (trigger quality), negative trigger pattern, `metadata.skill-type` classification, functional DoD, M6 advisory |
 
 </details>
 
 ---
 
-**Author:** [@levnikolaevich](https://github.com/levnikolaevich) · **License:** MIT
+## License
+
+[MIT](LICENSE)
+
+---
+
+**Author:** [@levnikolaevich](https://github.com/levnikolaevich)

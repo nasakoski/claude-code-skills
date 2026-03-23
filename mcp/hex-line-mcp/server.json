@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.levnikolaevich/hex-line-mcp",
+  "title": "Hex Line",
+  "description": "Hash-verified file editing MCP + token efficiency hook for AI coding agents. 11 tools: read, edit, write, grep, outline, verify, directory_tree, file_info, setup_hooks, changes, bulk_replace.",
+  "repository": {
+    "url": "https://github.com/levnikolaevich/claude-code-skills",
+    "source": "github"
+  },
+  "version": "1.3.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@levnikolaevich/hex-line-mcp",
+      "version": "1.3.2",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

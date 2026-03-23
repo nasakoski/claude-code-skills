@@ -1,2 +1,1 @@
-/** No aliases — canonical parameter names only. */
-export function coerceParams(params) { return params; }
+export * from "@levnikolaevich/hex-common/runtime/coerce";

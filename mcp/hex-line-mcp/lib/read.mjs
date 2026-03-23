@@ -6,10 +6,11 @@
  */
 
 import { statSync } from "node:fs";
-import { fnv1a, lineTag, rangeChecksum } from "./hash.mjs";
+import { fnv1a, lineTag, rangeChecksum } from "@levnikolaevich/hex-common/text-protocol/hash";
 import { validatePath, normalizePath } from "./security.mjs";
 import { getGraphDB, fileAnnotations, getRelativePath } from "./graph-enrich.mjs";
 import { relativeTime, listDirectory, readText, MAX_OUTPUT_CHARS } from "./format.mjs";
+import { rememberSnapshot } from "./revisions.mjs";
 
 const DEFAULT_LIMIT = 2000;
 
@@ -31,8 +32,8 @@ export function readFile(filePath, opts = {}) {
         return `Directory: ${filePath}\n\n\`\`\`\n${text}\n\`\`\``;
     }
 
-    const content = readText(real);
-    const lines = content.split("\n");
+    const snapshot = rememberSnapshot(real, readText(real), { mtimeMs: stat.mtimeMs, size: stat.size });
+    const lines = snapshot.lines;
     const total = lines.length;
 
     // Determine ranges to read
@@ -120,7 +121,8 @@ export function readFile(filePath, opts = {}) {
         }
     }
 
-    let result = `${header}${graphLine}\n\n\`\`\`\n${parts.join("\n")}\n\`\`\``;
+    let result =
+        `${header}${graphLine}\nrevision: ${snapshot.revision}\nfile: ${snapshot.fileChecksum}\n\n\`\`\`\n${parts.join("\n")}\n\`\`\``;
 
     // Auto-hint for large files read from start without offset
     if (total > 200 && (!opts.offset || opts.offset <= 1) && !cappedAtLine) {

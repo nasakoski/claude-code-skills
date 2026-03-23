@@ -15,6 +15,8 @@ Publishes one of the bundled MCP servers to npm. Tag push triggers GitHub Action
 | @levnikolaevich/hex-ssh-mcp | `mcp/hex-ssh-mcp/` | `hex-ssh-v*` | publish-hex-ssh.yml |
 | @levnikolaevich/hex-graph-mcp | `mcp/hex-graph-mcp/` | `hex-graph-v*` | publish-hex-graph.yml |
 
+**Shared dependency:** `mcp/hex-common/` (private, `file:` linked) — changes there affect ALL 3 packages.
+
 ## Workflow
 
 ### 1. Scan all packages for unpublished changes
@@ -32,13 +34,19 @@ git log ${LAST_TAG}..HEAD --oneline -- mcp/${PKG}/
 git diff --stat -- mcp/${PKG}/
 
 # Local version
-node -e "console.log(require('./mcp/${PKG}/package.json').version)"
+node --input-type=module -e "import{readFileSync}from'fs';console.log(JSON.parse(readFileSync('./mcp/${PKG}/package.json','utf8')).version)"
 
 # npm registry version
 npm view @levnikolaevich/${PKG} version 2>/dev/null || echo "not published"
 ```
 
-A package **needs release** if it has commits since tag OR unstaged changes.
+Also check shared dependency:
+```bash
+git diff --stat -- mcp/hex-common/
+git log ${LAST_TAG}..HEAD --oneline -- mcp/hex-common/
+```
+
+A package **needs release** if it has commits since tag OR unstaged changes. If only `mcp/hex-common/` changed, ALL packages that import from it need release.
 
 Display summary table:
 
@@ -66,8 +74,8 @@ Set variables:
 ### 3. Show changes since last release
 
 ```bash
-git log ${LAST_TAG}..HEAD --oneline -- mcp/${PKG}/
-git diff --stat ${LAST_TAG}..HEAD -- mcp/${PKG}/
+git log ${LAST_TAG}..HEAD --oneline -- mcp/${PKG}/ mcp/hex-common/
+git diff --stat ${LAST_TAG}..HEAD -- mcp/${PKG}/ mcp/hex-common/
 ```
 
 Display the output to the user.
@@ -87,10 +95,10 @@ AskUserQuestion with the recommendation marked "(Recommended)":
 ### 5. Pre-publish checks
 
 ```bash
-cd mcp/${PKG} && npm run check && npm run lint && npm test
+cd mcp/hex-common && npm test && cd ../.. && cd mcp/${PKG} && npm run check && npm run lint && npm test
 ```
 
-**Gate:** All 3 must pass (syntax check, eslint, smoke tests). If any fails — fix before proceeding.
+**Gate:** hex-common tests + package check/lint/test must all pass. If any fails — fix before proceeding.
 
 ### 5b. Benchmark (hex-line only)
 
@@ -106,7 +114,7 @@ Focus on **Workflow Scenarios (W1-W4)**, not atomic operations. Atomic savings (
 
 ```bash
 cd mcp/${PKG} && npm version ${BUMP_TYPE} --no-git-tag-version
-node -e "console.log(require('./mcp/${PKG}/package.json').version)"
+node --input-type=module -e "import{readFileSync}from'fs';console.log(JSON.parse(readFileSync('./mcp/${PKG}/package.json','utf8')).version)"
 ```
 
 ### 7. Sync version in server.mjs (two locations)
@@ -117,6 +125,18 @@ node -e "console.log(require('./mcp/${PKG}/package.json').version)"
 Verify all three match:
 ```bash
 grep -n 'version:\|checkForUpdates' mcp/${PKG}/server.mjs | head -5
+```
+
+### 7b. Sync version in server.json (MCP Registry metadata)
+
+Update both `version` and `packages[0].version` in `mcp/${PKG}/server.json`:
+```bash
+jq --arg v "${NEW_VERSION}" '.version = $v | .packages[0].version = $v' mcp/${PKG}/server.json > /tmp/server.tmp && mv /tmp/server.tmp mcp/${PKG}/server.json
+```
+
+Verify:
+```bash
+jq '.version, .packages[0].version' mcp/${PKG}/server.json
 ```
 
 ### 8. Commit + tag + push

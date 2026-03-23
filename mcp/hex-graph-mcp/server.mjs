@@ -7,29 +7,20 @@
 import { z } from "zod";
 import { createRequire } from "node:module";
 const { version } = createRequire(import.meta.url)("./package.json");
-import { checkForUpdates } from "./lib/update-check.mjs";
-import { coerceParams } from "./lib/coerce.mjs";
+import { createServerRuntime } from "@levnikolaevich/hex-common/runtime/mcp-bootstrap";
+import { flexBool, flexNum } from "@levnikolaevich/hex-common/runtime/schema";
+import { checkForUpdates } from "@levnikolaevich/hex-common/runtime/update-check";
+import { coerceParams } from "@levnikolaevich/hex-common/runtime/coerce";
 import { findClones } from "./lib/clones.mjs";
 import { findCycles } from "./lib/cycles.mjs";
 import { resolveStore, findSymbols, getSymbol, tracePaths, getReferencesBySelector, findImplementationsBySelector, findDataflowsBySelector, getArchitectureReport, getHotspots, getModuleMetricsReport, explainResolution } from "./lib/store.mjs";
 import { findUnusedExports, formatUnusedText } from "./lib/unused.mjs";
 
-const flexBool = () => z.preprocess(v => typeof v === "string" ? v === "true" : v, z.boolean().optional());
-const flexNum = () => z.preprocess(v => typeof v === "string" ? Number(v) : v, z.number().optional());
-
-let McpServer, StdioServerTransport;
-try {
-    ({ McpServer } = await import("@modelcontextprotocol/sdk/server/mcp.js"));
-    ({ StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js"));
-} catch {
-    process.stderr.write(
-        "hex-graph-mcp: @modelcontextprotocol/sdk not found.\n" +
-        "Run: cd mcp/hex-graph-mcp && npm install\n"
-    );
-    process.exit(1);
-}
-
-const server = new McpServer({ name: "hex-graph-mcp", version });
+const { server, StdioServerTransport } = await createServerRuntime({
+    name: "hex-graph-mcp",
+    version,
+    installDir: "mcp/hex-graph-mcp",
+});
 
 function graphError(codeOrError, message, recovery) {
     const error = typeof codeOrError === "object" && codeOrError

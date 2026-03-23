@@ -1095,5 +1095,21 @@ Quality gates run before completion."
 
 ---
 
+## Appendix B: Structural Migration Checklist
+
+When moving files or directories (e.g., `ln-*/` → `skills/ln-*/`), verify ALL path-dependent tooling:
+
+| Check | File | What to verify |
+|-------|------|----------------|
+| Automated checks | `ln-162-skill-reviewer/references/run_checks.sh` | Path resolution in CHECK 5 (MANDATORY READ) and CHECK 6 (orphan refs) |
+| Repo-specific review | `.claude/commands/review-skills.md` | Hardcoded paths in R1-R10, glob patterns |
+| Plugin registry | `.claude-plugin/marketplace.json` | Skill directory paths |
+| CI/hooks | `.claude/settings.json`, hook scripts | Path-dependent triggers |
+| CLAUDE.md navigation | `CLAUDE.md` Navigation table | File path references |
+
+Run `/review-skills` after any structural migration to catch path breakage.
+
+---
+
 **Version:** 1.6.0
 **Last Updated:** 2026-03-20

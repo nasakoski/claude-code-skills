@@ -10,8 +10,8 @@ keep-coding-instructions: true
 
 | Instead of | Use | Why |
 |-----------|-----|-----|
-| Read | `mcp__hex-line__read_file` | Hash-annotated, edit-ready |
-| Edit | `mcp__hex-line__edit_file` | Hash-verified anchors |
+| Read | `mcp__hex-line__read_file` | Hash-annotated, revision-aware |
+| Edit | `mcp__hex-line__edit_file` | Hash-verified anchors + conservative auto-rebase |
 | Write | `mcp__hex-line__write_file` | Consistent workflow |
 | Grep | `mcp__hex-line__grep_search` | Hash-annotated matches |
 | Edit (text rename) | `mcp__hex-line__bulk_replace` | Multi-file text rename/refactor |
@@ -26,6 +26,20 @@ Avoid reading a large file in full — outline+targeted read saves 75% tokens.
 
 Bash OK for: npm/node/git/docker/curl, pipes, compound commands.
 **Built-in OK for:** images, PDFs, notebooks, Glob (always), `.claude/settings.json` and `.claude/settings.local.json`.
+
+## Edit Workflow
+
+Prefer:
+1. collect all known hunks for one file
+2. send one `edit_file` call with batched edits
+3. carry `revision` from `read_file` into `base_revision` on follow-up edits
+4. use `replace_between` for large block rewrites
+5. use `verify` before rereading a file after staleness
+
+Avoid:
+- chained same-file `edit_file` calls when all edits are already known
+- full-file rewrites for local changes
+- using `bulk_replace` for structural block rewrites
 
 # Explanatory Style
 

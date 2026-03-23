@@ -46,12 +46,12 @@ Skills collection for Codex with config-driven Agile task management (Linear or 
 | Skill count | `ls -d ln-*/SKILL.md \| wc -l` |
 | Architecture patterns (L0-L3) | `cat docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` |
 | Agent Delegation runtime (hooks, Windows) | `cat docs/architecture/AGENT_TEAMS_PLATFORM_GUIDE.md` |
-| Tool configuration (Linear/File Mode) | `cat shared/references/tools_config_guide.md` |
+| Tool configuration (Linear/File Mode) | `cat skills/shared/references/tools_config_guide.md` |
 | Key workflow | `ln-700 → ln-100 → ln-200 → ln-1000` (or manually: `ln-400 → ln-500`) |
 | Skill metadata | `head -20 {ln-NNN}/SKILL.md` (frontmatter + type/category) |
 | Reference files for a skill | `ls {ln-NNN}/references/` |
-| Shared templates | `ls shared/templates/` |
-| Questions format | `cat shared/references/questions_format.md` |
+| Shared templates | `ls skills/shared/templates/` |
+| Questions format | `cat skills/shared/references/questions_format.md` |
 
 ## Navigation
 
@@ -60,10 +60,10 @@ Skills collection for Codex with config-driven Agile task management (Linear or 
 | Topic | File |
 |-------|------|
 | Writing Guidelines | `docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` §Writing Guidelines |
-| Tool Configuration (Phase 0) | `shared/references/tools_config_guide.md` |
+| Tool Configuration (Phase 0) | `skills/shared/references/tools_config_guide.md` |
 | Task kanban + Team ID | `docs/tasks/kanban_board.md` |
-| Risk-Based Testing | `shared/references/risk_based_testing_guide.md` |
-| Questions format | `shared/references/questions_format.md` |
+| Risk-Based Testing | `skills/shared/references/risk_based_testing_guide.md` |
+| Questions format | `skills/shared/references/questions_format.md` |
 | Hook Design | `docs/best-practice/HOOK_DESIGN_GUIDE.md` |
 | MCP Tool Design | `docs/best-practice/MCP_TOOL_DESIGN_GUIDE.md` |
 | Token Efficiency | `docs/standards/TOKEN_EFFICIENCY_PATTERNS.md` |

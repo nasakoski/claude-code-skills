@@ -3,25 +3,29 @@
  * Validates range checksums from prior reads.
  */
 
-import { fnv1a, rangeChecksum, parseChecksum } from "./hash.mjs";
+import { parseChecksum } from "@levnikolaevich/hex-common/text-protocol/hash";
 import { validatePath, normalizePath } from "./security.mjs";
-import { readText } from "./format.mjs";
+import {
+    buildRangeChecksum,
+    computeChangedRanges,
+    describeChangedRanges,
+    getSnapshotByRevision,
+    readSnapshot,
+} from "./revisions.mjs";
 
 /**
  * Verify checksums against current file state.
  *
  * @param {string} filePath
  * @param {string[]} checksums - array of "start-end:8hex" strings
+ * @param {object} opts
  * @returns {string} verification result
  */
-export function verifyChecksums(filePath, checksums) {
+export function verifyChecksums(filePath, checksums, opts = {}) {
     filePath = normalizePath(filePath);
     const real = validatePath(filePath);
-    const content = readText(real);
-    const lines = content.split("\n");
-
-    // Pre-compute all line hashes
-    const lineHashes = lines.map((l) => fnv1a(l));
+    const current = readSnapshot(real);
+    const baseSnapshot = opts.baseRevision ? getSnapshotByRevision(opts.baseRevision) : null;
 
     const results = [];
     let allValid = true;
@@ -29,26 +33,37 @@ export function verifyChecksums(filePath, checksums) {
     for (const cs of checksums) {
         const parsed = parseChecksum(cs);
 
-        if (parsed.start < 1 || parsed.end > lines.length) {
-            results.push(`${cs}: INVALID (range ${parsed.start}-${parsed.end} exceeds file length ${lines.length})`);
+        if (parsed.start < 1 || parsed.end > current.lines.length) {
+            results.push(`${cs}: INVALID (range ${parsed.start}-${parsed.end} exceeds file length ${current.lines.length})`);
             allValid = false;
             continue;
         }
 
-        const currentHashes = lineHashes.slice(parsed.start - 1, parsed.end);
-        const current = rangeChecksum(currentHashes, parsed.start, parsed.end);
-        const currentHex = current.split(":")[1];
+        const actual = buildRangeChecksum(current, parsed.start, parsed.end);
+        const currentHex = actual.split(":")[1];
 
         if (currentHex === parsed.hex) {
             results.push(`${cs}: valid`);
         } else {
-            results.push(`${cs}: STALE → current: ${current}`);
+            const staleBits = [`${cs}: STALE → current: ${actual}`];
+            if (baseSnapshot?.path === real) {
+                const changedRanges = computeChangedRanges(baseSnapshot.lines, current.lines);
+                staleBits.push(`revision: ${current.revision}`);
+                staleBits.push(`changed_ranges: ${describeChangedRanges(changedRanges)}`);
+            } else if (opts.baseRevision) {
+                staleBits.push(`revision: ${current.revision}`);
+                staleBits.push(`changed_ranges: unavailable (base revision evicted)`);
+            }
+            results.push(staleBits.join("\n"));
             allValid = false;
         }
     }
 
     if (allValid && checksums.length > 0) {
-        return `All ${checksums.length} checksum(s) valid for ${filePath}`;
+        let msg = `All ${checksums.length} checksum(s) valid for ${filePath}`;
+        msg += `\nrevision: ${current.revision}`;
+        msg += `\nfile: ${current.fileChecksum}`;
+        return msg;
     }
 
     return results.join("\n");

@@ -9,7 +9,7 @@
  * - targeted edit inside a large smoke test
  */
 
-import { copyFileSync, mkdirSync, rmSync, unlinkSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fnv1a, lineTag, rangeChecksum } from "../lib/hash.mjs";
@@ -253,6 +253,97 @@ export async function runWorkflows(config) {
                 opsWith: 3,
             });
         }
+    }
+
+    // W5: revision-aware follow-up edit after unrelated line shift
+    {
+        const tempPath = resolve(tmpdir(), `hex-line-wf5-${Date.now()}.mjs`);
+        const prefix = Array.from({ length: 80 }, (_, i) => `pre-${i}`);
+        const suffix = Array.from({ length: 80 }, (_, i) => `post-${i}`);
+        const sourceLines = [
+            ...prefix,
+            "head1",
+            "head2",
+            "targetA",
+            "targetB",
+            "tail",
+            ...suffix,
+            "",
+        ];
+        const sourceText = sourceLines.join("\n");
+        mkdirSync(dirname(tempPath), { recursive: true });
+        writeFileSync(tempPath, sourceText, "utf-8");
+
+        const head1Idx = prefix.length;
+        const targetAIdx = prefix.length + 2;
+        const targetBIdx = prefix.length + 3;
+        const withInsert = [
+            ...prefix,
+            "head1",
+            "inserted",
+            "head2",
+            "targetA",
+            "targetB",
+            "tail",
+            ...suffix,
+            "",
+        ];
+        const updatedLines = [
+            ...prefix,
+            "head1",
+            "inserted",
+            "head2",
+            "targetA",
+            "updatedB",
+            "tail",
+            ...suffix,
+            "",
+        ];
+
+        const { value: without } = runN(() => {
+            let total = 0;
+            total += simBuiltInReadFull(tempPath, sourceLines).length;
+            total += simBuiltInEdit(tempPath, sourceLines, withInsert).length;
+            total += simBuiltInReadFull(tempPath, withInsert).length;
+            total += simBuiltInEdit(tempPath, withInsert, updatedLines).length;
+            return total;
+        });
+
+        const { value: withSL } = runN(() => {
+            let total = 0;
+            writeFileSync(tempPath, sourceText, "utf-8");
+            const baseRead = readFile(tempPath, { offset: head1Idx + 1, limit: 8 });
+            total += baseRead.length;
+            const baseRevision = baseRead.match(/revision: (\S+)/)?.[1];
+            const headTag = lineTag(fnv1a(sourceLines[head1Idx]));
+            total += editFile(tempPath, [{ insert_after: { anchor: `${headTag}.${head1Idx + 1}`, text: "inserted" } }]).length;
+            const startTag = lineTag(fnv1a(sourceLines[targetAIdx]));
+            const endTag = lineTag(fnv1a(sourceLines[targetBIdx]));
+            const rc = rangeChecksum(
+                [fnv1a(sourceLines[targetAIdx]), fnv1a(sourceLines[targetBIdx])],
+                targetAIdx + 1,
+                targetBIdx + 1,
+            );
+            total += editFile(tempPath, [{
+                replace_lines: {
+                    start_anchor: `${startTag}.${targetAIdx + 1}`,
+                    end_anchor: `${endTag}.${targetBIdx + 1}`,
+                    new_text: "targetA\nupdatedB",
+                    range_checksum: rc,
+                }
+            }], { baseRevision, conflictPolicy: "conservative" }).length;
+            return total;
+        });
+
+        workflowResults.push({
+            id: "W5",
+            scenario: "Follow-up edit after unrelated line shift",
+            without,
+            withSL,
+            opsWithout: 4,
+            opsWith: 3,
+        });
+        try { unlinkSync(tempPath); } catch {}
     }
 
     return workflowResults;
