@@ -549,7 +549,7 @@ Phase 4: Output/Save
 
 **Examples:**
 - `ln-111-docs-creator` - generates documentation sequentially
-- `ln-112-html-builder` - builds HTML presentation
+- `ln-112-project-core-creator` - creates core project documentation
 - `ln-301-task-creator` - creates implementation tasks from templates
 
 **Diagram Type:** `graph TD` (top-down linear)
@@ -893,7 +893,7 @@ Every User Story should be:
 - [ ] **Directory Checks**: Does skill check directory existence before mkdir (using ls)?
 - [ ] **Preserve Existing**: Does skill skip creation if file/directory exists?
 - [ ] **Critical Data Protection**: Does skill protect files with user data (kanban_board.md, CLAUDE.md)?
-- [ ] **User Confirmation**: Does skill ask confirmation before overwriting generated files (presentation_final.html)?
+- [ ] **User Confirmation**: Does skill ask confirmation before overwriting generated files?
 - [ ] **State Management**: If multi-phase, does skill track created items to avoid editing existing files?
 - [ ] **Clear Logging**: Does skill log "✓ X already exists, skipping" or "✓ Created X"?
 - [ ] **Pre-flight Check**: If orchestrator, does it scan existing files and show "Found X / Missing Y" summary?
@@ -904,7 +904,6 @@ Every User Story should be:
 |-------|-------------------|-----------------|
 | **ln-113-tasks-docs-creator v4.0.0** | Critical data protection | kanban_board.md with real tasks (warns user) |
 | **ln-111-project-docs-creator v1.0.0** | File existence checks + State management | CLAUDE.md, docs/README.md, standards, principles (4 root) + requirements, architecture, tech_stack + conditionals (11 files total) |
-| **ln-115-presentation-creator v4.0.0** | User confirmation | Asks before rebuilding presentation_final.html (manual edits protection) |
 | **ln-110-documents-pipeline v4.0.0** | Pre-flight check | Scans 24 potential files, shows "Found X / Missing Y" summary before creation |
 
 **Benefits:** Accidental re-invocation safe, no data loss, clear user feedback, allows progressive documentation creation.

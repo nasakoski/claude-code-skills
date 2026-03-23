@@ -258,7 +258,6 @@
             <tr><td class="skill-id">ln-120</td><td class="skill-desc">ADRs, guides, manuals based on tech stack</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-120-reference-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-130</td><td class="skill-desc">Task management docs, kanban board</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-130-tasks-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-140</td><td class="skill-desc">Testing strategy, test README</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-140-test-docs-creator" target="_blank" title="View source">&#8599;</a></td></tr>
-            <tr><td class="skill-id">ln-150</td><td class="skill-desc">Interactive HTML presentation (6 tabs)</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-150-presentation-creator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-160</td><td class="skill-desc">Scan docs, classify procedural content</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-160-docs-skill-extractor" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-161</td><td class="skill-desc">Create .claude/commands from docs</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-161-skill-creator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-162</td><td class="skill-desc">Review skills quality (D1&ndash;D9 + M1&ndash;M5)</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-162-skill-reviewer" target="_blank" title="View source">&#8599;</a></td></tr>
@@ -276,7 +275,7 @@
           <code>ln-100</code> orchestrates the full pipeline
           &rarr; <code>ln-110</code> auto-detects project type (backend, frontend, devops)
           &rarr; <code>ln-111</code>&ndash;<code>ln-115</code> generate type-specific docs
-          &rarr; <code>ln-120</code>&ndash;<code>ln-150</code> add reference docs, task management, test strategy, and presentations
+          &rarr; <code>ln-120</code>&ndash;<code>ln-140</code> add reference docs, task management, and test strategy
           &rarr; <code>ln-160</code> extracts procedural content into standalone skills.
         </p>
       </div>
@@ -288,9 +287,7 @@
       <h2>Quick start</h2>
       <div class="code-block">
         <span class="comment"># Generate all docs</span><br>
-        <span class="cmd">ln-100-documents-pipeline</span><br><br>
-        <span class="comment"># Presentation only</span><br>
-        <span class="cmd">ln-150-presentation-creator</span>
+        <span class="cmd">ln-100-documents-pipeline</span>
       </div>
     </div>
   </section>

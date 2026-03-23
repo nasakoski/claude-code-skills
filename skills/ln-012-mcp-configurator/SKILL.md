@@ -96,10 +96,10 @@ claude mcp list → connected? ─── yes ──→ npm outdated → outdated
 
 ### Phase 2: Register & Configure
 
-One pass: audit state → remove deprecated → register missing → verify connected.
+One pass: use Phase 1 state (do NOT re-run `claude mcp list`) → remove deprecated → register missing → verify.
 
-1. Run `claude mcp list` — parse server name, transport, connection status
-   - Fallback: read `~/.claude.json` + `~/.claude/settings.json`
+1. **Reuse Phase 1 state** — server map from Step 1a already has registration + connection status
+   - Fallback (standalone only): read `~/.claude.json` + `~/.claude/settings.json`
 2. Remove deprecated servers:
 
 | Deprecated Server | Action |
@@ -126,7 +126,7 @@ Registration commands:
 | Ref | `claude mcp add -s user --transport http Ref https://api.ref.tools/mcp` |
 | linear | `claude mcp add -s user --transport http linear-server https://mcp.linear.app/mcp` |
 
-4. Verify: `claude mcp list` once → check all registered show `Connected`. Retry + report failures.
+4. Verify: `claude mcp list` → check all registered show `Connected`. This is the only second `claude mcp list` call (post-mutation verify). Retry + report failures.
 
 **Error handling:**
 
@@ -268,16 +268,18 @@ Key metrics: outline vs full read savings, compact diff savings, hash overhead, 
 4. **Global install only.** Always `npm i -g` for hex MCP — hooks need stable absolute paths
 5. **Remove deprecated servers.** Clean up servers no longer in the registry
 6. **Grant permissions.** After registration, add `mcp__{server}` to user settings
+7. **Minimize `claude mcp list` calls.** Phase 1 runs it once (discovery). Phase 2 reuses that data. Only Phase 2 Step 4 runs it again (post-mutation verify). Max 2 calls total
 
 ## Anti-Patterns
 
 | DON'T | DO |
 |-------|-----|
 | Write arbitrary fields to `~/.claude.json` | Use `claude mcp add` for servers, `setup_hooks` for hooks |
-| Skip verification after add | Always check `claude mcp list` |
+| Skip verification after add | Always check `claude mcp list` after mutations |
 | Auto-add optional servers | Ask user for Linear and other optional servers |
 | Leave deprecated servers | Remove hashline-edit, pencil, etc. |
 | Calculate token budget | Not this worker's responsibility |
+| Run `claude mcp list` in every phase | Run once in Phase 1, reuse in Phase 2, verify once after mutations |
 
 ---
 

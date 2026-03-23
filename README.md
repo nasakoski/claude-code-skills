@@ -1,7 +1,7 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-2026.03.21-blue)
-![Skills](https://img.shields.io/badge/skills-128-green)
+![Skills](https://img.shields.io/badge/skills-127-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -457,7 +457,6 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-120-reference-docs-creator/    # ADRs, guides, manuals structure
 |   |-- ln-130-tasks-docs-creator/        # kanban_board.md, task provider setup
 |   |-- ln-140-test-docs-creator/         # testing-strategy.md
-|   |-- ln-150-presentation-creator/      # Interactive HTML presentation
 |   |-- ln-160-docs-skill-extractor/     # Scan docs, classify, extract to .claude/commands
 |   |   |-- ln-161-skill-creator/        # Transform doc sections into commands
 |   |   |-- ln-162-skill-reviewer/       # Review SKILL.md and .claude/commands quality

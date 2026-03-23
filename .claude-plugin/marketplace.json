@@ -49,7 +49,7 @@
     },
     {
       "name": "documentation-pipeline",
-      "description": "Documentation pipeline: Full project docs with auto-detection (backend/frontend/devops). Creates CLAUDE.md, README, architecture, requirements, API spec, runbook, references, kanban, test strategy, presentations.",
+      "description": "Documentation pipeline: Full project docs with auto-detection (backend/frontend/devops). Creates CLAUDE.md, README, architecture, requirements, API spec, runbook, references, kanban, test strategy.",
       "source": "./",
       "strict": false,
       "skills": [
@@ -63,7 +63,6 @@
         "./skills/ln-120-reference-docs-creator",
         "./skills/ln-130-tasks-docs-creator",
         "./skills/ln-140-test-docs-creator",
-        "./skills/ln-150-presentation-creator",
         "./skills/ln-160-docs-skill-extractor",
         "./skills/ln-161-skill-creator",
         "./skills/ln-162-skill-reviewer"

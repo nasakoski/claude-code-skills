@@ -51,6 +51,15 @@
         "warnings": { "type": "array", "items": { "type": "string" } },
         "info": { "type": "array", "items": { "type": "string" } }
       }
+    },
+    "last_assessment": {
+      "type": "object",
+      "properties": {
+        "assessed_at": { "type": "string", "format": "date-time" },
+        "all_green": { "type": "boolean" },
+        "workers_run": { "type": "array", "items": { "type": "string" } },
+        "workers_skipped": { "type": "array", "items": { "type": "string" } }
+      }
     }
   }
 }

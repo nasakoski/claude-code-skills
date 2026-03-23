@@ -14,7 +14,7 @@
 
 ## What it does
 
-Generates full project documentation in one command. Auto-detects project type (backend, frontend, devops) and creates appropriate docs: CLAUDE.md, README, architecture, requirements, API specs, runbooks, references, kanban, test strategy, and presentations. Also extracts procedural docs into reusable .claude/commands.
+Generates full project documentation in one command. Auto-detects project type (backend, frontend, devops) and creates appropriate docs: CLAUDE.md, README, architecture, requirements, API specs, runbooks, references, kanban, and test strategy. Also extracts procedural docs into reusable .claude/commands.
 
 ## Skills
 
@@ -30,7 +30,6 @@ Generates full project documentation in one command. Auto-detects project type (
 | ln-120-reference-docs-creator | ADRs, guides, manuals based on tech stack |
 | ln-130-tasks-docs-creator | Task management docs, kanban board, Linear setup |
 | ln-140-test-docs-creator | Testing strategy, test README |
-| ln-150-presentation-creator | Interactive HTML presentation (6 tabs) |
 | ln-160-docs-skill-extractor | Scan docs, classify procedural content |
 | ln-161-skill-creator | Create .claude/commands from procedural sections |
 | ln-162-skill-reviewer | Review skills (SKILL mode D1-D9 + COMMAND mode) |
@@ -41,17 +40,16 @@ Generates full project documentation in one command. Auto-detects project type (
 ln-100 -> ln-110 (auto-detect project type)
     -> ln-111-115 (type-specific doc workers)
     -> ln-120 (references) -> ln-130 (tasks)
-    -> ln-140 (tests) -> ln-150 (presentation)
+    -> ln-140 (tests)
     -> ln-160 (skill extraction)
 ```
 
-ln-100 delegates to ln-110, which auto-detects project type and spawns workers ln-111 through ln-115 for core documentation. Then ln-120 creates references, ln-130 sets up task tracking, ln-140 creates test strategy, ln-150 builds an interactive presentation, and ln-160 extracts reusable commands from the generated docs.
+ln-100 delegates to ln-110, which auto-detects project type and spawns workers ln-111 through ln-115 for core documentation. Then ln-120 creates references, ln-130 sets up task tracking, ln-140 creates test strategy, and ln-160 extracts reusable commands from the generated docs.
 
 ## Quick start
 
 ```bash
 ln-100-documents-pipeline   # Generate all docs in one command
-ln-150-presentation-creator # Create project presentation only
 ```
 
 ## Related

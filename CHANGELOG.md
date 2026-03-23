@@ -6,9 +6,11 @@
 
 ## 2026-03-23
 
-- **ln-014 auditor → manager** — renamed ln-014-agent-instructions-auditor to ln-014-agent-instructions-manager; new Phase 2 creates missing CLAUDE.md (from ln-111 template), AGENTS.md and GEMINI.md (derived with transformation rules)
-- **ln-010 non-stop execution** — new Critical Rule #7 and Anti-Pattern enforce single-pass pipeline with no pausing between workers
-- **ln-012 smart MCP install** — Phase 1 now checks `claude mcp list` first; connected servers skip install, only `npm outdated` for updates; full install only for missing/broken servers
+- **ln-010 assess-dispatch-verify** — redesigned from invoke-all to smart dispatch: probes environment once, builds decision matrix, skips workers with nothing to do
+- **ln-150 removed** — presentation-creator skill deleted; all references cleaned from pipeline, marketplace, site, docs (127 skills)
+- **ln-162 Check 18** — new automated check verifies every SKILL.md has `**Type:**` line; prevents silent bypass of Check 9/17
+- **run_checks.sh hardened** — Check 5 scoped to skills/ paths only; Check 9/17 exclude Workers from coordinator-only requirements
+- **ln-014 auditor → manager** — renamed to ln-014-agent-instructions-manager; creates missing CLAUDE.md, AGENTS.md, GEMINI.md
 
 ## 2026-03-22
 
