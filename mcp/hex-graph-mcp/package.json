@@ -1,21 +1,21 @@
 {
   "name": "@levnikolaevich/hex-graph-mcp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "mcpName": "io.github.levnikolaevich/hex-graph-mcp",
   "type": "module",
   "description": "Deterministic layered code graph MCP server. Indexes codebases into a SQLite graph via tree-sitter AST, canonical symbol identities, hashes, and semantic overlays for navigation, architecture, clones, references, implementations, and flow analysis.",
-  "main": "server.mjs",
+  "main": "dist/server.mjs",
   "bin": {
-    "hex-graph-mcp": "server.mjs"
+    "hex-graph-mcp": "dist/server.mjs"
   },
   "files": [
-    "server.mjs",
-    "benchmark/",
-    "lib/",
+    "dist/",
     "README.md"
   ],
   "scripts": {
     "start": "node server.mjs",
+    "build": "node build.mjs",
+    "prepublishOnly": "npm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node --test test/smoke.mjs",
@@ -31,7 +31,6 @@
     "zod": "Pinned ^3.25.0: zod 4 breaks zod-to-json-schema (used by MCP SDK internally). Tool parameter descriptions not sent to clients. Revisit when MCP SDK switches to z.toJSONSchema()."
   },
   "dependencies": {
-    "@levnikolaevich/hex-common": "file:../hex-common",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "better-sqlite3": "^12.0.0",
     "chokidar": "^4.0.0",

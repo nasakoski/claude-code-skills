@@ -14,8 +14,8 @@
  */
 
 import { z } from "zod";
-import { createRequire } from "node:module";
-const { version } = createRequire(import.meta.url)("./package.json");
+const version = typeof __HEX_VERSION__ !== "undefined" ? __HEX_VERSION__
+  : (await import("node:module")).createRequire(import.meta.url)("./package.json").version;
 import { createServerRuntime } from "@levnikolaevich/hex-common/runtime/mcp-bootstrap";
 import { flexBool, flexNum } from "@levnikolaevich/hex-common/runtime/schema";
 import { textResult, errorResult } from "@levnikolaevich/hex-common/runtime/results";

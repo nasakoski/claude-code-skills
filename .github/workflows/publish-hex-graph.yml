@@ -19,7 +19,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: cd mcp/hex-graph-mcp && npm install
+        run: cd mcp && npm install
+
+      - name: Build bundle
+        run: cd mcp/hex-graph-mcp && npm run build
 
       - name: Publish to npm
         run: cd mcp/hex-graph-mcp && npm publish --provenance --access public

@@ -117,14 +117,17 @@ cd mcp/${PKG} && npm version ${BUMP_TYPE} --no-git-tag-version
 node --input-type=module -e "import{readFileSync}from'fs';console.log(JSON.parse(readFileSync('./mcp/${PKG}/package.json','utf8')).version)"
 ```
 
-### 7. Sync version in server.mjs (two locations)
+### 7. Build bundle (inlines hex-common + injects version)
 
-1. Replace version in McpServer constructor: search for `new McpServer(` in `mcp/${PKG}/server.mjs`
-2. Replace version in checkForUpdates call: search for `checkForUpdates(` in `mcp/${PKG}/server.mjs`
-
-Verify all three match:
 ```bash
-grep -n 'version:\|checkForUpdates' mcp/${PKG}/server.mjs | head -5
+cd mcp/${PKG} && npm run build
+```
+
+Version is injected at build time via esbuild `define: { __HEX_VERSION__ }`. No manual sync in server.mjs needed.
+
+Verify:
+```bash
+grep '"${NEW_VERSION}"' mcp/${PKG}/dist/server.mjs | head -1
 ```
 
 ### 7b. Sync version in server.json (MCP Registry metadata)

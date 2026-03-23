@@ -1,20 +1,21 @@
 {
   "name": "@levnikolaevich/hex-ssh-mcp",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "mcpName": "io.github.levnikolaevich/hex-ssh-mcp",
   "description": "Token-efficient SSH MCP server with hash-verified file operations. 6 tools: remote-ssh, ssh-read-lines, ssh-edit-block, ssh-search-code, ssh-write-chunk, ssh-verify.",
   "type": "module",
-  "main": "server.mjs",
+  "main": "dist/server.mjs",
   "bin": {
-    "hex-ssh-mcp": "server.mjs"
+    "hex-ssh-mcp": "dist/server.mjs"
   },
   "files": [
-    "server.mjs",
-    "lib/",
+    "dist/",
     "README.md"
   ],
   "scripts": {
     "start": "node server.mjs",
+    "build": "node build.mjs",
+    "prepublishOnly": "npm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "node --test test/*.mjs",
@@ -29,7 +30,6 @@
     "zod": "Pinned ^3.25.0: zod 4 breaks zod-to-json-schema (used by MCP SDK internally). Tool parameter descriptions not sent to clients. Revisit when MCP SDK switches to z.toJSONSchema()."
   },
   "dependencies": {
-    "@levnikolaevich/hex-common": "file:../hex-common",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "diff": "^8.0.3",
     "ssh2": "^1.16.0",

@@ -10,8 +10,8 @@
 
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { createRequire } from "node:module";
-const { version } = createRequire(import.meta.url)("./package.json");
+const version = typeof __HEX_VERSION__ !== "undefined" ? __HEX_VERSION__
+  : (await import("node:module")).createRequire(import.meta.url)("./package.json").version;
 import { z } from "zod";
 import { createServerRuntime } from "@levnikolaevich/hex-common/runtime/mcp-bootstrap";
 import { flexBool, flexNum } from "@levnikolaevich/hex-common/runtime/schema";
