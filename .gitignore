@@ -66,6 +66,7 @@ private/
 
 # Claude Code Specific
 .claude/settings.local.json
+.claude/worktrees/
 tmpclaude-*
 
 # Skill-generated working artifacts (machine-specific)
