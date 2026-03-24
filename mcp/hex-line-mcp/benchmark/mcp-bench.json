@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "hex-line": {
+      "command": "node",
+      "args": ["mcp/hex-line-mcp/server.mjs"]
+    }
+  }
+}

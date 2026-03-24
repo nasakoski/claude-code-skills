@@ -515,13 +515,13 @@ describe("read_file output", () => {
 });
 
 describe("graph enrichment", () => {
-    it("falls back cleanly when no .codegraph exists", { skip: !HAS_GRAPH_SQLITE }, async () => {
+    it("falls back cleanly when no .hex-skills/codegraph exists", { skip: !HAS_GRAPH_SQLITE }, async () => {
         const { readFile } = await import("../lib/read.mjs");
         const tmp = join(tmpdir(), `hex-no-graph-${Date.now()}.js`);
         fs.writeFileSync(tmp, "export function solo() {}\n");
         try {
             const result = readFile(tmp);
-            assert.ok(!result.includes("\nGraph:"), "No graph header without .codegraph");
+            assert.ok(!result.includes("\nGraph:"), "No graph header without .hex-skills/codegraph");
             assert.ok(result.includes("solo"), "Standard read still works");
         } finally {
             fs.rmSync(tmp, { force: true });
@@ -748,6 +748,77 @@ describe("bulk_replace", () => {
         } finally {
             fs.unlinkSync(tmp + "/a.txt");
             fs.unlinkSync(tmp + "/b.txt");
+            fs.rmdirSync(tmp);
+        }
+    });
+
+    it("defaults to compact format with replacement counts", async () => {
+        const { bulkReplace } = await import("../lib/bulk-replace.mjs");
+        const tmp = "d:/tmp/hex-test-bulk-compact";
+        fs.mkdirSync(tmp, { recursive: true });
+        fs.writeFileSync(tmp + "/a.txt", "foo bar foo\n");
+        fs.writeFileSync(tmp + "/b.txt", "foo baz\n");
+        fs.writeFileSync(tmp + "/c.txt", "no match here\n");
+        try {
+            const result = bulkReplace(tmp, "*.txt", [{ old: "foo", new: "qux" }], { dryRun: true });
+            assert.ok(result.includes("2 files changed"), "header shows changed count");
+            assert.ok(result.includes("(3 replacements)"), "header shows total replacements");
+            assert.ok(result.includes("1 skipped"), "header shows skipped");
+            assert.ok(result.includes("a.txt: 2 replacements"), "per-file count for a.txt");
+            assert.ok(result.includes("b.txt: 1 replacements"), "per-file count for b.txt");
+            assert.ok(!result.includes("-") || !result.match(/^[-+]\d+\|/m), "no diff lines in compact mode");
+        } finally {
+            fs.unlinkSync(tmp + "/a.txt");
+            fs.unlinkSync(tmp + "/b.txt");
+            fs.unlinkSync(tmp + "/c.txt");
+            fs.rmdirSync(tmp);
+        }
+    });
+
+    it("caps per-file diff lines and total output in full mode", async () => {
+        const { bulkReplace } = await import("../lib/bulk-replace.mjs");
+        const { MAX_BULK_OUTPUT_CHARS, MAX_PER_FILE_DIFF_LINES } = await import("../lib/format.mjs");
+        const tmp = "d:/tmp/hex-test-bulk-cap";
+        fs.mkdirSync(tmp, { recursive: true });
+        // Create a large file with 600 lines, each containing the target text
+        const lines = Array.from({ length: 600 }, (_, i) => `line ${i} target_text here`);
+        fs.writeFileSync(tmp + "/big.txt", lines.join("\n") + "\n");
+        try {
+            const result = bulkReplace(tmp, "*.txt", [{ old: "target_text", new: "replaced" }], { dryRun: true, format: "full" });
+            assert.ok(result.includes("lines omitted"), "per-file diff should be truncated");
+            assert.ok(result.length <= MAX_BULK_OUTPUT_CHARS + 100, "total output within cap (with OUTPUT_CAPPED notice)");
+            assert.ok(result.includes("600 replacements") || result.includes("replacements"), "shows replacement count");
+        } finally {
+            fs.unlinkSync(tmp + "/big.txt");
+            fs.rmdirSync(tmp);
+        }
+    });
+
+    it("handles chained rules, glob {a,b}, and old===new skip", async () => {
+        const { bulkReplace } = await import("../lib/bulk-replace.mjs");
+        const tmp = "d:/tmp/hex-test-bulk-edge";
+        fs.mkdirSync(tmp, { recursive: true });
+        fs.writeFileSync(tmp + "/x.mjs", "foo calls foo\n");
+        fs.writeFileSync(tmp + "/y.json", "foo here too\n");
+        fs.writeFileSync(tmp + "/z.txt", "no match\n");
+        try {
+            // Chained: foo→bar then bar→baz (cascading — bar from rule 1 is input to rule 2)
+            // old===new skip: noop rule should be ignored
+            const result = bulkReplace(tmp, "*.{mjs,json}", [
+                { old: "foo", new: "bar" },
+                { old: "bar", new: "baz" },
+                { old: "noop", new: "noop" },
+            ], { dryRun: true });
+            // Glob {mjs,json} matches x.mjs and y.json but not z.txt
+            assert.ok(result.includes("2 files changed"), "glob {a,b} matches both extensions");
+            // Chained: foo→bar→baz, so final content has "baz" not "bar"
+            assert.ok(!result.includes("0 replacements"), "chained rules produce non-zero counts");
+            // z.txt not in glob, x.mjs and y.json matched
+            assert.ok(!result.includes("z.txt"), "z.txt excluded by glob");
+        } finally {
+            fs.unlinkSync(tmp + "/x.mjs");
+            fs.unlinkSync(tmp + "/y.json");
+            fs.unlinkSync(tmp + "/z.txt");
             fs.rmdirSync(tmp);
         }
     });

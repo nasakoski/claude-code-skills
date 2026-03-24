@@ -6,6 +6,9 @@ license: MIT
 
 > **Paths:** File paths (`shared/`, `references/`, `../ln-*`) are relative to skills repo root. If not found at CWD, locate this SKILL.md directory and go up one level for repo root. If `shared/` is missing, fetch files via WebFetch from `https://raw.githubusercontent.com/levnikolaevich/claude-code-skills/master/skills/{path}`.
 
+**Type:** L3 Worker
+**Category:** 4XX Execution
+
 # Task Reviewer
 
 **MANDATORY after every task execution.** Reviews a single task in To Review and decides Done vs To Rework with immediate fixes or clear rework notes.
@@ -156,6 +159,7 @@ Step 9: Update & Commit
 3) **Read context:** Full task + parent Story; load affected components/docs; review diffs if available.
 3b) **Goal gate:** **MANDATORY READ:** `shared/references/goal_articulation_gate.md` — Before reviewing, state: (1) REAL GOAL: what specific quality question must this review answer for THIS task? (2) DONE: what evidence proves quality is sufficient? (3) NOT THE GOAL: what would a surface-level rubber-stamp look like? (4) INVARIANTS: what non-obvious constraint exists (side-effects on other modules, implicit AC)?
 4) **Review checks:**
+   > **Spec-first gate:** Quick AC pre-check: scan task AC against implementation. If any AC is clearly unmet (BLOCKER-level) → immediate To Rework, skip remaining quality checks. Full AC validation still runs in Step 5.
    **MANDATORY READ:** `shared/references/clean_code_checklist.md`, `shared/references/destructive_operation_safety.md`
    - **Goal validation (Recovery Paradox):** If executor articulated a REAL GOAL (visible in task comments or implementation), validate it matches the Story's target deliverable. If executor framed the goal around a secondary subject (e.g., "implement the endpoint" instead of "enable user data export") → CONCERN: `GOAL-MISFRAME: executor goal targets secondary subject, may miss hidden constraints.`
    - Approach: diff aligned with Technical Approach in Story. If different → rationale documented in code comments.
@@ -267,5 +271,5 @@ Step 9: Update & Commit
 - Kanban format: `docs/tasks/kanban_board.md`
 
 ---
-**Version:** 5.1.0
-**Last Updated:** 2026-03-15
+**Version:** 5.2.0
+**Last Updated:** 2026-03-24

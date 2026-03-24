@@ -6,7 +6,7 @@
  * Atomic scenarios and amortization numbers are diagnostics, not headline
  * benchmark results.
  *
- * Prerequisites: .codegraph/index.db must exist. Run hex-graph index_project first.
+ * Prerequisites: .hex-skills/codegraph/index.db must exist. Run hex-graph index_project first.
  * Usage:
  *   node benchmark/index.mjs [--repo /path/to/repo]
  *   node benchmark/index.mjs --diagnostics [--repo /path/to/repo]
@@ -31,10 +31,10 @@ if (repoIdx !== -1 && args[repoIdx + 1]) repoRoot = resolve(args[repoIdx + 1]);
 const diagnostics = args.includes("--diagnostics");
 
 // Check DB
-const dbPath = resolve(repoRoot, ".codegraph/index.db");
+const dbPath = resolve(repoRoot, ".hex-skills/codegraph/index.db");
 if (!existsSync(dbPath)) {
     console.error(
-        "hex-graph benchmark requires .codegraph/index.db.\n" +
+        "hex-graph benchmark requires .hex-skills/codegraph/index.db.\n" +
         "Run: mcp__hex-graph__index_project or node mcp/hex-graph-mcp/server.mjs first."
     );
     process.exit(1);

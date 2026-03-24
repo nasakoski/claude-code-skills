@@ -125,11 +125,17 @@ export function listDirectory(dirPath, opts = {}) {
 }
 
 
-/** Max output characters for read_file and bulk_replace. */
+/** Max output characters for read_file. */
 export const MAX_OUTPUT_CHARS = 80000;
 
 /** Max diff characters for edit_file display (fullDiff kept for analysis). */
 export const MAX_DIFF_CHARS = 30000;
+
+/** Max output characters for bulk_replace composed result. */
+export const MAX_BULK_OUTPUT_CHARS = 30000;
+
+/** Max diff lines per file in bulk_replace full mode. */
+export const MAX_PER_FILE_DIFF_LINES = 50;
 
 /**
  * Read a text file with CRLF normalization.

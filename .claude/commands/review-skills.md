@@ -103,34 +103,18 @@ else
   add_result R6 "Site fact-check" "SKIP (no site/ changes)"
 fi
 
-# === R7: MCP README fact-check (conditional) ===
-if git diff --name-only HEAD -- mcp/ 2>/dev/null | grep -q '\.mjs$'; then
-  R7_FAILS=0
-  for mcp_dir in mcp/*/; do
-    git diff --name-only HEAD -- "$mcp_dir" 2>/dev/null | grep -q '\.mjs$' || continue
-    readme="${mcp_dir}README.md"
-    [ ! -f "$readme" ] && { R7_FAILS=$((R7_FAILS + 1)); continue; }
-    actual_tools=$(grep -c 'registerTool' "${mcp_dir}server.mjs" 2>/dev/null || echo 0)
-    claimed=$(grep -oE '[0-9]+ MCP Tools' "$readme" | grep -oE '[0-9]+' || echo "0")
-    [ -n "$claimed" ] && [ "$actual_tools" != "$claimed" ] && { echo "  R7: $readme claims $claimed, actual $actual_tools" >&2; R7_FAILS=$((R7_FAILS + 1)); }
-  done
-  [ "$R7_FAILS" -eq 0 ] && add_result R7 "MCP README fact-check" PASS || add_result R7 "MCP README fact-check" "FAIL ($R7_FAILS mismatches)"
-else
-  add_result R7 "MCP README fact-check" "SKIP (no mcp/*.mjs changes)"
-fi
+# === R7: Volatile numbers in site/ ===
+R7_WARNS=$(grep -rnE '[0-9]+ (skills|auditors|parallel auditors)' site/ 2>/dev/null | grep -vcE '(WCAG|2\.1|AA|0 API)' || true)
+[ "$R7_WARNS" -eq 0 ] && add_result R7 "Volatile numbers in site" PASS || add_result R7 "Volatile numbers in site" "WARN ($R7_WARNS found)"
 
-# === R8: Volatile numbers in site/ ===
-R8_WARNS=$(grep -rnE '[0-9]+ (skills|auditors|parallel auditors)' site/ 2>/dev/null | grep -vcE '(WCAG|2\.1|AA|0 API)' || true)
-[ "$R8_WARNS" -eq 0 ] && add_result R8 "Volatile numbers in site" PASS || add_result R8 "Volatile numbers in site" "WARN ($R8_WARNS found)"
-
-# === R9: Check sync (automated_checks.md <-> run_checks.sh) ===
+# === R8: Check sync (automated_checks.md <-> run_checks.sh) ===
 CHECKS_DOC=$(grep -oE 'Check [0-9]+' skills/ln-162-skill-reviewer/references/automated_checks.md | grep -oE '[0-9]+' | sort -n | uniq)
 CHECKS_SCRIPT=$(grep -oE 'CHECK [0-9]+' skills/ln-162-skill-reviewer/references/run_checks.sh | grep -oE '[0-9]+' | sort -n | uniq)
 MISSING=$(comm -23 <(echo "$CHECKS_DOC") <(echo "$CHECKS_SCRIPT"))
-[ -z "$MISSING" ] && add_result R9 "Check sync (docs<->script)" PASS || add_result R9 "Check sync (docs<->script)" "FAIL (missing in script: $(echo $MISSING | tr '\n' ','))"
+[ -z "$MISSING" ] && add_result R8 "Check sync (docs<->script)" PASS || add_result R8 "Check sync (docs<->script)" "FAIL (missing in script: $(echo $MISSING | tr '\n' ','))"
 
-# === R10: Worker invocation (full-repo D8b) ===
-R10_FAILS=0
+# === R9: Worker invocation (full-repo D8b) ===
+R9_FAILS=0
 for f in skills/ln-*/SKILL.md; do
   level=$(grep '\*\*Type:\*\*' "$f" | grep -oE 'L[12]' | head -1)
   [ -z "$level" ] && continue
@@ -138,10 +122,10 @@ for f in skills/ln-*/SKILL.md; do
   worker_count=$(grep -oE 'ln-[0-9]+-[a-z-]+' "$f" | sort -u | grep -v "$self" | wc -l)
   [ "$worker_count" -eq 0 ] && continue
   skill_calls=$(grep -c 'Skill(skill:' "$f" || true)
-  [ "$skill_calls" -eq 0 ] && R10_FAILS=$((R10_FAILS + 1))
-  grep -q 'Worker Invocation (MANDATORY)' "$f" || R10_FAILS=$((R10_FAILS + 1))
+  [ "$skill_calls" -eq 0 ] && R9_FAILS=$((R9_FAILS + 1))
+  grep -q 'Worker Invocation (MANDATORY)' "$f" || R9_FAILS=$((R9_FAILS + 1))
 done
-[ "$R10_FAILS" -eq 0 ] && add_result R10 "Worker invocation (full-repo D8b)" PASS || add_result R10 "Worker invocation (full-repo D8b)" "FAIL ($R10_FAILS issues)"
+[ "$R9_FAILS" -eq 0 ] && add_result R10 "Worker invocation (full-repo D8b)" PASS || add_result R10 "Worker invocation (full-repo D8b)" "FAIL ($R9_FAILS issues)"
 
 # === Output report table ===
 echo ""

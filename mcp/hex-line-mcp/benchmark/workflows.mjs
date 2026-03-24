@@ -1,12 +1,15 @@
 /**
- * Session-derived workflow scenarios built from recent real Claude usage.
+ * Hex-line workflow scenarios built from recent real Claude usage.
  *
- * These are still local, reproducible benchmarks, but the tasks are framed
- * after actual day-to-day workflows observed in recent sessions:
- * - debugging hex-line hook behavior
- * - adjusting setup/output guidance
- * - repo-wide benchmark wording refactor
- * - targeted edit inside a large smoke test
+ * Each workflow measures hex-line tool chain output (chars + ops).
+ * No built-in simulation — pure hex-line metrics only.
+ *
+ * Scenarios:
+ * - W1: grep tag + editFile (hook debugging)
+ * - W2: readFile targeted + editFile + verifyChecksums (setup guidance)
+ * - W3: bulkReplace repo-wide (wording refactor)
+ * - W4: fileOutline + readFile targeted + editFile dryRun (large file review)
+ * - W5: readFile targeted + editFile insert_after + editFile replace_lines with baseRevision
  */
 
 import { copyFileSync, mkdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
@@ -18,14 +21,7 @@ import { verifyChecksums } from "../lib/verify.mjs";
 import { editFile } from "../lib/edit.mjs";
 import { bulkReplace } from "../lib/bulk-replace.mjs";
 import { fileOutline } from "../lib/outline.mjs";
-import {
-    getFileLines,
-    simBuiltInReadFull,
-    simBuiltInGrep,
-    simBuiltInEdit,
-    simHexLineEditDiff,
-    runN,
-} from "../lib/benchmark-helpers.mjs";
+import { getFileLines, runN } from "../lib/benchmark-helpers.mjs";
 
 function ensureLine(lines, matcher, label) {
     const idx = lines.findIndex((line) => matcher(line));
@@ -45,7 +41,7 @@ export async function runWorkflows(config) {
     const { repoRoot, allFiles, largeFiles } = config;
     const workflowResults = [];
 
-    // W1: derived from "Debug hex line formatting in file listings"
+    // W1: grep tag + editFile (debug hex-line hook formatting)
     {
         const sourcePath = resolve(repoRoot, "hook.mjs");
         const sourceLines = getFileLines(sourcePath);
@@ -60,18 +56,8 @@ export async function runWorkflows(config) {
         copyFileSync(sourcePath, tempPath);
 
         const updatedLine = sourceLines[targetIdx].replace("recursive only", "recursive listing only");
-        const updatedLines = [...sourceLines];
-        updatedLines[targetIdx] = updatedLine;
 
-        const { value: without } = runN(() => {
-            let total = 0;
-            total += simBuiltInGrep("ls -R", tempPath).length;
-            total += simBuiltInReadFull(tempPath, sourceLines).length;
-            total += simBuiltInEdit(tempPath, sourceLines, updatedLines).length;
-            return total;
-        });
-
-        const { value: withSL } = runN(() => {
+        const { value: chars } = runN(() => {
             let total = 0;
             const tag = lineTag(fnv1a(sourceLines[targetIdx]));
             total += `${tempPath}:>>${tag}.${targetIdx + 1}\t${sourceLines[targetIdx]}`.length;
@@ -86,15 +72,13 @@ export async function runWorkflows(config) {
         workflowResults.push({
             id: "W1",
             scenario: "Debug hook file-listing redirect",
-            without,
-            withSL,
-            opsWithout: 3,
-            opsWith: 2,
+            chars,
+            ops: 2,
         });
         try { unlinkSync(tempPath); } catch {}
     }
 
-    // W2: derived from setup / guidance updates in repo tooling sessions
+    // W2: readFile targeted + editFile + verifyChecksums (setup guidance update)
     {
         const sourcePath = resolve(repoRoot, "lib", "setup.mjs");
         const sourceLines = getFileLines(sourcePath);
@@ -112,22 +96,12 @@ export async function runWorkflows(config) {
             "Add MCP Tool Preferences to AGENTS.md instead",
             "Document MCP Tool Preferences in AGENTS.md instead",
         );
-        const updatedLines = [...sourceLines];
-        updatedLines[targetIdx] = updatedLine;
         const windowStart = Math.max(1, targetIdx - 3);
         const windowLimit = Math.min(sourceLines.length - windowStart + 1, 10);
         const hashes = sourceLines.map((line) => fnv1a(line));
         const checksum = rangeChecksum(hashes, windowStart, windowStart + windowLimit - 1);
 
-        const { value: without } = runN(() => {
-            let total = 0;
-            total += simBuiltInReadFull(tempPath, sourceLines).length;
-            total += simBuiltInEdit(tempPath, sourceLines, updatedLines).length;
-            total += simBuiltInReadFull(tempPath, sourceLines).length;
-            return total;
-        });
-
-        const { value: withSL } = runN(() => {
+        const { value: chars } = runN(() => {
             let total = 0;
             total += readFile(tempPath, { offset: windowStart, limit: windowLimit }).length;
             copyFileSync(sourcePath, tempPath);
@@ -148,15 +122,13 @@ export async function runWorkflows(config) {
         workflowResults.push({
             id: "W2",
             scenario: "Adjust setup_hooks guidance and verify",
-            without,
-            withSL,
-            opsWithout: 3,
-            opsWith: 3,
+            chars,
+            ops: 3,
         });
         try { unlinkSync(tempPath); } catch {}
     }
 
-    // W3: derived from repo-wide benchmark wording refactors
+    // W3: bulkReplace repo-wide (benchmark wording refresh)
     {
         const tempRoot = resolve(tmpdir(), `hex-line-wf3-${Date.now()}`);
         mkdirSync(tempRoot, { recursive: true });
@@ -168,24 +140,9 @@ export async function runWorkflows(config) {
             "benchmark/workflows.mjs",
         ];
         const copiedFiles = fixtureFiles.map((relPath) => copyIntoTemp(tempRoot, repoRoot, relPath));
-        const fileLines = copiedFiles.map((filePath) => getFileLines(filePath));
         const replacements = [{ old: "benchmark", new: "workflow benchmark" }];
 
-        const { value: without } = runN(() => {
-            let total = 0;
-            for (let i = 0; i < copiedFiles.length; i++) {
-                const filePath = copiedFiles[i];
-                const lines = fileLines[i];
-                if (!lines) continue;
-                total += simBuiltInGrep("benchmark", filePath).length;
-                total += simBuiltInReadFull(filePath, lines).length;
-                const updated = lines.map((line) => line.split("benchmark").join("workflow benchmark"));
-                total += simBuiltInEdit(filePath, lines, updated).length;
-            }
-            return total;
-        });
-
-        const { value: withSL } = runN(() => {
+        const { value: chars } = runN(() => {
             return bulkReplace(
                 tempRoot,
                 "**/*.{md,json,mjs}",
@@ -197,15 +154,13 @@ export async function runWorkflows(config) {
         workflowResults.push({
             id: "W3",
             scenario: "Repo-wide benchmark wording refresh",
-            without,
-            withSL,
-            opsWithout: copiedFiles.length * 3,
-            opsWith: 1,
+            chars,
+            ops: 1,
         });
         try { rmSync(tempRoot, { recursive: true }); } catch {}
     }
 
-    // W4: derived from reviewing large smoke tests before a focused change
+    // W4: fileOutline + readFile targeted + editFile dryRun (large smoke test review)
     {
         const preferredLarge = allFiles.find((filePath) => filePath.endsWith("test\\smoke.mjs"))
             || largeFiles[0]
@@ -219,38 +174,34 @@ export async function runWorkflows(config) {
             );
             const sliceStart = Math.max(0, targetIdx - 5);
             const sliceEnd = Math.min(largeLines.length, targetIdx + 15);
-            const editedSlice = largeLines.slice(sliceStart, sliceEnd).map((line, idx) =>
-                idx === (targetIdx - sliceStart) ? `${line} // benchmark-note` : line,
-            );
-
-            const { value: without } = runN(() => {
-                let total = 0;
-                total += simBuiltInReadFull(preferredLarge, largeLines).length;
-                total += simBuiltInGrep("hook — ls redirect", preferredLarge).length;
-                const updatedLines = [...largeLines];
-                updatedLines[targetIdx] = `${updatedLines[targetIdx]} // benchmark-note`;
-                total += simBuiltInEdit(preferredLarge, largeLines, updatedLines).length;
-                return total;
-            });
 
             let outlineLen = 500;
             try { outlineLen = (await fileOutline(preferredLarge)).length; } catch {}
 
-            const { value: withSL } = runN(() => {
+            // Pre-compute real editFile dryRun result
+            const hexReadW4 = readFile(preferredLarge);
+            let editAnchor = null;
+            for (const l of hexReadW4.split("\n")) {
+                const m = l.match(/^([a-z0-9]{2})\.(\d+)\t/);
+                if (m && parseInt(m[2]) === targetIdx + 1) { editAnchor = `${m[1]}.${m[2]}`; break; }
+            }
+            const editResultW4 = editAnchor
+                ? editFile(preferredLarge, [{ set_line: { anchor: editAnchor, new_text: `${largeLines[targetIdx]} // benchmark-note` } }], { dryRun: true })
+                : "edit skipped (no anchor)";
+
+            const { value: chars } = runN(() => {
                 let total = 0;
                 total += outlineLen;
                 total += readFile(preferredLarge, { offset: sliceStart + 1, limit: sliceEnd - sliceStart }).length;
-                total += simHexLineEditDiff(largeLines.slice(sliceStart, sliceEnd), editedSlice).length;
+                total += editResultW4.length;
                 return total;
             });
 
             workflowResults.push({
                 id: "W4",
                 scenario: `Inspect large smoke test before edit (${largeLines.length}L)`,
-                without,
-                withSL,
-                opsWithout: 3,
-                opsWith: 3,
+                chars,
+                ops: 3,
             });
         }
     }
@@ -277,39 +228,8 @@ export async function runWorkflows(config) {
         const head1Idx = prefix.length;
         const targetAIdx = prefix.length + 2;
         const targetBIdx = prefix.length + 3;
-        const withInsert = [
-            ...prefix,
-            "head1",
-            "inserted",
-            "head2",
-            "targetA",
-            "targetB",
-            "tail",
-            ...suffix,
-            "",
-        ];
-        const updatedLines = [
-            ...prefix,
-            "head1",
-            "inserted",
-            "head2",
-            "targetA",
-            "updatedB",
-            "tail",
-            ...suffix,
-            "",
-        ];
 
-        const { value: without } = runN(() => {
-            let total = 0;
-            total += simBuiltInReadFull(tempPath, sourceLines).length;
-            total += simBuiltInEdit(tempPath, sourceLines, withInsert).length;
-            total += simBuiltInReadFull(tempPath, withInsert).length;
-            total += simBuiltInEdit(tempPath, withInsert, updatedLines).length;
-            return total;
-        });
-
-        const { value: withSL } = runN(() => {
+        const { value: chars } = runN(() => {
             let total = 0;
             writeFileSync(tempPath, sourceText, "utf-8");
             const baseRead = readFile(tempPath, { offset: head1Idx + 1, limit: 8 });
@@ -338,10 +258,8 @@ export async function runWorkflows(config) {
         workflowResults.push({
             id: "W5",
             scenario: "Follow-up edit after unrelated line shift",
-            without,
-            withSL,
-            opsWithout: 4,
-            opsWith: 3,
+            chars,
+            ops: 3,
         });
         try { unlinkSync(tempPath); } catch {}
     }

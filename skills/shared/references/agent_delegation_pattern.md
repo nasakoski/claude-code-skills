@@ -172,7 +172,7 @@ Phase 8: REPORT
 **MANDATORY READ:** Load `shared/references/agent_review_workflow.md` "Step: Health Check" (disabled flags check + agent probe).
 
 **HARD RULES:**
-1. **Check `docs/environment_state.json` disabled flags BEFORE running health-check.** Disabled agents are never probed. **File not found → proceed with all agents (default=enabled).**
+1. **Check `.hex-skills/environment_state.json` disabled flags BEFORE running health-check.** Disabled agents are never probed. **File not found → proceed with all agents (default=enabled).**
 2. **ALWAYS execute the EXACT command** `node shared/agents/agent_runner.mjs --health-check` — no modifications, no substitutions.
 3. **Do NOT invent alternative checks** (e.g., `where`, `which`, `--version`, PATH lookup). ONLY the command above is valid.
 4. **Only command output determines availability.** Do NOT reason about file existence, environment, or installation — run the command and read its output.
@@ -231,11 +231,11 @@ Agent Suggestion --> Claude Evaluation --> AGREE? --> Accept as-is
 Standard steps before launching agents (performed inside agent review workers):
 
 1. **Get references:** Call Linear MCP `get_issue(storyId)` for Story URL + `list_issues(parent)` for Task URLs. If project stores tasks locally → use file paths.
-2. **Ensure .agent-review/:** If `.agent-review/` exists, reuse as-is. If not, create it with `.gitignore` (content: `*` + `!.gitignore`). Create `.agent-review/{agent}/` subdirs only if they don't exist. Do NOT add `.agent-review/` to project root `.gitignore`.
+2. **Ensure .hex-skills/agent-review/:** If `.hex-skills/agent-review/` exists, reuse as-is. If not, create it with `.gitignore` (content: `*` + `!.gitignore`). Create `.hex-skills/agent-review/{agent}/` subdirs only if they don't exist. Do NOT add `.hex-skills/agent-review/` to project root `.gitignore`.
 3. **Build prompt:** Load template, fill placeholders including `{review_goal}`, `{project_context}`, `{focus_hint}` (per-agent). See `agent_review_workflow.md` "Step: Build Prompt" steps 1-9.
-4. **Save prompt:** To `.agent-review/{agent}/{identifier}_{review_type}_prompt.md` (per-agent — differ by `{focus_hint}`)
-5. **Run agents:** `--prompt-file .agent-review/{agent}/{identifier}_{review_type}_prompt.md --output-file .agent-review/{agent}/{identifier}_{review_type}_result.md --cwd {project_dir}` — agents access Story/Tasks via references, runner writes result file per agent
-6. **No cleanup** — `.agent-review/` persists as audit trail
+4. **Save prompt:** To `.hex-skills/agent-review/{agent}/{identifier}_{review_type}_prompt.md` (per-agent — differ by `{focus_hint}`)
+5. **Run agents:** `--prompt-file .hex-skills/agent-review/{agent}/{identifier}_{review_type}_prompt.md --output-file .hex-skills/agent-review/{agent}/{identifier}_{review_type}_result.md --cwd {project_dir}` — agents access Story/Tasks via references, runner writes result file per agent
+6. **No cleanup** — `.hex-skills/agent-review/` persists as audit trail
 
 **Why reference passing instead of content materialization:**
 - Agents have internet access — they can read Linear directly
@@ -246,7 +246,7 @@ Standard steps before launching agents (performed inside agent review workers):
 ## Review Persistence Pattern
 
 ```
-.agent-review/
+.hex-skills/agent-review/
 ├── .gitignore                                      # * + !.gitignore
 ├── review_history.md                               # Append-only review log (all reviews)
 ├── context/                                         # Materialized files for agent access (context, plans)
@@ -290,7 +290,7 @@ Standard steps before launching agents (performed inside agent review workers):
 |-------|-----|
 | Auto-retry in runner | Let skill decide fallback |
 | Embed full story/task content in prompt | Pass references (Linear URLs / file paths) |
-| Delete review artifacts after agents complete | Persist per-agent prompts and results in `.agent-review/{agent}/` |
+| Delete review artifacts after agents complete | Persist per-agent prompts and results in `.hex-skills/agent-review/{agent}/` |
 | Write/rewrite result files from skill | Result files are runner's responsibility; skill only reads them and writes `_session.json` |
 | Trust agent output blindly | Claude critically verifies each suggestion independently |
 | Use agents for project file writes | Agents write only to `-o` output file; analysis-only |

@@ -28,11 +28,11 @@ Configures MCP servers in Claude Code: installs npm packages, registers servers,
 
 Two transport types: **stdio** (local process) and **HTTP** (cloud endpoint).
 
-| Server | Transport | Source | Required | API Key |
-|--------|-----------|--------|----------|---------|
-| hex-line | stdio | `npm i -g @levnikolaevich/hex-line-mcp` → `hex-line-mcp` | Yes | No |
-| hex-ssh | stdio | `npm i -g @levnikolaevich/hex-ssh-mcp` → `hex-ssh-mcp` | No | No |
-| hex-graph | stdio | `npm i -g @levnikolaevich/hex-graph-mcp` → `hex-graph-mcp` | No | No |
+| Server | Transport | Install | Required | API Key |
+|--------|-----------|---------|----------|---------|
+| hex-line | stdio | `npx -y @levnikolaevich/hex-line-mcp` | Yes | No |
+| hex-ssh | stdio | `npx -y @levnikolaevich/hex-ssh-mcp` | No | No |
+| hex-graph | stdio | `npx -y @levnikolaevich/hex-graph-mcp` | No | No |
 | context7 | HTTP | `https://mcp.context7.com/mcp` | Yes | Optional |
 | Ref | HTTP | `https://api.ref.tools/mcp` | Yes | Yes (prompt user) |
 | linear | HTTP | `https://mcp.linear.app/mcp` | Ask user | No (OAuth) |
@@ -48,43 +48,19 @@ Install → Register & Configure → Hooks → Permissions → Migrate → Repor
 
 ### Phase 1: Install & Verify MCP Packages
 
-Smart install: check MCP status first, then npm versions. Skip what's already working.
+Smart install: check MCP status first. npx -y always gets latest — no version check needed.
 
 **Step 1a: Check MCP server status**
 
-Run `claude mcp list` → parse each hex server:
+Run `claude mcp list` -> parse each hex server:
 
 | Server | Status | Action |
 |--------|--------|--------|
-| Registered + Connected | Working | Skip install, go to Step 1b (update check) |
-| Registered + Disconnected | Broken | Reinstall npm package (Step 1c) |
-| Not registered | Missing | Full install (Step 1c) + register in Phase 2 |
+| Registered + Connected | Working | SKIP |
+| Registered + Disconnected | Broken | Re-register (Phase 2) |
+| Not registered | Missing | Register in Phase 2 |
 
-**Step 1b: Check for npm updates (connected servers only)**
-
-Run `npm outdated -g @levnikolaevich/{pkg}` for each connected server's package:
-
-| Result | Action |
-|--------|--------|
-| No output (up to date) | SKIP — report "current: vX.Y.Z" |
-| Shows newer version | UPDATE — `npm i -g @levnikolaevich/{pkg}` |
-
-**Step 1c: Install missing / broken packages**
-
-For servers not found or disconnected in Step 1a:
-1. `npm i -g @levnikolaevich/{pkg}`
-2. Verify: `npm ls -g @levnikolaevich/{pkg} --json`
-
-**Decision flow per server:**
-
-```
-claude mcp list → connected? ─── yes ──→ npm outdated → outdated? ── yes ──→ npm i -g (update)
-                       │                                    │
-                       no                                   no → SKIP
-                       │
-                       ▼
-                 npm i -g (install)
-```
+**No npm install step needed** — npx -y downloads on demand. No `npm outdated` or `npm ls` checks.
 
 **Skip conditions:**
 
@@ -119,9 +95,9 @@ Registration commands:
 
 | Server | Command |
 |--------|----------|
-| hex-line | `claude mcp add -s user hex-line -- hex-line-mcp` |
-| hex-ssh | `claude mcp add -s user hex-ssh -- hex-ssh-mcp` |
-| hex-graph | `claude mcp add -s user hex-graph -- hex-graph-mcp` |
+| hex-line | `claude mcp add -s user hex-line -- npx -y @levnikolaevich/hex-line-mcp` |
+| hex-ssh | `claude mcp add -s user hex-ssh -- npx -y @levnikolaevich/hex-ssh-mcp` |
+| hex-graph | `claude mcp add -s user hex-graph -- npx -y @levnikolaevich/hex-graph-mcp` |
 | context7 | `claude mcp add -s user --transport http context7 https://mcp.context7.com/mcp` |
 | Ref | `claude mcp add -s user --transport http Ref https://api.ref.tools/mcp` |
 | linear | `claude mcp add -s user --transport http linear-server https://mcp.linear.app/mcp` |
@@ -250,13 +226,7 @@ MCP Configuration:
 | linear    | HTTP      | skipped       | skipped    | user declined           |
 ```
 
-**Token efficiency benchmark:**
-
-```bash
-node "$(npm root -g)/@levnikolaevich/hex-line-mcp/benchmark/index.mjs"
-```
-
-Key metrics: outline vs full read savings, compact diff savings, hash overhead, break-even point.
+**Token efficiency benchmark:** Run `/ln-015-benchmark-compare` for real A/B comparison (built-in vs hex-line).
 
 ---
 
@@ -265,7 +235,7 @@ Key metrics: outline vs full read savings, compact diff savings, hash overhead, 
 1. **Write only via sanctioned paths.** Register servers via `claude mcp add`. Write to `~/.claude/settings.json` ONLY for hooks (via `setup_hooks`), permissions (`permissions.allow[]`), and `outputStyle`
 2. **Verify after add.** Always run `claude mcp list` after registration to confirm connection
 3. **Ask before optional servers.** Linear requires explicit user consent
-4. **Global install only.** Always `npm i -g` for hex MCP — hooks need stable absolute paths
+4. **npx -y for all hex MCP.** Never `npm i -g` — npx provides process isolation and avoids EBUSY on Windows
 5. **Remove deprecated servers.** Clean up servers no longer in the registry
 6. **Grant permissions.** After registration, add `mcp__{server}` to user settings
 7. **Minimize `claude mcp list` calls.** Phase 1 runs it once (discovery). Phase 2 reuses that data. Only Phase 2 Step 4 runs it again (post-mutation verify). Max 2 calls total
@@ -293,7 +263,7 @@ Key metrics: outline vs full read savings, compact diff savings, hash overhead, 
 - [ ] Project allowed-tools migrated (Phase 5)
 - [ ] MCP Tool Preferences in all instruction files (Phase 6)
 - [ ] Status table displayed (Phase 8)
-- [ ] Token efficiency benchmark run (Phase 8)
+- [ ] Token efficiency benchmark referenced: ln-015-benchmark-compare (Phase 8)
 
 ---
 

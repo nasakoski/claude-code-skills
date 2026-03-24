@@ -35,7 +35,6 @@ import { validateEditArgs } from "./lib/edit-validation.mjs";
 const { server, StdioServerTransport } = await createServerRuntime({
     name: "hex-ssh-mcp",
     version,
-    installDir: "mcp/hex-ssh-mcp",
 });
 
 // --- Common connection args for reuse ---

@@ -12,15 +12,17 @@ keep-coding-instructions: true
 |-----------|-----|-----|
 | Read | `mcp__hex-line__read_file` | Hash-annotated, revision-aware |
 | Edit | `mcp__hex-line__edit_file` | Hash-verified anchors + conservative auto-rebase |
-| Write | `mcp__hex-line__write_file` | Consistent workflow |
+| Write | `mcp__hex-line__write_file` | No prior Read needed |
 | Grep | `mcp__hex-line__grep_search` | Hash-annotated matches |
 | Edit (text rename) | `mcp__hex-line__bulk_replace` | Multi-file text rename/refactor |
+| Bash `find`/`tree` | `mcp__hex-line__directory_tree` | Pattern search, gitignore-aware |
 
 ## Efficient File Reading
 
 For UNFAMILIAR code files >100 lines, PREFER:
-1. `outline` first (10-20 lines of structure)
+1. `outline` first (code files only — not .md/.json/.yaml)
 2. `read_file` with offset/limit for the specific section you need
+3. Batch: `paths` array reads multiple files in one call
 
 Avoid reading a large file in full — outline+targeted read saves 75% tokens.
 
@@ -33,7 +35,7 @@ Prefer:
 1. collect all known hunks for one file
 2. send one `edit_file` call with batched edits
 3. carry `revision` from `read_file` into `base_revision` on follow-up edits
-4. use `replace_between` for large block rewrites
+4. edit types: `set_line` (1 line), `replace_lines` (range + checksum), `insert_after`, `replace_between` (large blocks)
 5. use `verify` before rereading a file after staleness
 
 Avoid:

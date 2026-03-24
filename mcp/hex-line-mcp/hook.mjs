@@ -42,13 +42,13 @@ const BINARY_EXT = new Set([
 
 const REVERSE_TOOL_HINTS = {
     "mcp__hex-line__read_file":      "Read (file_path, offset, limit)",
-    "mcp__hex-line__edit_file":      "Edit (revision-aware hash edits, block rewrite, auto-rebase)",
+    "mcp__hex-line__edit_file":      "Edit (old_string, new_string, replace_all)",
     "mcp__hex-line__write_file":     "Write (file_path, content)",
     "mcp__hex-line__grep_search":    "Grep (pattern, path)",
     "mcp__hex-line__directory_tree": "Glob (pattern) or Bash(ls)",
     "mcp__hex-line__get_file_info":  "Bash(stat/wc)",
     "mcp__hex-line__outline":        "Read with offset/limit",
-    "mcp__hex-line__verify":         "Verify held checksums / revision without reread",
+    "mcp__hex-line__verify":         "Read (re-read file to check freshness)",
     "mcp__hex-line__changes":        "Bash(git diff)",
     "mcp__hex-line__bulk_replace":   "Edit (text rename/refactor across files)",
     "mcp__hex-line__setup_hooks":    "Not available (hex-line disabled)",
@@ -66,10 +66,10 @@ const TOOL_HINTS = {
     stat:  "mcp__hex-line__get_file_info (not stat/wc/file)",
     grep:  "mcp__hex-line__grep_search (not grep/rg). Params: output, literal, context_before, context_after, multiline",
     sed:   "mcp__hex-line__edit_file for hash edits, or mcp__hex-line__bulk_replace for text rename (not sed -i)",
-    diff:  "mcp__hex-line__changes (not diff). Git-based semantic diff",
+    diff:  "mcp__hex-line__changes (not diff). Git diff with change symbols",
     outline: "mcp__hex-line__outline (before reading large code files)",
     verify:  "mcp__hex-line__verify (staleness / revision check without re-read)",
-    changes: "mcp__hex-line__changes (semantic AST diff)",
+    changes: "mcp__hex-line__changes (git diff with change symbols)",
     bulk:    "mcp__hex-line__bulk_replace (multi-file search-replace)",
     setup:   "mcp__hex-line__setup_hooks (configure hooks for agents)",
 };

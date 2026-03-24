@@ -2,9 +2,8 @@
 /**
  * Hex-line workflow benchmark with optional diagnostics.
  *
- * Public benchmark mode reports only comparative multi-step workflows.
- * Synthetic tool-level scenarios are available behind --diagnostics and
- * should not be treated as headline benchmark results.
+ * Reports hex-line multi-step workflow metrics (chars + ops).
+ * Synthetic tool-level scenarios are available behind --diagnostics.
  *
  * Usage:
  *   node mcp/hex-line-mcp/benchmark/index.mjs [--repo /path/to/repo]
@@ -16,7 +15,7 @@ import { resolve, basename } from "node:path";
 import { tmpdir } from "node:os";
 import {
     walkDir, getFileLines, categorize, generateTempCode,
-    fmt, pctSavings, RUNS,
+    fmt, RUNS,
 } from "../lib/benchmark-helpers.mjs";
 import { runAtomic } from "./atomic.mjs";
 import { runGraph } from "./graph.mjs";
@@ -89,43 +88,36 @@ async function main() {
     out.push(`Date: ${new Date().toISOString().slice(0, 10)}  `);
     out.push(`Runs per scenario: ${RUNS} (median)  `);
     out.push("");
-    out.push("Mode: comparative workflow benchmark");
+    out.push("Mode: hex-line workflow benchmark");
     out.push("");
     out.push("## Workflow Scenarios");
     out.push("");
-    out.push("| # | Scenario | Built-in | Hex-line | Savings | Ops |");
-    out.push("|---|----------|----------|----------|---------|-----|");
+    out.push("| # | Scenario | Chars | Ops |");
+    out.push("|---|----------|-------|-----|");
     for (const w of workflowResults) {
-        out.push(`| ${w.id} | ${w.scenario} | ${fmt(w.without)} chars | ${fmt(w.withSL)} chars | ${pctSavings(w.without, w.withSL)} | ${w.opsWithout}\u2192${w.opsWith} |`);
+        out.push(`| ${w.id} | ${w.scenario} | ${fmt(w.chars)} | ${w.ops} |`);
     }
     out.push("");
 
     if (workflowResults.length > 0) {
-        const avgWorkflowSavings = workflowResults.reduce((sum, w) => {
-            if (w.without === 0) return sum;
-            return sum + (((w.without - w.withSL) / w.without) * 100);
-        }, 0) / workflowResults.length;
-        const totalWorkflowOpsWithout = workflowResults.reduce((sum, w) => sum + w.opsWithout, 0);
-        const totalWorkflowOpsWith = workflowResults.reduce((sum, w) => sum + w.opsWith, 0);
-        const workflowOpsPct = totalWorkflowOpsWithout > 0
-            ? (((totalWorkflowOpsWithout - totalWorkflowOpsWith) / totalWorkflowOpsWithout) * 100).toFixed(0)
-            : "0";
-        out.push(`Workflow summary: ${avgWorkflowSavings.toFixed(0)}% average token savings | ${totalWorkflowOpsWithout}\u2192${totalWorkflowOpsWith} ops (${workflowOpsPct}% fewer)`);
+        const totalChars = workflowResults.reduce((sum, w) => sum + w.chars, 0);
+        const totalOps = workflowResults.reduce((sum, w) => sum + w.ops, 0);
+        out.push(`Workflow summary: ${fmt(totalChars)} total chars | ${totalOps} total ops across ${workflowResults.length} scenarios`);
         out.push("");
     }
 
-    out.push("Note: benchmark mode reports only multi-step comparative workflows. Synthetic tool-level scenarios live under diagnostics and are not headline results.");
+    out.push("Note: benchmark reports hex-line multi-step workflows. Synthetic tool-level scenarios live under --diagnostics.");
     out.push("");
 
     if (diagnostics) {
         out.push("## Diagnostics");
         out.push("");
-        out.push("These rows are modeled tool-level comparisons for engineering inspection only. They are not part of the public workflow benchmark score.");
+        out.push("These rows are hex-line tool-level metrics for engineering inspection only. They are not part of the public workflow benchmark score.");
         out.push("");
-        out.push("| # | Scenario | Baseline | Hex-line | Savings |");
-        out.push("|---|----------|----------|----------|---------|");
+        out.push("| # | Scenario | Chars | Latency |");
+        out.push("|---|----------|-------|---------|");
         for (const r of results) {
-            out.push(`| ${r.num} | ${r.scenario} | ${fmt(r.without)} chars | ${fmt(r.withSL)} chars | ${r.savings} |`);
+            out.push(`| ${r.num} | ${r.scenario} | ${fmt(r.chars)} | ${r.latency} ms |`);
         }
         out.push("");
         if (graphOut.length > 0) {

@@ -33,6 +33,24 @@
       "skill_groups": ["200", "300", "310", "510"],
       "health_check": "gemini --version",
       "focus_hint": "Primary focus: performance at scale, security/isolation, resource management, architectural patterns"
+    },
+    "claude-builtin": {
+      "name": "Claude (built-in only)",
+      "command": "claude",
+      "args": ["-p", "--strict-mcp-config", "--settings", "{\"disableAllHooks\":true}", "--output-format", "stream-json", "--dangerously-skip-permissions", "--verbose"],
+      "hard_timeout_seconds": 600,
+      "skill_groups": ["015"],
+      "health_check": "claude --version",
+      "focus_hint": "Built-in tools only (Read, Edit, Grep, Write, Bash, Glob). No MCP servers."
+    },
+    "claude-hexline": {
+      "name": "Claude (hex-line)",
+      "command": "claude",
+      "args": ["-p", "--mcp-config", "mcp/hex-line-mcp/benchmark/mcp-bench.json", "--output-format", "stream-json", "--dangerously-skip-permissions", "--verbose"],
+      "hard_timeout_seconds": 600,
+      "skill_groups": ["015"],
+      "health_check": "claude --version",
+      "focus_hint": "Hex-line MCP tools (read_file, edit_file, grep_search, outline, verify, bulk_replace, etc.)"
     }
   }
 }

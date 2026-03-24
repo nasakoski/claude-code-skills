@@ -20,7 +20,7 @@ When auto-compaction compresses conversation during long pipelines, lead loses S
 **Detection:** Lead cannot recall pipeline variables, stage flow, or ASSERT guards.
 
 **Recovery steps:**
-1. Read `.pipeline/state.json` -> restore ALL state variables
+1. Read `.hex-skills/pipeline/state.json` -> restore ALL state variables
 2. Read this SKILL.md (FULL) -> restore phases, rules, error handling
 3. Read `references/phases/phase4_flow.md` -> restore ASSERT guards and flow
 4. Resume from last checkpoint stage + 1
@@ -37,7 +37,7 @@ When auto-compaction compresses conversation during long pipelines, lead loses S
 
 ## 4. Stage Notes Template
 
-Lead writes `.pipeline/stage_N_notes_{id}.md` after each Skill() call:
+Lead writes `.hex-skills/pipeline/stage_N_notes_{id}.md` after each Skill() call:
 
 ```
 ## {Stage Name}
@@ -49,7 +49,7 @@ Lead writes `.pipeline/stage_N_notes_{id}.md` after each Skill() call:
 - {Created files, URLs, commit SHAs}
 ```
 
-**Agents info extraction:** Read from `.agent-review/review_history.md` (last entry) or parse from Skill output (look for "Agent Review:" display line). Format: `codex(2/3),gemini(1/2)` or `SKIPPED({reason})` or `N/A`.
+**Agents info extraction:** Read from `.hex-skills/agent-review/review_history.md` (last entry) or parse from Skill output (look for "Agent Review:" display line). Format: `codex(2/3),gemini(1/2)` or `SKIPPED({reason})` or `N/A`.
 
 ## 5. Agents Info Format
 

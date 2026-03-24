@@ -7,6 +7,9 @@ license: MIT
 
 > **Paths:** File paths (`shared/`, `references/`, `../ln-*`) are relative to skills repo root. If not found at CWD, locate this SKILL.md directory and go up one level for repo root. If `shared/` is missing, fetch files via WebFetch from `https://raw.githubusercontent.com/levnikolaevich/claude-code-skills/master/skills/{path}`.
 
+**Type:** L1 Orchestrator
+**Category:** 1000 Pipeline
+
 # Pipeline Orchestrator
 
 Drives a selected Story through the full pipeline (task planning -> validation -> execution -> quality gate) by invoking coordinators as Skill() calls in a single context.
@@ -77,17 +80,17 @@ Backlog       --> Stage 0 (ln-300) --> Backlog      --> Stage 1 (ln-310) --> Tod
 ### Phase 0: Recovery Check
 
 ```
-IF .pipeline/state.json exists AND complete == false:
+IF .hex-skills/pipeline/state.json exists AND complete == false:
   # Previous run interrupted — resume from saved state
-  1. Read .pipeline/state.json -> restore: selected_story_id, story_state,
+  1. Read .hex-skills/pipeline/state.json -> restore: selected_story_id, story_state,
      quality_cycles, validation_retries, story_results,
      stage_timestamps, git_stats, pipeline_start_time, readiness_scores
-  2. Read .pipeline/checkpoint-{selected_story_id}.json -> get last completed stage
+  2. Read .hex-skills/pipeline/checkpoint-{selected_story_id}.json -> get last completed stage
   3. Re-read kanban board -> verify selected story still exists
-  4. IF worktree_dir exists (.worktrees/story-{selected_story_id}): cd {worktree_dir}
+  4. IF worktree_dir exists (.hex-skills/worktrees/story-{selected_story_id}): cd {worktree_dir}
   5. Jump to Phase 4, starting from stage AFTER checkpoint.stage
 
-IF .pipeline/state.json NOT exists OR complete == true:
+IF .hex-skills/pipeline/state.json NOT exists OR complete == true:
   # Fresh start — proceed to Phase 1
 ```
 
@@ -170,7 +173,7 @@ Verify `.claude/settings.local.json` in target project:
 
 ```
 pipeline_dir = "$(pwd)/.pipeline"
-Write .pipeline/state.json:
+Write .hex-skills/pipeline/state.json:
   Initialize: complete=false, selected_story_id,
   all counters=0, empty collections,
   business_answers from Phase 2, storage_mode, project_brief, story_briefs,
@@ -181,8 +184,8 @@ Write .pipeline/state.json:
 
 ```
 IF platform == "win32":
-  Bash: cp {skill_repo}/ln-1000-pipeline-orchestrator/references/hooks/prevent-sleep.ps1 .pipeline/prevent-sleep.ps1
-  Bash: powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File .pipeline/prevent-sleep.ps1 &
+  Bash: cp {skill_repo}/ln-1000-pipeline-orchestrator/references/hooks/prevent-sleep.ps1 .hex-skills/pipeline/prevent-sleep.ps1
+  Bash: powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File .hex-skills/pipeline/prevent-sleep.ps1 &
   sleep_prevention_pid = $!
 ```
 
@@ -198,18 +201,18 @@ IF branch_check matches feature/* / optimize/* / upgrade/* / modernize/*:
 ELSE:
   story_slug = slugify(selected_story.title)
   branch = "feature/{selected_story_id}-{story_slug}"
-  worktree_dir = ".worktrees/story-{selected_story_id}"
+  worktree_dir = ".hex-skills/worktrees/story-{selected_story_id}"
   project_root = CWD
 
   changes = git diff HEAD
   IF changes not empty:
-    git diff HEAD > .pipeline/carry-changes.patch
+    git diff HEAD > .hex-skills/pipeline/carry-changes.patch
 
   git fetch origin
   git worktree add -b {branch} {worktree_dir} origin/master
 
-  IF .pipeline/carry-changes.patch exists:
-    git -C {worktree_dir} apply .pipeline/carry-changes.patch && rm .pipeline/carry-changes.patch
+  IF .hex-skills/pipeline/carry-changes.patch exists:
+    git -C {worktree_dir} apply .hex-skills/pipeline/carry-changes.patch && rm .hex-skills/pipeline/carry-changes.patch
     IF apply fails: WARN user "Patch conflicts -- continuing without uncommitted changes"
 
   cd {worktree_dir}    # All subsequent Skill calls inherit this CWD
@@ -253,9 +256,9 @@ IF target_stage <= 0:
   Re-read kanban -> ASSERT tasks exist under Story, count IN 1..8
   IF ASSERT fails: PAUSED, ESCALATE
   stage_timestamps.stage_0_end = now()
-  Write stage notes: .pipeline/stage_0_notes_{id}.md (Key Decisions, Artifacts)
+  Write stage notes: .hex-skills/pipeline/stage_0_notes_{id}.md (Key Decisions, Artifacts)
   Write checkpoint(stage=0)
-  Update .pipeline/state.json
+  Update .hex-skills/pipeline/state.json
 
 # --- STAGE 1: Validation ---
 IF target_stage <= 1:
@@ -269,17 +272,17 @@ IF target_stage <= 1:
     Re-read kanban -> ASSERT Story status = Todo
   IF still NOT Todo: PAUSED, ESCALATE
   readiness_scores[id] = readiness_score
-  Extract agents_info from .agent-review/review_history.md or ln-310 output
+  Extract agents_info from .hex-skills/agent-review/review_history.md or ln-310 output
   stage_timestamps.stage_1_end = now()
-  Write stage notes: .pipeline/stage_1_notes_{id}.md (Verdict, Agent Review, Key Decisions)
+  Write stage notes: .hex-skills/pipeline/stage_1_notes_{id}.md (Verdict, Agent Review, Key Decisions)
   Write checkpoint(stage=1)
-  Update .pipeline/state.json
+  Update .hex-skills/pipeline/state.json
 
 # --- STAGE 2+3 LOOP (rework cycle) ---
 # COMPACTION GUARD: if vars lost after auto-compaction, recover from disk
 IF quality_cycles is undefined OR story_state is undefined:
-  Read .pipeline/state.json -> restore all vars
-  Read .pipeline/checkpoint-{id}.json -> get last completed stage
+  Read .hex-skills/pipeline/state.json -> restore all vars
+  Read .hex-skills/pipeline/checkpoint-{id}.json -> get last completed stage
   Re-read this SKILL.md (full) -> restore Phase 4 flow
   Resume from checkpoint.stage + 1
 
@@ -293,20 +296,20 @@ WHILE quality_cycles < 2:
     IF ASSERT fails: PAUSED, ESCALATE, BREAK
     git_stats[id] = parse `git diff --stat origin/master..HEAD`
     stage_timestamps.stage_2_end = now()
-    Write stage notes: .pipeline/stage_2_notes_{id}.md (Key Decisions, Git commits)
+    Write stage notes: .hex-skills/pipeline/stage_2_notes_{id}.md (Key Decisions, Git commits)
     Write checkpoint(stage=2)
-    Update .pipeline/state.json
+    Update .hex-skills/pipeline/state.json
 
   # STAGE 3: Quality Gate (IMPOSSIBLE TO SKIP — next line after Stage 2)
   stage_timestamps.stage_3_start = now()
   Skill(skill: "ln-500-story-quality-gate", args: "{id}")
   Re-read kanban -> check Story status
   Extract quality verdict, score from ln-500 output
-  Extract agents_info from .agent-review/review_history.md or ln-500 output
+  Extract agents_info from .hex-skills/agent-review/review_history.md or ln-500 output
   stage_timestamps.stage_3_end = now()
-  Write stage notes: .pipeline/stage_3_notes_{id}.md (Verdict, Score, Agent Review, Branch)
+  Write stage notes: .hex-skills/pipeline/stage_3_notes_{id}.md (Verdict, Score, Agent Review, Branch)
   Write checkpoint(stage=3, verdict, score)
-  Update .pipeline/state.json
+  Update .hex-skills/pipeline/state.json
 
   IF Story status = Done:
     story_state = "DONE"
@@ -337,7 +340,7 @@ story_state = story_state OR "DONE"    # default if loop exits normally
 
 ```
 # 0. Signal pipeline complete
-Write .pipeline/state.json: { "complete": true, ... }
+Write .hex-skills/pipeline/state.json: { "complete": true, ... }
 
 # 1. Self-verify against Definition of Done
 verification = {
@@ -349,7 +352,7 @@ IF ANY verification == false: WARN user with details
 # 2. Read stage notes
 stage_notes = {}
 FOR N IN 0..3:
-  IF .pipeline/stage_{N}_notes_{id}.md exists:
+  IF .hex-skills/pipeline/stage_{N}_notes_{id}.md exists:
     stage_notes[N] = read file content
   ELSE:
     stage_notes[N] = "(no notes captured)"
@@ -429,7 +432,7 @@ IF sleep_prevention_pid:
   kill $sleep_prevention_pid 2>/dev/null || true
 
 # 8. Remove pipeline state files
-Delete .pipeline/ directory
+Delete .hex-skills/pipeline/ directory
 
 # 9. Report results location to user
 ```
@@ -449,7 +452,21 @@ Delete .pipeline/ directory
 | Task in To Rework 3+ times | ln-400 reports rework loop | Escalate: "Task X reworked 3 times, need input" |
 | ln-500 FAIL | Re-read kanban, status = To Rework | Fix tasks auto-created by ln-500. Stage 2 re-entry. Max 2 quality cycles |
 | Skill call error | Exception from Skill() | Read checkpoint -> re-invoke same Skill (kanban handles task-level resume) |
-| Context compression | PostCompact hook or manual detection | Read .pipeline/state.json -> re-read SKILL.md -> restore vars -> resume |
+| Context compression | PostCompact hook or manual detection | Read .hex-skills/pipeline/state.json -> re-read SKILL.md -> restore vars -> resume |
+
+## Worker Invocation (MANDATORY)
+
+| Stage | Skill | Invocation |
+|-------|-------|------------|
+| 0 | ln-300-task-coordinator | `Skill(skill: "ln-300-task-coordinator", args: "{id}")` |
+| 1 | ln-310-multi-agent-validator | `Skill(skill: "ln-310-multi-agent-validator", args: "{id}")` |
+| 2 | ln-400-story-executor | `Skill(skill: "ln-400-story-executor", args: "{id}")` |
+| 3 | ln-500-story-quality-gate | `Skill(skill: "ln-500-story-quality-gate", args: "{id}")` |
+
+TodoWrite format (mandatory):
+```
+{content: "Stage N: {name} (ln-NNN)", status: "pending", activeForm: "{verb}ing"}
+```
 
 ## Critical Rules
 
@@ -459,8 +476,8 @@ Delete .pipeline/ directory
 4. **Kanban verification.** After EVERY Skill call, re-read kanban and ASSERT expected state. Lead never caches kanban state
 5. **Quality cycle limit.** Max 2 quality FAILs per Story (original + 1 rework). After 2nd FAIL, escalate to user
 6. **Worktree lifecycle.** ln-1000 creates worktree in Phase 3.4. Branch finalization (commit, push) by ln-500. Worktree cleanup by ln-1000 in Phase 5 (lead is in worktree, so ln-500 skips cleanup)
-7. **Stage notes.** Lead writes `.pipeline/stage_N_notes_{id}.md` after each stage for Pipeline Report
-8. **Checkpoints.** Lead writes `.pipeline/checkpoint-{id}.json` after each stage for recovery
+7. **Stage notes.** Lead writes `.hex-skills/pipeline/stage_N_notes_{id}.md` after each stage for Pipeline Report
+8. **Checkpoints.** Lead writes `.hex-skills/pipeline/checkpoint-{id}.json` after each stage for recovery
 
 ## Known Issues
 

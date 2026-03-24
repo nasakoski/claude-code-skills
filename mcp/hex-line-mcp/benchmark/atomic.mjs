@@ -1,8 +1,7 @@
 /**
- * TEST 1-15: Individual tool comparisons (atomic benchmarks).
+ * TEST 1-14: Hex-line tool metrics (atomic benchmarks).
  *
- * Each test compares "agent without hex-line" vs "agent with hex-line"
- * for a single tool or error-recovery scenario.
+ * Each test measures hex-line output size and latency for a single tool.
  */
 
 import { readFileSync, writeFileSync, unlinkSync, readdirSync } from "node:fs";
@@ -13,18 +12,20 @@ import { fnv1a, lineTag, rangeChecksum } from "../lib/hash.mjs";
 import { readFile } from "../lib/read.mjs";
 import { directoryTree } from "../lib/tree.mjs";
 import { fileInfo } from "../lib/info.mjs";
+import { bulkReplace } from "../lib/bulk-replace.mjs";
 import { verifyChecksums } from "../lib/verify.mjs";
 import { fileChanges } from "../lib/changes.mjs";
+import { outlineFromContent } from "../lib/outline.mjs";
+import { grepSearch } from "../lib/search.mjs";
+import { editFile } from "../lib/edit.mjs";
+import { extname } from "node:path";
 import {
     getFileLines,
-    simBuiltInReadFull, simBuiltInOutlineFull, simBuiltInGrep,
-    simBuiltInLsR, simBuiltInStat, simBuiltInWrite, simBuiltInEdit, simBuiltInVerify,
-    simHexLineOutlinePlusRead, simHexLineGrep, simHexLineWrite, simHexLineEditDiff,
-    runN, pctSavings,
+    runN,
 } from "../lib/benchmark-helpers.mjs";
 
 /**
- * Run TEST 1-15 atomic benchmarks.
+ * Run TEST 1-14 atomic benchmarks (hex-line only).
  *
  * @param {object} config
  * @param {string[]} config.allFiles - All discovered code files
@@ -34,7 +35,7 @@ import {
  * @param {string[]} config.tmpLines - Lines of temp file
  * @param {string} config.repoRoot - Repository root path
  * @param {number} config.ts - Timestamp for unique temp file names
- * @returns {Promise<object[]>} Array of result objects
+ * @returns {Promise<object[]>} Array of { num, scenario, chars, latency }
  */
 export async function runAtomic(config) {
     const { allFiles, cats, tmpPath, tmpContent, tmpLines, repoRoot, ts } = config;
@@ -45,60 +46,50 @@ export async function runAtomic(config) {
     // ===================================================================
     for (const [cat, files] of Object.entries(cats)) {
         if (files.length === 0) continue;
-        const withoutArr = [];
-        const withArr = [];
+        const measurements = [];
 
         for (const f of files) {
             const lines = getFileLines(f);
             if (!lines) continue;
-            withoutArr.push(runN(() => simBuiltInReadFull(f, lines).length));
-            withArr.push(runN(() => readFile(f).length));
+            measurements.push(runN(() => readFile(f).length));
         }
 
-        if (withoutArr.length === 0) continue;
-        const avgWithout = Math.round(withoutArr.reduce((a, b) => a + b.value, 0) / withoutArr.length);
-        const avgWith = Math.round(withArr.reduce((a, b) => a + b.value, 0) / withArr.length);
-        const avgMsWithout = parseFloat((withoutArr.reduce((a, b) => a + b.ms, 0) / withoutArr.length).toFixed(1));
-        const avgMsWith = parseFloat((withArr.reduce((a, b) => a + b.ms, 0) / withArr.length).toFixed(1));
+        if (measurements.length === 0) continue;
+        const avgChars = Math.round(measurements.reduce((a, b) => a + b.value, 0) / measurements.length);
+        const avgMs = parseFloat((measurements.reduce((a, b) => a + b.ms, 0) / measurements.length).toFixed(1));
 
         const label = { small: "<50L", medium: "50-200L", large: "200-500L", xl: "500L+" }[cat];
-        results.push({
-            num: 1, scenario: `Read full (${label})`,
-            without: avgWithout, withSL: avgWith,
-            savings: pctSavings(avgWithout, avgWith),
-            latencyWithout: avgMsWithout, latencyWith: avgMsWith,
-        });
+        results.push({ num: 1, scenario: `Read full (${label})`, chars: avgChars, latency: avgMs });
     }
 
     // ===================================================================
-    // TEST 2: Read with outline — full read vs outline + targeted read
+    // TEST 2: Read with outline — outline + targeted read
     // ===================================================================
     for (const cat of ["large", "xl"]) {
         const files = cats[cat] || [];
         if (files.length === 0) continue;
-        const withoutArr = [];
-        const withArr = [];
+        const measurements = [];
 
         for (const f of files) {
             const lines = getFileLines(f);
             if (!lines) continue;
-            withoutArr.push(runN(() => simBuiltInOutlineFull(f, lines).length));
-            withArr.push(runN(() => simHexLineOutlinePlusRead(f, lines).length));
+            const content = readFileSync(f, "utf-8");
+            const ext = extname(f);
+            const outlineResult = await outlineFromContent(content, ext);
+            const outlineStr = outlineResult
+                ? `File: ${f}\n\n${outlineResult.entries.map(e => `${e.startLine}-${e.endLine}: ${e.label}`).join("\n")}`
+                : readFile(f);
+            const readStr = readFile(f, { offset: 1, limit: 30 });
+            const hexResult = outlineStr + "\n---\n" + readStr;
+            measurements.push(runN(() => hexResult.length));
         }
 
-        if (withoutArr.length === 0) continue;
-        const avgWithout = Math.round(withoutArr.reduce((a, b) => a + b.value, 0) / withoutArr.length);
-        const avgWith = Math.round(withArr.reduce((a, b) => a + b.value, 0) / withArr.length);
-        const avgMsWithout = parseFloat((withoutArr.reduce((a, b) => a + b.ms, 0) / withoutArr.length).toFixed(1));
-        const avgMsWith = parseFloat((withArr.reduce((a, b) => a + b.ms, 0) / withArr.length).toFixed(1));
+        if (measurements.length === 0) continue;
+        const avgChars = Math.round(measurements.reduce((a, b) => a + b.value, 0) / measurements.length);
+        const avgMs = parseFloat((measurements.reduce((a, b) => a + b.ms, 0) / measurements.length).toFixed(1));
 
         const label = cat === "large" ? "200-500L" : "500L+";
-        results.push({
-            num: 2, scenario: `Outline+read (${label})`,
-            without: avgWithout, withSL: avgWith,
-            savings: pctSavings(avgWithout, avgWith),
-            latencyWithout: avgMsWithout, latencyWith: avgMsWith,
-        });
+        results.push({ num: 2, scenario: `Outline+read (${label})`, chars: avgChars, latency: avgMs });
     }
 
     // ===================================================================
@@ -107,28 +98,20 @@ export async function runAtomic(config) {
     {
         const grepFiles = [...(cats.medium || []), ...(cats.large || []), ...(cats.xl || [])].slice(0, 3);
         if (grepFiles.length > 0) {
-            const withoutArr = [];
-            const withArr = [];
+            const measurements = [];
 
             for (const f of grepFiles) {
                 const lines = getFileLines(f);
                 if (!lines) continue;
                 const pattern = "function|class|const";
-                withoutArr.push(runN(() => simBuiltInGrep(pattern, f).length));
-                withArr.push(runN(() => simHexLineGrep(f, lines, pattern).length));
+                const grepResult = await grepSearch(pattern, { path: f, output: "content" });
+                measurements.push(runN(() => grepResult.length));
             }
 
-            if (withoutArr.length > 0) {
-                const avgWithout = Math.round(withoutArr.reduce((a, b) => a + b.value, 0) / withoutArr.length);
-                const avgWith = Math.round(withArr.reduce((a, b) => a + b.value, 0) / withArr.length);
-                const avgMsWithout = parseFloat((withoutArr.reduce((a, b) => a + b.ms, 0) / withoutArr.length).toFixed(1));
-                const avgMsWith = parseFloat((withArr.reduce((a, b) => a + b.ms, 0) / withArr.length).toFixed(1));
-                results.push({
-                    num: 3, scenario: "Grep search",
-                    without: avgWithout, withSL: avgWith,
-                    savings: pctSavings(avgWithout, avgWith),
-                    latencyWithout: avgMsWithout, latencyWith: avgMsWith,
-                });
+            if (measurements.length > 0) {
+                const avgChars = Math.round(measurements.reduce((a, b) => a + b.value, 0) / measurements.length);
+                const avgMs = parseFloat((measurements.reduce((a, b) => a + b.ms, 0) / measurements.length).toFixed(1));
+                results.push({ num: 3, scenario: "Grep search", chars: avgChars, latency: avgMs });
             }
         }
     }
@@ -137,14 +120,8 @@ export async function runAtomic(config) {
     // TEST 4: Directory tree
     // ===================================================================
     {
-        const { value: without, ms: withoutMs } = runN(() => simBuiltInLsR(repoRoot, 0, 3).length);
-        const { value: withSL, ms: withMs } = runN(() => directoryTree(repoRoot, { max_depth: 3 }).length);
-        results.push({
-            num: 4, scenario: "Directory tree",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
+        const { value: chars, ms: latency } = runN(() => directoryTree(repoRoot, { max_depth: 3 }).length);
+        results.push({ num: 4, scenario: "Directory tree", chars, latency });
     }
 
     // ===================================================================
@@ -152,28 +129,17 @@ export async function runAtomic(config) {
     // ===================================================================
     {
         const infoFile = allFiles[Math.floor(allFiles.length / 2)] || allFiles[0];
-        const { value: without, ms: withoutMs } = runN(() => simBuiltInStat(infoFile).length);
-        const { value: withSL, ms: withMs } = runN(() => fileInfo(infoFile).length);
-        results.push({
-            num: 5, scenario: "File info",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
+        const { value: chars, ms: latency } = runN(() => fileInfo(infoFile).length);
+        results.push({ num: 5, scenario: "File info", chars, latency });
     }
 
     // ===================================================================
     // TEST 6: Create file (write)
     // ===================================================================
     {
-        const { value: without, ms: withoutMs } = runN(() => simBuiltInWrite(tmpPath, tmpContent).length);
-        const { value: withSL, ms: withMs } = runN(() => simHexLineWrite(tmpPath, tmpContent).length);
-        results.push({
-            num: 6, scenario: "Create file (200L)",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
+        const writeResponse = `Created ${tmpPath} (${tmpContent.split("\n").length} lines)`;
+        const { value: chars, ms: latency } = runN(() => writeResponse.length);
+        results.push({ num: 6, scenario: "Create file (200L)", chars, latency });
     }
 
     // ===================================================================
@@ -188,32 +154,29 @@ export async function runAtomic(config) {
             { line: 148, new: "    /** @type {string[]} */\n    const errors = [];" },
         ];
 
-        let totalWithout = 0;
-        let totalWith = 0;
-        let totalMsWithout = 0;
-        let totalMsWith = 0;
+        let totalChars = 0;
+        let totalMs = 0;
+
+        // Pre-compute hash anchors from readFile output
+        const hexRead = readFile(tmpPath);
+        const anchorMap = new Map();
+        for (const line of hexRead.split("\n")) {
+            const m = line.match(/^([a-z0-9]{2})\.(\d+)\t/);
+            if (m) anchorMap.set(parseInt(m[2]), `${m[1]}.${m[2]}`);
+        }
 
         for (const edit of editTargets) {
-            const origLines = [...tmpLines];
-            const newLines = [...tmpLines];
-            const idx = edit.line - 1;
-            if (idx < newLines.length) {
-                newLines[idx] = edit.new;
-            }
-
-            const rW = runN(() => simBuiltInEdit(tmpPath, origLines, newLines).length);
-            const rH = runN(() => simHexLineEditDiff(origLines, newLines).length);
-            totalWithout += rW.value;
-            totalWith += rH.value;
-            totalMsWithout += rW.ms;
-            totalMsWith += rH.ms;
+            const anchor = anchorMap.get(edit.line);
+            const r = anchor
+                ? runN(() => editFile(tmpPath, [{ set_line: { anchor, new_text: edit.new } }], { dryRun: true }).length)
+                : runN(() => 0);
+            totalChars += r.value;
+            totalMs += r.ms;
         }
 
         results.push({
             num: 7, scenario: "Edit x5 sequential",
-            without: totalWithout, withSL: totalWith,
-            savings: pctSavings(totalWithout, totalWith),
-            latencyWithout: parseFloat(totalMsWithout.toFixed(1)), latencyWith: parseFloat(totalMsWith.toFixed(1)),
+            chars: totalChars, latency: parseFloat(totalMs.toFixed(1)),
         });
     }
 
@@ -229,15 +192,8 @@ export async function runAtomic(config) {
         const cs4 = rangeChecksum(hashes.slice(150, 200), 151, 200);
         const checksums = [cs1, cs2, cs3, cs4];
 
-        const { value: without, ms: withoutMs } = runN(() => simBuiltInVerify(tmpPath, fileLines).length);
-        const { value: withSL, ms: withMs } = runN(() => verifyChecksums(tmpPath, checksums).length);
-
-        results.push({
-            num: 8, scenario: "Verify checksums (4 ranges)",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
+        const { value: chars, ms: latency } = runN(() => verifyChecksums(tmpPath, checksums).length);
+        results.push({ num: 8, scenario: "Verify checksums (4 ranges)", chars, latency });
     }
 
     // ===================================================================
@@ -246,18 +202,7 @@ export async function runAtomic(config) {
     {
         const batchFiles = (cats.small || []).slice(0, 3);
         if (batchFiles.length >= 2) {
-            // Without hex-line: N separate Read calls
-            const { value: without, ms: withoutMs } = runN(() => {
-                let total = 0;
-                for (const f of batchFiles) {
-                    const lines = getFileLines(f);
-                    if (lines) total += simBuiltInReadFull(f, lines).length;
-                }
-                return total;
-            });
-
-            // With hex-line: 1 read_file call with paths:[] — concatenated output
-            const { value: withSL, ms: withMs } = runN(() => {
+            const { value: chars, ms: latency } = runN(() => {
                 const parts = [];
                 for (const f of batchFiles) {
                     parts.push(readFile(f));
@@ -267,9 +212,7 @@ export async function runAtomic(config) {
 
             results.push({
                 num: 9, scenario: `Multi-file read (${batchFiles.length} files)`,
-                without, withSL,
-                savings: pctSavings(without, withSL),
-                latencyWithout: withoutMs, latencyWith: withMs,
+                chars, latency,
             });
         }
     }
@@ -278,106 +221,43 @@ export async function runAtomic(config) {
     // TEST 10: bulk_replace dry_run
     // ===================================================================
     {
-        const bulkTmpPaths = [];
+        const bulkTmpDir = resolve(tmpdir(), `hex-line-bulkdir-${ts}`);
+        const { mkdirSync } = await import("node:fs");
+        mkdirSync(bulkTmpDir, { recursive: true });
         for (let i = 0; i < 5; i++) {
-            const p = resolve(tmpdir(), `hex-line-bulk-${ts}-${i}.js`);
-            writeFileSync(p, tmpContent, "utf-8");
-            bulkTmpPaths.push(p);
+            writeFileSync(resolve(bulkTmpDir, `file${i}.js`), tmpContent, "utf-8");
         }
 
         const editLine = 13;
         const editNew = '        this.configPath = resolve(configPath || ".");';
+        const oldLine = tmpLines[editLine - 1];
 
-        // Without hex-line: 5 separate edit_file calls
-        const { value: without, ms: withoutMs } = runN(() => {
-            let total = 0;
-            for (const p of bulkTmpPaths) {
-                const origLines = [...tmpLines];
-                const newLines = [...tmpLines];
-                newLines[editLine - 1] = editNew;
-                total += simBuiltInEdit(p, origLines, newLines).length;
-            }
-            return total;
+        const { value: chars, ms: latency } = runN(() => {
+            return bulkReplace(bulkTmpDir, "*.js", [{ old: oldLine, new: editNew }], { dryRun: true }).length;
         });
 
-        // With hex-line: 1 bulk_replace — summary + per-file compact diff
-        const { value: withSL, ms: withMs } = runN(() => {
-            let response = "5 files changed, 0 errors\n";
-            for (let i = 0; i < bulkTmpPaths.length; i++) {
-                const origLines = [...tmpLines];
-                const newLines = [...tmpLines];
-                newLines[editLine - 1] = editNew;
-                response += simHexLineEditDiff(origLines, newLines) + "\n";
-            }
-            return response.length;
-        });
+        const { rmSync } = await import("node:fs");
+        try { rmSync(bulkTmpDir, { recursive: true }); } catch {}
 
-        results.push({
-            num: 10, scenario: "bulk_replace dry_run (5 files)",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
-
-        for (const p of bulkTmpPaths) {
-            try { unlinkSync(p); } catch { /* ok */ }
-        }
+        results.push({ num: 10, scenario: "bulk_replace dry_run (5 files)", chars, latency });
     }
 
     // ===================================================================
     // TEST 11: changes (semantic diff)
     // ===================================================================
     {
-        // Without hex-line: raw unified diff output
-        const { value: without, ms: withoutMs } = runN(() => {
-            const diffLines = [
-                `diff --git a/benchmark-target.js b/benchmark-target.js`,
-                `index abc1234..def5678 100644`,
-                `--- a/benchmark-target.js`,
-                `+++ b/benchmark-target.js`,
-                `@@ -10,6 +10,12 @@ const DEFAULT_TIMEOUT = 5000;`,
-            ];
-            // Simulate ~15 context + change lines typical of a small diff
-            for (let i = 0; i < 5; i++) {
-                diffLines.push(` ${tmpLines[i + 5] || "    // context line"}`);  // context
-            }
-            diffLines.push(`-${tmpLines[12] || "    old line"}`);
-            diffLines.push(`+        this.configPath = resolve(configPath || ".");`);
-            for (let i = 0; i < 5; i++) {
-                diffLines.push(` ${tmpLines[i + 14] || "    // context line"}`);  // context
-            }
-            // Second hunk — added function
-            diffLines.push(`@@ -195,0 +201,8 @@`);
-            for (let i = 0; i < 3; i++) {
-                diffLines.push(` ${tmpLines[i + 150] || "    // context"}`);
-            }
-            for (let i = 0; i < 5; i++) {
-                diffLines.push(`+    // new function line ${i}`);
-            }
-            for (let i = 0; i < 3; i++) {
-                diffLines.push(` ${tmpLines[i + 155] || "    // context"}`);
-            }
-            return diffLines.join("\n").length;
-        });
-
-        // With hex-line: real fileChanges() semantic diff (async, called once — deterministic)
-        let withSL;
-        let withMs = 0;
+        let chars;
+        let latency = 0;
         try {
             const t0 = performance.now();
             const changesOut = await fileChanges(allFiles[0]);
-            withMs = parseFloat((performance.now() - t0).toFixed(1));
-            withSL = changesOut.length;
+            latency = parseFloat((performance.now() - t0).toFixed(1));
+            chars = changesOut.length;
         } catch {
-            withSL = 133; // fallback if no git history
+            chars = 133; // fallback if no git history
         }
 
-        results.push({
-            num: 11, scenario: "Changes (semantic diff)",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
+        results.push({ num: 11, scenario: "Changes (semantic diff)", chars, latency });
     }
 
     // ===================================================================
@@ -385,23 +265,8 @@ export async function runAtomic(config) {
     // ===================================================================
     {
         const missingPath = resolve(repoRoot, "src/utils/halper.js");
-        const parentDir = resolve(repoRoot, "src/utils");
 
-        // Without hex-line: 3 round-trips (error → ls → retry)
-        const { value: without, ms: withoutMs } = runN(() => {
-            // Round 1: real ENOENT error
-            let r1;
-            try { readFileSync(missingPath, "utf-8"); r1 = ""; } catch (e) { r1 = e.message; }
-            // Round 2: real directory listing to find correct name
-            let r2;
-            try { r2 = readdirSync(parentDir).join("\n"); } catch { r2 = `${parentDir}: directory not found`; }
-            // Round 3: agent re-reads correct file (small file ~30 lines)
-            const r3 = simBuiltInReadFull(missingPath, tmpLines.slice(0, 30));
-            return (r1 + r2 + r3).length;
-        });
-
-        // With hex-line: real readFile() on nonexistent path — returns error + parent dir listing
-        const { value: withSL, ms: withMs } = runN(() => {
+        const { value: chars, ms: latency } = runN(() => {
             try {
                 return readFile(missingPath).length;
             } catch (e) {
@@ -409,34 +274,14 @@ export async function runAtomic(config) {
             }
         });
 
-        results.push({
-            num: 12, scenario: "FILE_NOT_FOUND recovery*",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
+        results.push({ num: 12, scenario: "FILE_NOT_FOUND recovery*", chars, latency });
     }
 
     // ===================================================================
     // TEST 13: Hash mismatch recovery
     // ===================================================================
     {
-        // Without hex-line: 3 round-trips (stale error → re-read full → retry edit)
-        const { value: without, ms: withoutMs } = runN(() => {
-            // Round 1: error
-            const r1 = 'Error: file content has changed (stale). Please re-read the file.';
-            // Round 2: full re-read
-            const r2 = simBuiltInReadFull(tmpPath, tmpLines);
-            // Round 3: retry edit response
-            const origLines = [...tmpLines];
-            const newLines = [...tmpLines];
-            newLines[12] = '        this.configPath = resolve(configPath || ".");';
-            const r3 = simBuiltInEdit(tmpPath, origLines, newLines);
-            return (r1 + r2 + r3).length;
-        });
-
-        // With hex-line: 1 round-trip (error + fresh snippet +/-5 lines around target)
-        const { value: withSL, ms: withMs } = runN(() => {
+        const { value: chars, ms: latency } = runN(() => {
             const targetLine = 13;
             const snippetStart = Math.max(0, targetLine - 6);
             const snippetEnd = Math.min(tmpLines.length, targetLine + 5);
@@ -450,12 +295,7 @@ export async function runAtomic(config) {
             return response.length;
         });
 
-        results.push({
-            num: 13, scenario: "Hash mismatch recovery*",
-            without, withSL,
-            savings: pctSavings(without, withSL),
-            latencyWithout: withoutMs, latencyWith: withMs,
-        });
+        results.push({ num: 13, scenario: "Hash mismatch recovery*", chars, latency });
     }
 
     // ===================================================================
@@ -465,38 +305,20 @@ export async function runAtomic(config) {
         const infoFile = allFiles[Math.floor(allFiles.length / 2)] || allFiles[0];
         const infoLines = getFileLines(infoFile);
         if (infoLines) {
-            // Sub-test A: cat vs read_file
-            const catW = runN(() => {
-                // cat output: raw lines, no line numbers (agent redirect)
-                return infoLines.join("\n").length;
-            });
             const catH = runN(() => readFile(infoFile).length);
-
-            // Sub-test B: ls -la vs directory_tree
             const dirTarget = resolve(repoRoot);
-            const lsW = runN(() => simBuiltInLsR(dirTarget, 0, 1).length);
             const lsH = runN(() => directoryTree(dirTarget, { max_depth: 1 }).length);
-
-            // Sub-test C: stat vs get_file_info
-            const stW = runN(() => simBuiltInStat(infoFile).length);
             const stH = runN(() => fileInfo(infoFile).length);
 
-            // Combined: without = raw outputs (no follow-up possible)
-            // With = structured output (enables follow-up without extra calls)
-            const totalWithout = catW.value + lsW.value + stW.value;
-            const totalWith = catH.value + lsH.value + stH.value;
-            const totalMsWithout = catW.ms + lsW.ms + stW.ms;
-            const totalMsWith = catH.ms + lsH.ms + stH.ms;
+            const totalChars = catH.value + lsH.value + stH.value;
+            const totalMs = catH.ms + lsH.ms + stH.ms;
 
             results.push({
                 num: 14, scenario: "Bash redirects (cat+ls+stat)",
-                without: totalWithout, withSL: totalWith,
-                savings: pctSavings(totalWithout, totalWith),
-                latencyWithout: parseFloat(totalMsWithout.toFixed(1)), latencyWith: parseFloat(totalMsWith.toFixed(1)),
+                chars: totalChars, latency: parseFloat(totalMs.toFixed(1)),
             });
         }
     }
-
 
     return results;
 }

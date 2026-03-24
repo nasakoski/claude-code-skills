@@ -1,6 +1,6 @@
 {
   "name": "@levnikolaevich/hex-line-mcp",
-  "version": "1.3.6",
+  "version": "1.4.0",
   "mcpName": "io.github.levnikolaevich/hex-line-mcp",
   "type": "module",
   "description": "Hash-verified file editing MCP + token efficiency hook for AI coding agents. 11 tools: read, edit, write, grep, outline, verify, directory_tree, file_info, setup_hooks, changes, bulk_replace.",
@@ -28,7 +28,7 @@
   "_dep_notes": {
     "web-tree-sitter": "Pinned ^0.25.0: v0.26 ABI incompatible with tree-sitter-wasms 0.1.x (built with tree-sitter-cli 0.20.8). Language.load() silently fails.",
     "zod": "Pinned ^3.25.0: zod 4 breaks zod-to-json-schema (used by MCP SDK internally). Tool parameter descriptions not sent to clients. Revisit when MCP SDK switches to z.toJSONSchema().",
-    "better-sqlite3": "Optional. Used only by lib/graph-enrich.mjs for readonly access to hex-graph .codegraph/index.db. Graceful fallback if absent."
+    "better-sqlite3": "Optional. Used only by lib/graph-enrich.mjs for readonly access to hex-graph .hex-skills/codegraph/index.db. Graceful fallback if absent."
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",

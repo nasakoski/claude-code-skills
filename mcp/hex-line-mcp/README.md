@@ -42,7 +42,7 @@ Advanced / occasional:
 | `get_file_info` | File metadata without reading content | Size, lines, mtime, type, binary detection |
 | `setup_hooks` | Configure Claude hooks + install output style | Gemini/Codex get guidance only; no hooks |
 | `changes` | Compare file against git ref, shows added/removed/modified symbols | AST-level semantic diff |
-| `bulk_replace` | Search-and-replace across multiple files by glob | Per-file diffs, dry_run, max_files safety |
+| `bulk_replace` | Search-and-replace across multiple files by glob | Compact summary (default) or capped diffs via `format`, dry_run, max_files |
 
 ### Hooks (PreToolUse + PostToolUse)
 
@@ -90,45 +90,33 @@ The `setup_hooks` tool automatically installs the output style to `~/.claude/out
 
 ## Benchmarking
 
-`hex-line-mcp` now distinguishes:
+Two-tier benchmark architecture:
 
-- `tests` — correctness and regression safety
-- `benchmarks` — comparative workflow efficiency against built-in tools
-- `diagnostics` — modeled tool-level measurements for engineering inspection
-
-Public benchmark mode reports only comparative multi-step workflows:
+- `/benchmark-compare` — real 1:1 comparison (runs inside Claude Code, calls BOTH built-in and hex-line tools on same files)
+- `npm run benchmark` — hex-line standalone metrics (Node.js, all real library calls, no simulations)
 
 ```bash
 npm run benchmark -- --repo /path/to/repo
-```
-
-Optional diagnostics stay available separately:
-
-```bash
 npm run benchmark:diagnostic -- --repo /path/to/repo
-npm run benchmark:diagnostic:graph -- --repo /path/to/repo
 ```
 
-The diagnostics output includes synthetic tool-level comparisons such as read, grep, verify, and graph-enrichment helpers. Those numbers are useful for inspecting output shape and token behavior, but they are not the public workflow benchmark score.
+Current hex-line workflow metrics on the `hex-line-mcp` repo (all real library calls):
 
-Current sample run on the `hex-line-mcp` repo with session-derived workflows:
+| # | Workflow | Hex-line output | Ops |
+|---|----------|---------:|----:|
+| W1 | Debug hook file-listing redirect | 882 chars | 2 |
+| W2 | Adjust `setup_hooks` guidance and verify | 1,719 chars | 3 |
+| W3 | Repo-wide benchmark wording refresh | 213 chars | 1 |
+| W4 | Inspect large smoke test before edit | 2,322 chars | 3 |
+| W5 | Follow-up edit after unrelated line shift | 1,267 chars | 3 |
 
-| ID | Workflow | Built-in | hex-line | Savings | Ops |
-|----|----------|---------:|---------:|--------:|----:|
-| W1 | Debug hook file-listing redirect | 23,143 chars | 882 chars | 96% | 3→2 |
-| W2 | Adjust `setup_hooks` guidance and verify | 24,877 chars | 1,637 chars | 93% | 3→3 |
-| W3 | Repo-wide benchmark wording refresh | 137,796 chars | 38,918 chars | 72% | 15→1 |
-| W4 | Inspect large smoke test before edit | 49,566 chars | 2,104 chars | 96% | 3→3 |
-
-Workflow summary: `89%` average token savings, `24→9` tool calls (`63%` fewer).
-
-These workflows are derived from recent real Claude sessions, but executed against local reproducible fixtures in the repository. They should be read as workflow-efficiency measurements, not as correctness or semantic-quality claims.
+Workflow total: `6,403` chars across `12` ops. Run `/benchmark-compare` in Claude Code for full built-in vs hex-line comparison with real tool calls on both sides.
 
 ### Optional Graph Enrichment
 
-If a project already has `.codegraph/index.db`, `hex-line` can add lightweight graph hints to `read_file`, `outline`, `grep_search`, and `edit_file`.
+If a project already has `.hex-skills/codegraph/index.db`, `hex-line` can add lightweight graph hints to `read_file`, `outline`, `grep_search`, and `edit_file`.
 
-- Graph enrichment is optional. If `.codegraph/index.db` is missing, `hex-line` falls back to standard behavior silently.
+- Graph enrichment is optional. If `.hex-skills/codegraph/index.db` is missing, `hex-line` falls back to standard behavior silently.
 - `better-sqlite3` is optional. If it is unavailable, `hex-line` still works without graph hints.
 - `edit_file` reports **Call impact**, not full semantic blast radius. The warning uses call-graph callers only.
 
@@ -160,7 +148,7 @@ Use `replace_between` inside `edit_file` when you know stable start/end anchors 
 
 ### Literal rename / refactor
 
-Use `bulk_replace` for text rename patterns across one or more files. Do not use it as a substitute for structured block rewrites.
+Use `bulk_replace` for text rename patterns across one or more files. Returns compact summary by default; pass `format: "full"` for capped diffs. Do not use it as a substitute for structured block rewrites.
 
 ### read_file
 

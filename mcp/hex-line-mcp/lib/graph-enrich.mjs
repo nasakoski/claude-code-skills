@@ -1,7 +1,7 @@
 /**
  * Graph enrichment for hex-line tools.
  *
- * Reads .codegraph/index.db (created by hex-graph-mcp) in readonly mode via a
+ * Reads .hex-skills/codegraph/index.db (created by hex-graph-mcp) in readonly mode via a
  * small explicit compatibility contract:
  * - hex_line_contract
  * - hex_line_symbol_annotations
@@ -32,7 +32,7 @@ export function getGraphDB(filePath) {
         const projectRoot = findProjectRoot(filePath);
         if (!projectRoot) return null;
 
-        const dbPath = join(projectRoot, ".codegraph", "index.db");
+        const dbPath = join(projectRoot, ".hex-skills/codegraph", "index.db");
         if (!existsSync(dbPath)) return null;
         if (_dbs.has(dbPath)) return _dbs.get(dbPath);
 
@@ -206,10 +206,10 @@ export function getRelativePath(filePath) {
 // --- Helpers ---
 
 function findProjectRoot(filePath) {
-    // First pass: look for .codegraph/index.db (strongest signal)
+    // First pass: look for .hex-skills/codegraph/index.db (strongest signal)
     let dir = dirname(filePath);
     for (let i = 0; i < 10; i++) {
-        if (existsSync(join(dir, ".codegraph", "index.db"))) return dir;
+        if (existsSync(join(dir, ".hex-skills/codegraph", "index.db"))) return dir;
         const parent = dirname(dir);
         if (parent === dir) break;
         dir = parent;

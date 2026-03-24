@@ -1,5 +1,7 @@
 # Problem-Solving: Root Cause First
 
+> **Iron Law:** NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.
+
 Universal checklist for planning, review, and rework phases.
 
 ## Before ANY fix, run this checklist:
@@ -46,6 +48,19 @@ Configuration > Infrastructure > Framework > Application code
 - Docs don't mention your approach
 - Works but can't explain WHY
 
+## Rationalization Table
+
+| Excuse | Reality |
+|--------|--------|
+| "Issue is simple" | Simple issues have root causes too |
+| "Emergency, no time" | Systematic is FASTER than thrashing |
+| "Just try this first" | First fix sets the pattern for worse |
+| "One more attempt" (after 2+) | 3+ failures = architectural problem, STOP |
+| "I know what's wrong" | Then proving it takes 30 seconds |
+| "Works on my machine" | Reproduce in target environment first |
+
+**Escalation:** If 3+ fix attempts failed → STOP, question architecture, discuss with user.
+
 ---
-**Version:** 1.0.0
-**Last Updated:** 2026-02-05
+**Version:** 1.1.0
+**Last Updated:** 2026-03-24

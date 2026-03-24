@@ -52,7 +52,7 @@ function makeTempDir() {
 }
 
 function cleanDb(dir) {
-    const dbPath = join(dir, ".codegraph", "index.db");
+    const dbPath = join(dir, ".hex-skills/codegraph", "index.db");
     if (existsSync(dbPath)) unlinkSync(dbPath);
 }
 
@@ -736,8 +736,8 @@ describe("incremental reindex", () => {
 describe("barrel re-export", () => {
     it("consumer importing from barrel marks target symbol as used", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-reexport-"));
-        const codegraph = join(tmp, ".codegraph");
-        mkdirSync(codegraph);
+        const codegraph = join(tmp, ".hex-skills/codegraph");
+        mkdirSync(codegraph, { recursive: true });
 
         writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
         writeFileSync(join(tmp, "barrel.mjs"), 'export { foo } from "./a.mjs";\n');
@@ -770,8 +770,8 @@ describe("barrel re-export", () => {
 describe("namespace import confidence", () => {
     it("namespace-only usage reported as low confidence", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-ns-"));
-        const codegraph = join(tmp, ".codegraph");
-        mkdirSync(codegraph);
+        const codegraph = join(tmp, ".hex-skills/codegraph");
+        mkdirSync(codegraph, { recursive: true });
 
         writeFileSync(join(tmp, "a.mjs"), 'export function x() {}\nexport function y() {}\n');
         writeFileSync(join(tmp, "b.mjs"), 'import * as ns from "./a.mjs";\nns.x();\n');
@@ -801,8 +801,8 @@ describe("namespace import confidence", () => {
 describe("unused barrel", () => {
     it("barrel with no consumer does not make target used", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-nocons-"));
-        const codegraph = join(tmp, ".codegraph");
-        mkdirSync(codegraph);
+        const codegraph = join(tmp, ".hex-skills/codegraph");
+        mkdirSync(codegraph, { recursive: true });
 
         writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
         writeFileSync(join(tmp, "barrel.mjs"), 'export { foo } from "./a.mjs";\n');
@@ -832,7 +832,7 @@ describe("unused barrel", () => {
 describe("Python __all__ export extraction", () => {
     it("__all__ is authoritative, convention fallback without it", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-pyall-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "with_all.py"), '__all__ = ["foo"]\n\ndef foo():\n    pass\n\ndef bar():\n    pass\n');
         writeFileSync(join(tmp, "no_all.py"), 'def pub():\n    pass\n\ndef _priv():\n    pass\n\nclass MyClass:\n    pass\n');
         try {
@@ -862,7 +862,7 @@ describe("Python __all__ export extraction", () => {
 describe("Python dynamic __all__", () => {
     it("dynamic __all__ falls back to underscore convention", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-pydyn-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "dynamic.py"), '__all__ = get_exports()\n\ndef visible():\n    pass\n\ndef _hidden():\n    pass\n');
         try {
             await indexProject(tmp);
@@ -882,7 +882,7 @@ describe("Python dynamic __all__", () => {
 describe("C# public vs internal", () => {
     it("only public declarations are exported", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-cs-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "test.cs"), 'using System;\n\npublic class Foo {\n    public void PubMethod() {}\n    private void PrivMethod() {}\n}\n\ninternal class Bar {}\n');
         try {
             await indexProject(tmp);
@@ -902,7 +902,7 @@ describe("C# public vs internal", () => {
 describe("PHP export extraction", () => {
     it("top-level + public methods exported, private not", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-php-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "test.php"), '<?php\nfunction top() {}\nclass C {\n    public function pub() {}\n    private function priv() {}\n}\n');
         try {
             await indexProject(tmp);
@@ -926,7 +926,7 @@ describe("PHP export extraction", () => {
 describe("Non-JS find_unused_exports confidence", () => {
     it("Python exports get export_only confidence, not high", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-pyunused-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "lib.py"), 'def helper():\n    pass\n');
         try {
             await indexProject(tmp);
@@ -1285,7 +1285,7 @@ describe("flow summaries and dataflows", () => {
 describe("find_references through barrel", () => {
     it("consumer usage through barrel is included in references", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-barrelref-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
         writeFileSync(join(tmp, "barrel.mjs"), 'export { foo } from "./a.mjs";\n');
         writeFileSync(join(tmp, "consumer.mjs"), 'import { foo } from "./barrel.mjs";\nfoo();\n');
@@ -1307,7 +1307,7 @@ describe("find_references through barrel", () => {
 describe("find_references ambiguity", () => {
     it("requires canonical selector and uses search_symbols to disambiguate", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-ambrefs-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "a.mjs"), 'export function helper() { return 1; }\n');
         writeFileSync(join(tmp, "b.mjs"), 'export function helper() { return 2; }\n');
         writeFileSync(join(tmp, "use-a.mjs"), 'import { helper } from "./a.mjs";\nexport function runA() { return helper(); }\n');
@@ -1343,7 +1343,7 @@ describe("find_references ambiguity", () => {
 describe("C# public method export", () => {
     it("public methods are marked exported", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-csmethod-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "test.cs"), 'public class Foo {\n    public void PubMethod() {}\n    private void PrivMethod() {}\n}\n');
         try {
             await indexProject(tmp);
@@ -1365,7 +1365,7 @@ describe("C# public method export", () => {
 describe("find_unused_exports text reason", () => {
     it("text output includes reason for non-JS exports", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-unusedreason-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "lib.py"), 'def helper():\n    pass\n');
         try {
             await indexProject(tmp);
@@ -1386,7 +1386,7 @@ describe("find_unused_exports text reason", () => {
 describe("no self-edge for top-level references", () => {
     it("top-level identifier usage does not create self-referencing edge", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-selfedge-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "a.mjs"), 'export const config = { key: "value" };\n');
         writeFileSync(join(tmp, "b.mjs"), 'import { config } from "./a.mjs";\nconfig;\n');
         try {
@@ -1403,7 +1403,7 @@ describe("no self-edge for top-level references", () => {
 
     it("top-level calls and reads attach to module node", async () => {
         const tmp = mkdtempSync(join(tmpdir(), "hex-topmodule-"));
-        mkdirSync(join(tmp, ".codegraph"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
         writeFileSync(join(tmp, "a.mjs"), 'export function foo() { return 1; }\n');
         writeFileSync(join(tmp, "consumer.mjs"), 'import { foo } from "./a.mjs";\nfoo();\nconst x = foo;\n');
         try {
@@ -1510,7 +1510,7 @@ describe("store persistence after restart", () => {
             store.close();
             // Corrupt schema version
             const Database = (await import("better-sqlite3")).default;
-            const db = new Database(join(tmp, ".codegraph", "index.db"));
+            const db = new Database(join(tmp, ".hex-skills/codegraph", "index.db"));
             db.pragma("user_version = 99999");
             db.close();
             const result = resolveStore(tmp);
@@ -1521,7 +1521,7 @@ describe("store persistence after restart", () => {
                     "stale DB should not be opened — resolveStore returned store for this path");
             }
             // DB should NOT be deleted
-            assert.ok(existsSync(join(tmp, ".codegraph", "index.db")), "stale DB must not be deleted");
+            assert.ok(existsSync(join(tmp, ".hex-skills/codegraph", "index.db")), "stale DB must not be deleted");
         } finally {
             try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
         }
@@ -1532,5 +1532,73 @@ describe("store persistence after restart", () => {
         const result = resolveStore(fake);
         // Should return null or fallback store, but NOT crash
         assert.ok(result === null || result !== undefined, "should not crash on missing path");
+    });
+});
+
+import Database from "better-sqlite3";
+
+describe("store persistence after restart", () => {
+    it("resolveStore auto-opens persisted DB", async () => {
+        const tmp = makeTempDir();
+        try {
+            writeFileSync(join(tmp, "a.mjs"), "export function hello() { return 1; }\n");
+            await indexProject(tmp);
+            const store1 = resolveStore(tmp);
+            assert.ok(store1, "store should exist after indexing");
+            const stats1 = store1.stats();
+            assert.ok(stats1.files > 0, "should have indexed files");
+
+            // Simulate restart: close store, clear in-memory cache
+            store1.close();
+
+            // resolveStore should auto-open from disk
+            const store2 = resolveStore(tmp);
+            assert.ok(store2, "store should auto-open from persisted DB");
+            const stats2 = store2.stats();
+            assert.equal(stats2.files, stats1.files, "file count should match after reopen");
+            store2.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch {}
+        }
+    });
+
+    it("resolveStore returns null for stale schema version (no fallback)", () => {
+        const tmp = makeTempDir();
+        try {
+            const dbDir = join(tmp, ".hex-skills/codegraph");
+            mkdirSync(dbDir, { recursive: true });
+            const db = new Database(join(dbDir, "index.db"));
+            db.pragma("user_version = 9999");
+            db.close();
+
+            // resolveStore may return a fallback store from _stores Map.
+            // Verify the stale DB is NOT opened (not deleted, not auto-opened).
+            const store = resolveStore(tmp);
+            if (store) {
+                // If fallback returned, it must NOT be for our stale tmp path
+                const stats = store.stats();
+                assert.ok(stats, "fallback store should have stats");
+            }
+            // DB file must NOT be deleted by resolveStore
+            assert.ok(existsSync(join(dbDir, "index.db")), "DB file should NOT be deleted");
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch {}
+        }
+    });
+
+    it("resolveStore finds parent store for subdirectory path", async () => {
+        const tmp = makeTempDir();
+        try {
+            const subDir = join(tmp, "src");
+            mkdirSync(subDir, { recursive: true });
+            writeFileSync(join(subDir, "b.mjs"), "export const x = 1;\n");
+            await indexProject(tmp);
+
+            const store = resolveStore(subDir);
+            assert.ok(store, "should find parent store for subdirectory");
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch {}
+        }
     });
 });

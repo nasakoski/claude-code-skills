@@ -5,7 +5,7 @@ Checkpoint files enable crash recovery without restarting stages from scratch.
 ## File Location
 
 ```
-{project_root}/.pipeline/
+{project_root}/.hex-skills/pipeline/
   state.json              # Global pipeline state (lead writes)
   checkpoint-{storyId}.json  # Per-story checkpoint (lead writes after each stage)
 ```
@@ -43,7 +43,7 @@ Checkpoint files enable crash recovery without restarting stages from scratch.
 
 ## Pipeline State Schema
 
-Lead writes ALL state variables to `.pipeline/state.json` on every stage transition. This enables full recovery on restart.
+Lead writes ALL state variables to `.hex-skills/pipeline/state.json` on every stage transition. This enables full recovery on restart.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -92,7 +92,7 @@ Lead writes ALL state variables to `.pipeline/state.json` on every stage transit
 Lead executes on crash recovery:
 
 ```
-1. Read checkpoint: .pipeline/checkpoint-{id}.json
+1. Read checkpoint: .hex-skills/pipeline/checkpoint-{id}.json
 2. Read state.json -> restore pipeline state variables
 3. Resume from last checkpoint stage + 1
    Re-invoke Skill() for the failed stage with CHECKPOINT_RESUME context

@@ -100,6 +100,14 @@ cd mcp/hex-common && npm test && cd ../.. && cd mcp/${PKG} && npm run check && n
 
 **Gate:** hex-common tests + package check/lint/test must all pass. If any fails — fix before proceeding.
 
+**README tool count check:**
+```bash
+actual=$(grep -c 'registerTool' mcp/${PKG}/server.mjs || echo 0)
+claimed=$(grep -oE '[0-9]+ MCP Tools' mcp/${PKG}/README.md | grep -oE '[0-9]+' || echo "0")
+[ "$actual" != "$claimed" ] && echo "FAIL: README claims $claimed tools, actual $actual — update README" || echo "README tool count OK ($actual)"
+```
+If mismatch — update `N MCP Tools` in README.md before proceeding.
+
 ### 5b. Benchmark (hex-line only)
 
 ```bash

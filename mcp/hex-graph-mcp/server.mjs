@@ -19,7 +19,6 @@ import { findUnusedExports, formatUnusedText } from "./lib/unused.mjs";
 const { server, StdioServerTransport } = await createServerRuntime({
     name: "hex-graph-mcp",
     version,
-    installDir: "mcp/hex-graph-mcp",
 });
 
 function graphError(codeOrError, message, recovery) {

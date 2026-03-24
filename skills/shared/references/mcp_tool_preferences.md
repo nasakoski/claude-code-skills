@@ -37,8 +37,8 @@ MCP server at `mcp/hex-line-mcp/`. 11 tools with FNV-1a hash verification:
 ## Setup
 
 ```bash
-npm i -g @levnikolaevich/hex-line-mcp
-claude mcp add -s user hex-line -- hex-line-mcp
+npx -y @levnikolaevich/hex-line-mcp
+claude mcp add -s user hex-line -- npx -y @levnikolaevich/hex-line-mcp
 ```
 
 ---

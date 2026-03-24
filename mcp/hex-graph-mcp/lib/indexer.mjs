@@ -19,7 +19,7 @@ import { parseFile, languageFor, supportedExtensions } from "./parser.mjs";
 const IGNORE_DIRS = new Set([
     "node_modules", ".git", "dist", "build", "out", ".next",
     "__pycache__", ".venv", "venv", "vendor", "target",
-    ".codegraph", ".vs", "bin", "obj", "packages",
+    ".hex-skills/codegraph", ".vs", "bin", "obj", "packages",
 ]);
 
 const MAX_FILE_SIZE = 500_000; // 500KB
@@ -35,8 +35,8 @@ export async function indexProject(projectPath, { languages } = {}) {
     const absPath = resolve(projectPath);
     const t0 = Date.now();
 
-    // Ensure .codegraph dir exists
-    const dbDir = join(absPath, ".codegraph");
+    // Ensure .hex-skills/codegraph dir exists
+    const dbDir = join(absPath, ".hex-skills/codegraph");
     if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
 
     const store = getStore(absPath);

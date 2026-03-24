@@ -373,7 +373,7 @@ Yes. Point `index_project` at the monorepo root or at a package subtree. Use `ge
 <details>
 <summary><b>Where is the database stored?</b></summary>
 
-The graph database is stored under the indexed project at `.codegraph/index.db`. It is rebuildable cache state and should not be committed.
+The graph database is stored under the indexed project at `.hex-skills/codegraph/index.db`. It is rebuildable cache state and should not be committed.
 
 </details>
 

@@ -1,7 +1,7 @@
 /**
  * TEST 16-18: Graph enrichment benchmarks (--with-graph only).
  *
- * Both sides use hex-line; difference is whether .codegraph/index.db exists.
+ * Both sides use hex-line; difference is whether .hex-skills/codegraph/index.db exists.
  * Requires hex-graph index_project to have been run first.
  */
 
@@ -30,7 +30,7 @@ export async function runGraph(config) {
     const { getGraphDB } = await import("../lib/graph-enrich.mjs");
     const db = getGraphDB(resolve(repoRoot, "server.mjs"));
     if (!db) {
-        console.error("--with-graph: .codegraph/index.db not found. Run hex-graph index_project first.");
+        console.error("--with-graph: .hex-skills/codegraph/index.db not found. Run hex-graph index_project first.");
         return graphOut;
     }
 

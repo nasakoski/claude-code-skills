@@ -2,7 +2,7 @@ import { writeFileSync, readdirSync } from "node:fs";
 import { resolve, relative, join } from "node:path";
 import { simpleDiff } from "./edit.mjs";
 import { normalizePath } from "./security.mjs";
-import { readText, MAX_OUTPUT_CHARS } from "./format.mjs";
+import { readText, MAX_BULK_OUTPUT_CHARS, MAX_PER_FILE_DIFF_LINES } from "./format.mjs";
 
 let ignoreMod;
 try { ignoreMod = await import("ignore"); } catch { /* unavailable */ }
@@ -30,6 +30,7 @@ function walkFiles(dir, rootDir, ig) {
 function globMatch(filename, pattern) {
     const re = pattern
         .replace(/\./g, "\\.")
+        .replace(/\{([^}]+)\}/g, (_, alts) => "(" + alts.split(",").join("|") + ")")
         .replace(/\*\*/g, "\0")
         .replace(/\*/g, "[^/]*")
         .replace(/\0/g, ".*")
@@ -48,7 +49,7 @@ function loadGitignore(rootDir) {
 }
 
 export function bulkReplace(rootDir, globPattern, replacements, opts = {}) {
-    const { dryRun = false, maxFiles = 100 } = opts;
+    const { dryRun = false, maxFiles = 100, format = "compact" } = opts;
     const abs = resolve(normalizePath(rootDir));
 
     const ig = loadGitignore(abs);
@@ -65,35 +66,43 @@ export function bulkReplace(rootDir, globPattern, replacements, opts = {}) {
     }
 
     const results = [];
-    let changed = 0, skipped = 0, errors = 0;
-    const MAX_OUTPUT = MAX_OUTPUT_CHARS;
-    let totalChars = 0;
+    let changed = 0, skipped = 0, errors = 0, totalReplacements = 0;
 
     for (const file of files) {
         try {
             const original = readText(file);
             let content = original;
 
+            let replacementCount = 0;
             for (const { old: oldText, new: newText } of replacements) {
-                content = content.split(oldText).join(newText);
+                if (oldText === newText) continue;
+                const parts = content.split(oldText);
+                replacementCount += parts.length - 1;
+                content = parts.join(newText);
             }
 
             if (content === original) { skipped++; continue; }
-
-            const diff = simpleDiff(original.split("\n"), content.split("\n"));
 
             if (!dryRun) {
                 writeFileSync(file, content, "utf-8");
             }
 
-            const relPath = file.replace(abs, "").replace(/^[/\\]/, "");
-            results.push(`--- ${relPath}\n${diff || "(no visible diff)"}`);
+            const relPath = relative(abs, file).replace(/\\/g, "/");
+            totalReplacements += replacementCount;
             changed++;
-            totalChars += results[results.length - 1].length;
-            if (totalChars > MAX_OUTPUT) {
-                const remaining = files.length - files.indexOf(file) - 1;
-                if (remaining > 0) results.push(`OUTPUT_CAPPED: ${remaining} more files not shown. Output exceeded ${MAX_OUTPUT} chars.`);
-                break;
+
+            if (format === "full") {
+                const diff = simpleDiff(original.split("\n"), content.split("\n"));
+                let diffText = diff || "(no visible diff)";
+                const diffLines = diffText.split("\n");
+                if (diffLines.length > MAX_PER_FILE_DIFF_LINES) {
+                    const omitted = diffLines.length - MAX_PER_FILE_DIFF_LINES;
+                    diffText = diffLines.slice(0, MAX_PER_FILE_DIFF_LINES).join("\n")
+                        + `\n--- ${omitted} lines omitted ---`;
+                }
+                results.push(`--- ${relPath}: ${replacementCount} replacements\n${diffText}`);
+            } else {
+                results.push(`--- ${relPath}: ${replacementCount} replacements`);
             }
         } catch (e) {
             results.push(`ERROR: ${file}: ${e.message}`);
@@ -101,6 +110,11 @@ export function bulkReplace(rootDir, globPattern, replacements, opts = {}) {
         }
     }
 
-    const header = `Bulk replace: ${changed} files changed, ${skipped} skipped, ${errors} errors (dry_run: ${dryRun})`;
-    return results.length ? `${header}\n\n${results.join("\n\n")}` : header;
+    const header = `Bulk replace: ${changed} files changed (${totalReplacements} replacements), ${skipped} skipped, ${errors} errors (dry_run: ${dryRun})`;
+    let output = results.length ? `${header}\n\n${results.join("\n\n")}` : header;
+    if (output.length > MAX_BULK_OUTPUT_CHARS) {
+        output = output.slice(0, MAX_BULK_OUTPUT_CHARS)
+            + `\nOUTPUT_CAPPED: Output exceeded ${MAX_BULK_OUTPUT_CHARS} chars.`;
+    }
+    return output;
 }

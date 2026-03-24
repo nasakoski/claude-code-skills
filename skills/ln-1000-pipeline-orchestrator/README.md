@@ -50,7 +50,7 @@ Phase 4: Event Loop (heartbeat ~60s) ◄─────────────�
 Phase 5: Cleanup ◄─────────────────┘
 ┌──────────────────────────────────────────────────────┐
 │ IN:  story_state, stage_notes, git_stats             │
-│ OUT: Pipeline report, TeamDelete, .pipeline/ removed │
+│ OUT: Pipeline report, TeamDelete, .hex-skills/pipeline/ removed │
 └──────────────────────┬───────────────────────────────┘
                        │
 Phase 6: Meta-Analysis ◄┘
@@ -388,7 +388,7 @@ Pipeline-level verification (Phase 5). Per-stage checks are in VERIFY blocks abo
 ```
  1. Write state.json: complete=true        ← Stop hook passes through
  2. Self-verify DoD (table above)
- 3. Read stage notes from .pipeline/
+ 3. Read stage notes from .hex-skills/pipeline/
  4. Write pipeline report
  5. Show terminal summary to user
  6. Shutdown remaining workers             ← SendMessage(shutdown_request)
@@ -397,7 +397,7 @@ Pipeline-level verification (Phase 5). Per-stage checks are in VERIFY blocks abo
     DONE   → already cleaned by ln-500
     PAUSED → git add -A → commit WIP → push → git worktree remove --force
  9. Stop sleep prevention (Windows)
-10. Delete .pipeline/ directory
+10. Delete .hex-skills/pipeline/ directory
 11. Phase 6: Meta-Analysis (see SKILL.md `## Phase 6`)
 ```
 

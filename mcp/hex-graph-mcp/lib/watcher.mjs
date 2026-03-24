@@ -30,7 +30,7 @@ export function watchProject(projectPath) {
         ignored: [
             "**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**",
             "**/__pycache__/**", "**/.venv/**", "**/vendor/**", "**/target/**",
-            "**/.codegraph/**", "**/.vs/**", "**/bin/**", "**/obj/**",
+            "**/.hex-skills/codegraph/**", "**/.vs/**", "**/bin/**", "**/obj/**",
         ],
         persistent: true,
         ignoreInitial: true,

@@ -39,7 +39,6 @@ import { bulkReplace } from "./lib/bulk-replace.mjs";
 const { server, StdioServerTransport } = await createServerRuntime({
     name: "hex-line-mcp",
     version,
-    installDir: "mcp/hex-line-mcp",
 });
 
 
@@ -369,7 +368,8 @@ server.registerTool("changes", {
 server.registerTool("bulk_replace", {
     title: "Bulk Replace",
     description:
-        "Search-and-replace across multiple files. Finds files by glob, applies ordered text replacements, returns per-file diffs. " +
+        "Search-and-replace across multiple files. Finds files by glob, applies ordered text replacements. " +
+        "Default format is compact (summary only); use format:'full' for capped diffs. " +
         "Use dry_run:true to preview. For single-file rename, set glob to the filename.",
     inputSchema: z.object({
         replacements: z.union([z.string(), replacementPairsSchema]).describe('JSON array of {old, new} pairs: [{"old":"foo","new":"bar"}]'),
@@ -377,6 +377,7 @@ server.registerTool("bulk_replace", {
         path: z.string().optional().describe("Root directory (default: cwd)"),
         dry_run: flexBool().describe("Preview without writing (default: false)"),
         max_files: flexNum().describe("Max files to process (default: 100)"),
+        format: z.enum(["compact", "full"]).optional().describe('"compact" (default) = summary only, "full" = include capped diffs'),
     }),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
 }, async (rawParams) => {
@@ -391,7 +392,7 @@ server.registerTool("bulk_replace", {
             params.path || process.cwd(),
             params.glob || "**/*.{md,mjs,json,yml,ts,js}",
             replacements,
-            { dryRun: params.dry_run || false, maxFiles: params.max_files || 100 }
+            { dryRun: params.dry_run || false, maxFiles: params.max_files || 100, format: params.format }
         );
         return { content: [{ type: "text", text: result }] };
     } catch (e) {

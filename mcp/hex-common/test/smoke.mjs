@@ -52,3 +52,10 @@ test("tree-sitter: parser loads and parses JS source", async () => {
     assert.ok(tree.rootNode, "parse returned no rootNode");
     assert.equal(tree.rootNode.type, "program");
 });
+
+test("SDK subpath imports resolve", async () => {
+    const mcp = await import("@modelcontextprotocol/sdk/server/mcp.js");
+    assert.ok(mcp.McpServer, "McpServer not exported from SDK");
+    const stdio = await import("@modelcontextprotocol/sdk/server/stdio.js");
+    assert.ok(stdio.StdioServerTransport, "StdioServerTransport not exported from SDK");
+});

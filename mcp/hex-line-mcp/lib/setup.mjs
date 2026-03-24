@@ -6,26 +6,28 @@
  * Cleanup: removes old per-project hooks from .claude/settings.local.json.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 
-// Resolve absolute path to hook.mjs at module load time.
-// setup.mjs is in lib/, hook.mjs is one level up (sibling of lib/).
+// Stable hook location outside npm/npx cache.
+// setup_hooks copies the bundled hook.mjs here so the path survives npx eviction.
+const STABLE_HOOK_DIR = resolve(homedir(), ".claude", "hex-line");
+const STABLE_HOOK_PATH = join(STABLE_HOOK_DIR, "hook.mjs").replace(/\\/g, "/");
+const HOOK_COMMAND = `node ${STABLE_HOOK_PATH}`;
+
+// Source hook.mjs location (for copying).
+// In dev: lib/setup.mjs -> ../hook.mjs (source).
+// In npm: dist/server.mjs -> hook.mjs (bundled sibling in dist/).
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const HOOK_SCRIPT = resolve(__dirname, "..", "hook.mjs").replace(/\\/g, "/");
-const HOOK_COMMAND = `node ${HOOK_SCRIPT}`;
+const SOURCE_HOOK = resolve(__dirname, "..", "hook.mjs");
+const DIST_HOOK = resolve(__dirname, "hook.mjs");
 
-// Substring that identifies any hex-line hook command (old relative or new absolute).
-const HOOK_SIGNATURE = "hex-line-mcp/hook.mjs";
+// Substring that identifies any hex-line hook command (old or new paths).
+const HOOK_SIGNATURE = "hex-line";
 
-const NPX_MARKERS = ["_npx", "npx-cache", ".npm/_npx"];
-
-function isEphemeralInstall(scriptPath) {
-    return NPX_MARKERS.some((m) => scriptPath.includes(m));
-}
 
 const CLAUDE_HOOKS = {
     SessionStart: {
@@ -113,7 +115,7 @@ function writeHooksToFile(settingsPath, label) {
     }
 
     writeJson(settingsPath, config);
-    return `Claude (${label}): hooks -> ${HOOK_SCRIPT} OK`;
+    return `Claude (${label}): hooks -> ${STABLE_HOOK_PATH} OK`;
 }
 
 // ---- Cleanup: remove hex-line hooks from per-project file ----
@@ -186,21 +188,25 @@ function installOutputStyle() {
 // ---- Agent configurators ----
 
 function setupClaude() {
-    if (isEphemeralInstall(HOOK_SCRIPT)) {
-        return "Claude: SKIPPED — hook.mjs is in npx cache (ephemeral). " +
-            "Install permanently: npm i -g @levnikolaevich/hex-line-mcp, then re-run setup_hooks.";
-    }
-
     const results = [];
 
-    // Phase A: write hooks to global ~/.claude/settings.json
+    // Phase A: copy hook.mjs to stable location (~/.claude/hex-line/hook.mjs)
+    const hookSource = existsSync(DIST_HOOK) ? DIST_HOOK : SOURCE_HOOK;
+    if (!existsSync(hookSource)) {
+        return "Claude: FAILED — hook.mjs not found. Reinstall @levnikolaevich/hex-line-mcp.";
+    }
+    mkdirSync(STABLE_HOOK_DIR, { recursive: true });
+    copyFileSync(hookSource, STABLE_HOOK_PATH);
+    results.push(`hook.mjs -> ${STABLE_HOOK_PATH}`);
+
+    // Phase B: write hooks to global ~/.claude/settings.json
     const globalPath = resolve(homedir(), ".claude/settings.json");
     results.push(writeHooksToFile(globalPath, "global"));
 
-    // Phase B: remove hex-line hooks from per-project settings.local.json
+    // Phase C: remove hex-line hooks from per-project settings.local.json
     results.push(cleanLocalHooks());
 
-    // Phase C: install Output Style
+    // Phase D: install Output Style
     results.push(installOutputStyle());
 
     return results.join(" | ");
