@@ -142,6 +142,39 @@ for f in skills-catalog/ln-*/SKILL.md; do
 done
 [ "$R12_FAILS" -eq 0 ] && add_result R12 "Worker invocation (full-repo D8b)" PASS || add_result R12 "Worker invocation (full-repo D8b)" "FAIL ($R12_FAILS issues)"
 
+# === R13: Worker independence (no coordinator-aware worker contracts) ===
+R13_FAILS=0
+for f in skills-catalog/ln-*/SKILL.md; do
+  grep -q '\*\*Type:\*\*.*L3' "$f" || continue
+  rg -n 'Called by|Invoked by ln-|Caller:|returning control to `ln-|for `ln-[0-9]+`|returned to coordinator|handing control back to `ln-' "$f" >/dev/null 2>&1 && R13_FAILS=$((R13_FAILS + 1))
+done
+[ "$R13_FAILS" -eq 0 ] && add_result R13 "Worker independence (no coordinator refs)" PASS || add_result R13 "Worker independence (no coordinator refs)" "FAIL ($R13_FAILS worker contracts)"
+
+# === R14: Universal runtime artifacts ===
+R14_FAILS=$(rg -n '\.hex-skills/(story-execution/summary|story-gate/summary|optimization/\{slug\}/8(11|12|13|14)-)' skills-catalog README.md docs site AGENTS.md 2>/dev/null | wc -l)
+[ "$R14_FAILS" -eq 0 ] && add_result R14 "Universal runtime artifacts" PASS || add_result R14 "Universal runtime artifacts" "FAIL ($R14_FAILS coordinator-specific paths)"
+
+# === R15: Standalone-first worker contract ===
+R15_FAILS=0
+for f in \
+  skills-catalog/ln-011-agent-installer/SKILL.md \
+  skills-catalog/ln-012-mcp-configurator/SKILL.md \
+  skills-catalog/ln-013-config-syncer/SKILL.md \
+  skills-catalog/ln-014-agent-instructions-manager/SKILL.md \
+  skills-catalog/ln-221-story-creator/SKILL.md \
+  skills-catalog/ln-222-story-replanner/SKILL.md \
+  skills-catalog/ln-301-task-creator/SKILL.md \
+  skills-catalog/ln-302-task-replanner/SKILL.md; do
+  [ -f "$f" ] || continue
+  grep -q 'summaryArtifactPath' "$f" || R15_FAILS=$((R15_FAILS + 1))
+  grep -qi 'standalone' "$f" || R15_FAILS=$((R15_FAILS + 1))
+done
+[ "$R15_FAILS" -eq 0 ] && add_result R15 "Standalone-first worker contract" PASS || add_result R15 "Standalone-first worker contract" "FAIL ($R15_FAILS missing contract markers)"
+
+# === R16: Run-scoped artifact paths ===
+R16_FAILS=$(rg -n '\.hex-skills/runtime-artifacts/(?!runs/)' skills-catalog README.md docs site AGENTS.md -P 2>/dev/null | wc -l)
+[ "$R16_FAILS" -eq 0 ] && add_result R16 "Run-scoped artifact paths" PASS || add_result R16 "Run-scoped artifact paths" "FAIL ($R16_FAILS non-run-scoped paths)"
+
 echo ""
 echo "## Repo-Specific Review -- claude-code-skills"
 echo ""

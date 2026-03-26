@@ -236,7 +236,7 @@
     <div class="container">
       <a href="../index.html#plugins" class="back-link">&larr; Back to all plugins</a>
       <h1>Agile Workflow</h1>
-      <p class="subtitle">End-to-end delivery pipeline from scope decomposition to quality gates</p>
+      <p class="subtitle">End-to-end delivery pipeline with runtime-backed planning and deterministic quality gates</p>
       <div class="install-block" onclick="navigator.clipboard.writeText('/plugin add levnikolaevich/claude-code-skills --plugin agile-workflow'); this.querySelector('.copy').textContent='Copied!'">
         <span class="prompt">$</span>
         <span class="cmd">/plugin add levnikolaevich/claude-code-skills --plugin agile-workflow</span>
@@ -258,11 +258,11 @@
             <tr><td class="skill-id">ln-200</td><td class="skill-desc">Decompose scope into Epics, Stories, RICE</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-200-scope-decomposer" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-201</td><td class="skill-desc">Traffic-First KILL funnel for idea validation</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-201-opportunity-discoverer" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-210</td><td class="skill-desc">CREATE or REPLAN 3&ndash;7 Epics from scope</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-210-epic-coordinator" target="_blank" title="View source">&#8599;</a></td></tr>
-            <tr><td class="skill-id">ln-220</td><td class="skill-desc">CREATE or REPLAN Stories for Epic</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-220-story-coordinator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-220</td><td class="skill-desc">Runtime-backed Story planning coordinator</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-220-story-coordinator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-221</td><td class="skill-desc">Create Story documents, validate INVEST</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-221-story-creator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-222</td><td class="skill-desc">Replan Stories when requirements change</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-222-story-replanner" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-230</td><td class="skill-desc">RICE prioritization with market research</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-230-story-prioritizer" target="_blank" title="View source">&#8599;</a></td></tr>
-            <tr><td class="skill-id">ln-300</td><td class="skill-desc">Decompose Story into 1&ndash;8 implementation tasks</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-300-task-coordinator" target="_blank" title="View source">&#8599;</a></td></tr>
+            <tr><td class="skill-id">ln-300</td><td class="skill-desc">Runtime-backed task planning coordinator (1&ndash;8 tasks)</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-300-task-coordinator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-301</td><td class="skill-desc">Create implementation, refactoring, test tasks</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-301-task-creator" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-302</td><td class="skill-desc">Update tasks when plan changes</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-302-task-replanner" target="_blank" title="View source">&#8599;</a></td></tr>
             <tr><td class="skill-id">ln-310</td><td class="skill-desc">Parallel review via Codex + Gemini agents</td><td class="skill-link"><a href="https://github.com/levnikolaevich/claude-code-skills/tree/master/skills/ln-310-multi-agent-validator" target="_blank" title="View source">&#8599;</a></td></tr>
@@ -294,13 +294,13 @@
       <div class="workflow-block">
         <p>
           <code>ln-200</code> decomposes scope into Epics and Stories
-          &rarr; <code>ln-300</code> breaks Stories into implementation tasks
+          &rarr; <code>ln-220</code> and <code>ln-300</code> keep run-scoped planning state for pause/resume and verification
           &rarr; <code>ln-310</code> validates via parallel multi-agent review
           &rarr; <code>ln-400</code> executes tasks to completion
           &rarr; <code>ln-500</code> runs the quality gate.
         </p>
         <p style="margin-top: 16px;">
-          <code>ln-1000</code> orchestrates all stages autonomously, managing the full pipeline from scope to Done.
+          Planning workers (<code>ln-221</code>, <code>ln-222</code>, <code>ln-301</code>, <code>ln-302</code>) stay standalone-capable and return machine-readable summaries. <code>ln-1000</code> orchestrates the full pipeline from scope to Done.
         </p>
       </div>
     </div>

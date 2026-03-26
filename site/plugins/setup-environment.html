@@ -230,7 +230,7 @@
       <a href="../index.html#plugins" class="back-link">&larr; Back to all plugins</a>
       <h1>Setup Environment</h1>
       <p class="subtitle">One-command setup for multi-agent workflows</p>
-      <p class="section-desc" style="text-align: center; max-width: 640px; margin: 0 auto 32px;">Install CLI agents, configure MCP servers, sync settings across agents, and audit instruction files. Run ln-010 once to set up everything.</p>
+      <p class="section-desc" style="text-align: center; max-width: 640px; margin: 0 auto 32px;">Install CLI agents, configure MCP servers, sync settings across agents, and audit instruction files. The coordinator is runtime-backed, resumable, and writes durable environment state only after verification passes.</p>
       <div class="install-block" onclick="navigator.clipboard.writeText('/plugin add levnikolaevich/claude-code-skills --plugin setup-environment'); this.querySelector('.copy').textContent='Copied!'">
         <span class="prompt">$</span>
         <span class="cmd">/plugin add levnikolaevich/claude-code-skills --plugin setup-environment</span>
@@ -268,11 +268,14 @@
       <h2>How it works</h2>
       <div class="workflow-block">
         <p>
-          <code>ln-010</code> scans your environment (OS, agents, MCP, hooks)
+          <code>ln-010</code> scans your environment once and builds a selective dispatch plan
           &rarr; <code>ln-011</code> installs or updates CLI agents
           &rarr; <code>ln-012</code> registers MCP servers and runs budget analysis
           &rarr; <code>ln-013</code> syncs settings to Gemini and Codex
           &rarr; <code>ln-014</code> audits instruction files for quality.
+        </p>
+        <p style="margin-top: 16px;">
+          The workers stay standalone-capable and return machine-readable summaries. <code>ln-010</code> verifies those summaries before writing <code>.hex-skills/environment_state.json</code>.
         </p>
       </div>
     </div>

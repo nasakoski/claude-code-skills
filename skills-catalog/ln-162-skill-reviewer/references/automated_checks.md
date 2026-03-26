@@ -191,3 +191,23 @@ for f in {scoped SKILL.md files}; do
   esac
 done
 ```
+
+## Check 21: Standalone summary workers (D8)
+```bash
+for f in {scoped SKILL.md files}; do
+  case "$f" in
+    *ln-011-*|*ln-012-*|*ln-013-*|*ln-014-*|*ln-221-*|*ln-222-*|*ln-301-*|*ln-302-*)
+      grep -q 'summaryArtifactPath' "$f" || echo "FAIL: standalone summary worker missing summaryArtifactPath contract: $f"
+      grep -qi 'standalone' "$f" || echo "FAIL: standalone summary worker missing standalone wording: $f"
+      grep -nE 'Invoked by ln-|called by ln-|returning control to `ln-|handing control back to `ln-' "$f" && echo "FAIL: standalone summary worker has caller coupling: $f"
+      ;;
+  esac
+done
+```
+
+## Check 22: Run-scoped runtime artifact paths (D2)
+```bash
+for f in {scoped SKILL.md files}; do
+  grep -nP '\.hex-skills/runtime-artifacts/(?!runs/)' "$f" && echo "FAIL: non-run-scoped runtime artifact path: $f"
+done
+```

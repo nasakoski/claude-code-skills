@@ -12,17 +12,18 @@ Use this contract when a skill needs:
 
 ```text
 .hex-skills/agent-review/runtime/
-  active-{skill}.json
+  active/{skill}/{identifier}.json
   runs/{run_id}/manifest.json
   runs/{run_id}/state.json
   runs/{run_id}/checkpoints.json
+  runs/{run_id}/history.jsonl
 ```
 
 ## Commands
 
 ```bash
 node shared/scripts/review-runtime/cli.mjs start --skill ln-310 --mode story --identifier PROJ-123 --manifest-file <file>
-node shared/scripts/review-runtime/cli.mjs status --skill ln-310
+node shared/scripts/review-runtime/cli.mjs status --skill ln-310 --identifier PROJ-123
 node shared/scripts/review-runtime/cli.mjs checkpoint --skill ln-310 --phase PHASE_2_AGENT_LAUNCH --payload '{...}'
 node shared/scripts/review-runtime/cli.mjs advance --skill ln-310 --to PHASE_3_RESEARCH
 node shared/scripts/review-runtime/cli.mjs register-agent --skill ln-310 --agent codex --metadata-file ... --result-file ...

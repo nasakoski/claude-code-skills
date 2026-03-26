@@ -1,6 +1,6 @@
 # Task: Story to Implementation Tasks
 
-You are decomposing a Story into implementation tasks (1-6 tasks, 3-5h each).
+You are decomposing a Story into implementation tasks (1-8 tasks, 3-5h each).
 
 ## Context
 {context}

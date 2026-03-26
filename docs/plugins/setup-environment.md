@@ -14,7 +14,7 @@
 
 ## What it does
 
-Sets up and maintains the multi-agent development environment. Installs CLI agents (Codex, Gemini), configures MCP servers with budget analysis, syncs settings across all agents, and audits instruction files for quality and consistency.
+Sets up and maintains the multi-agent development environment. The coordinator is runtime-backed, writes durable environment state only at finalization, and delegates to standalone workers that return machine-readable summaries.
 
 ## Skills
 
@@ -38,7 +38,7 @@ ln-010 (coordinator)
     → ln-014 (audit instructions)
 ```
 
-ln-010 scans the environment first (OS, agents, MCP servers, hooks, instruction files), then delegates to 4 specialized workers. Each worker operates independently — one failure doesn't block others. Results are aggregated into a best practices audit and written to `docs/environment_state.json`.
+`ln-010` scans the environment once, builds a selective dispatch plan, delegates to 4 standalone workers, verifies the result, and writes `.hex-skills/environment_state.json` only after verification passes. Worker summaries are coordination artifacts; the final environment file remains the durable project output.
 
 ## Quick start
 

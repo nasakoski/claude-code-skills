@@ -35,7 +35,6 @@ Sequential coordinator for code quality pipeline. Invokes workers (ln-511 → ln
 - Calculate quality_verdict per normalization matrix + `references/gate_levels.md`
 
 ## When to Use
-- **Invoked by ln-500-story-quality-gate** Phase 2
 - All implementation tasks in Story status = Done
 
 ## Workflow
@@ -237,7 +236,7 @@ ELSE:
 #### Step 11.3: Return Results
 
 ```yaml
-quality_verdict: PASS | CONCERNS | FAIL
+verdict: PASS | CONCERNS | FAIL
 quality_score: {0-100}
 fail_count: {N}
 concern_count: {N}
@@ -256,6 +255,12 @@ issues:
   - {id: "DEP-001", severity: medium, finding: "...", source: "criteria"}
   - {id: "LINT-001", severity: low, finding: "...", source: "linters"}
 ```
+
+### Runtime Summary Artifact
+
+**MANDATORY READ:** Load `shared/references/coordinator_summary_contract.md`
+
+Write `.hex-skills/runtime-artifacts/runs/{run_id}/story-quality/{story_id}.json` before finishing.
 
 **TodoWrite format (mandatory):**
 ```
@@ -287,10 +292,10 @@ issues:
 - Skipping agent health check or not launching agents in Phase 4
 - Auto-fixing code directly instead of invoking ln-512
 - Marking steps as completed without invoking the actual skill
-- Skipping verdict calculation or returning raw results without quality_verdict
+- Skipping verdict calculation or returning raw results without normalized `verdict`
 
 ## Critical Rules
-- Always calculate quality_verdict per normalization matrix + gate_levels.md. Final gate_verdict is ln-500's responsibility (includes tests, NFR, waivers)
+- Always calculate normalized `verdict` per normalization matrix + gate_levels.md. Final gate_verdict is ln-500's responsibility (includes tests, NFR, waivers)
 - Single source of truth: rely on Linear metadata for tasks
 - Language preservation in comments (EN/RU)
 - Do not create tasks or change statuses; ln-500 decides next actions
@@ -307,7 +312,8 @@ issues:
 - [ ] ln-513 invoked, regression results returned
 - [ ] ln-514 invoked, log analysis results returned (or SKIPPED/NO_LOG_SOURCES)
 - [ ] Iterative Refinement executed or SKIPPED (Phase 10)
-- [ ] quality_verdict calculated + aggregated results returned
+- [ ] Normalized `verdict` calculated + aggregated results returned
+- [ ] Story-quality summary artifact written to the shared location
 
 ## Phase 12: Meta-Analysis
 
@@ -324,7 +330,6 @@ Skill type: `review-coordinator` (with agents). Run after all phases complete. O
 - Review runtime contract: `shared/references/review_runtime_contract.md`
 - Agent review memory: `shared/references/agent_review_memory.md`
 - Review templates: `shared/agents/prompt_templates/review_base.md` + `modes/code.md`
-- Caller: `../ln-500-story-quality-gate/SKILL.md`
 - Test planning (separate coordinator): `../ln-520-test-planner/SKILL.md`
 - Tech stack/linters: `docs/project/tech_stack.md`
 

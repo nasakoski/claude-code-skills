@@ -5,8 +5,8 @@
  * Handles three events:
  *
  * PreToolUse:
- *   - Tool redirect: blocks Read/Edit/Write/Grep for text files,
- *     redirecting to hex-line MCP equivalents.
+ *   - Tool redirect: advises Read to use hex-line (never blocks),
+ *     blocks Edit/Write/Grep for text files redirecting to hex-line.
  *   - Bash redirect: blocks simple cat/head/tail/ls/grep/sed/diff
  *     commands, redirecting to hex-line MCP equivalents.
  *   - Dangerous command blocker: blocks rm -rf /, force push,

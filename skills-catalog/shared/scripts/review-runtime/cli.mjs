@@ -6,6 +6,7 @@ import {
     checkpointPhase,
     completeRun,
     fileExists,
+    listActiveRuns,
     loadActiveRun,
     loadRun,
     pauseRun,
@@ -17,6 +18,17 @@ import {
     saveState,
     startRun,
 } from "./lib/store.mjs";
+import {
+    failJson as fail,
+    failResult,
+    outputJson as output,
+    outputGuardFailure,
+    outputInactiveRuntime,
+    outputRuntimeState,
+    outputRuntimeStatus,
+    readManifestOrFail,
+    readPayload,
+} from "../coordinator-runtime/lib/cli-helpers.mjs";
 import {
     RESOLVED_AGENT_STATUSES,
     computeResumeAction,
@@ -45,37 +57,14 @@ const { values, positionals } = parseArgs({
     },
 });
 
-function output(data) {
-    process.stdout.write(JSON.stringify(data, null, 2) + "\n");
-}
-
-function fail(message, code = 2) {
-    process.stderr.write(JSON.stringify({ error: message }) + "\n");
-    process.exit(code);
-}
-
-function readPayload() {
-    if (values["payload-file"]) {
-        const filePayload = readJsonFile(values["payload-file"]);
-        if (filePayload == null) {
-            fail(`Unable to read payload file: ${values["payload-file"]}`);
-        }
-        return filePayload;
-    }
-    if (!values.payload) {
-        return {};
-    }
-    try {
-        return JSON.parse(values.payload);
-    } catch (error) {
-        fail(`Invalid JSON payload: ${error.message}`);
-    }
-}
-
 function resolveRun(projectRoot) {
-    const runId = resolveRunId(projectRoot, values.skill, values["run-id"]);
+    const runId = resolveRunId(projectRoot, values.skill, values["run-id"], values.identifier);
     if (!runId) {
-        fail("No active run found. Pass --run-id or --skill.");
+        const activeRuns = values.skill ? listActiveRuns(projectRoot, values.skill) : [];
+        if (activeRuns.length > 1 && !values.identifier) {
+            fail("Multiple active runs found. Pass --identifier or --run-id.");
+        }
+        fail("No active run found. Pass --run-id, or --skill with --identifier.");
     }
     const run = loadRun(projectRoot, runId);
     if (!run) {
@@ -104,12 +93,14 @@ function applyCheckpointToState(state, phase, payload) {
 
     if (phase === "PHASE_7_APPROVE" && payload.verdict) {
         nextState.final_verdict = payload.verdict;
+        nextState.final_result = payload.verdict;
     }
 
     if (phase === "PHASE_8_SELF_CHECK") {
         nextState.self_check_passed = payload.pass === true;
         if (payload.final_verdict) {
             nextState.final_verdict = payload.final_verdict;
+            nextState.final_result = payload.final_verdict;
         }
     }
 
@@ -167,10 +158,7 @@ async function main() {
         if (!values.skill || !values.mode || !values.identifier || !values["manifest-file"]) {
             fail("start requires --skill, --mode, --identifier, and --manifest-file");
         }
-        const manifest = readJsonFile(values["manifest-file"]);
-        if (!manifest) {
-            fail(`Manifest file not found or invalid: ${values["manifest-file"]}`);
-        }
+        const manifest = readManifestOrFail(values, readJsonFile);
         const result = startRun(projectRoot, {
             ...manifest,
             skill: values.skill,
@@ -182,22 +170,21 @@ async function main() {
     }
 
     if (command === "status") {
+        if (!values["run-id"] && values.skill && !values.identifier) {
+            const activeRuns = listActiveRuns(projectRoot, values.skill);
+            if (activeRuns.length > 1) {
+                output({ ok: false, error: "Multiple active runs found. Pass --identifier or --run-id." });
+                process.exit(1);
+            }
+        }
         const run = values["run-id"]
             ? loadRun(projectRoot, values["run-id"])
-            : (values.skill ? loadActiveRun(projectRoot, values.skill) : null);
+            : (values.skill ? loadActiveRun(projectRoot, values.skill, values.identifier) : null);
         if (!run) {
-            output({ ok: true, active: false });
+            outputInactiveRuntime(output);
             return;
         }
-        output({
-            ok: true,
-            active: !run.state.complete,
-            manifest: run.manifest,
-            state: run.state,
-            checkpoints: run.checkpoints,
-            paths: runtimePaths(projectRoot, run.state.run_id, run.manifest.skill),
-            resume_action: computeResumeAction(run.manifest, run.state, run.checkpoints),
-        });
+        outputRuntimeStatus(output, projectRoot, run, runtimePaths, computeResumeAction);
         return;
     }
 
@@ -208,8 +195,7 @@ async function main() {
         const { runId, run } = resolveRun(projectRoot);
         const guard = validateTransition(run.manifest, run.state, run.checkpoints, values.to);
         if (!guard.ok) {
-            output({ ok: false, ...guard });
-            process.exit(1);
+            outputGuardFailure(output, guard);
         }
         const nextState = saveState(projectRoot, runId, {
             ...run.state,
@@ -217,7 +203,10 @@ async function main() {
             complete: values.to === "DONE" ? true : run.state.complete,
             paused_reason: null,
         });
-        output({ ok: true, state: nextState });
+        if (nextState?.ok === false) {
+            outputGuardFailure(output, nextState);
+        }
+        outputRuntimeState(output, run, nextState);
         return;
     }
 
@@ -225,14 +214,19 @@ async function main() {
         if (!values.phase) {
             fail("checkpoint requires --phase");
         }
-        const payload = readPayload();
+        const payload = readPayload(values, readJsonFile);
         const { runId, run } = resolveRun(projectRoot);
         const result = checkpointPhase(projectRoot, runId, values.phase, payload);
         if (!result.ok) {
             fail(result.error);
         }
         const nextState = saveState(projectRoot, runId, applyCheckpointToState(run.state, values.phase, payload));
-        output({ ok: true, state: nextState, checkpoint: result.checkpoints[values.phase] });
+        if (nextState?.ok === false) {
+            failResult(nextState);
+        }
+        outputRuntimeState(output, run, nextState, {
+            checkpoint: result.checkpoints[values.phase],
+        });
         return;
     }
 
@@ -250,7 +244,7 @@ async function main() {
             status: "launched",
         });
         if (!result.ok) {
-            fail(result.error);
+            failResult(result);
         }
         output(result);
         return;
@@ -271,6 +265,9 @@ async function main() {
             nextAgents[agentName] = syncOneAgent(projectRoot, nextAgents[agentName]);
         }
         const nextState = saveState(projectRoot, runId, { ...run.state, agents: nextAgents });
+        if (nextState?.ok === false) {
+            failResult(nextState);
+        }
         output({
             ok: true,
             agents: agentNames.reduce((acc, name) => {
@@ -286,7 +283,7 @@ async function main() {
         const { runId } = resolveRun(projectRoot);
         const result = pauseRun(projectRoot, runId, values.reason || "Paused");
         if (!result.ok) {
-            fail(result.error);
+            failResult(result);
         }
         output(result);
         return;
@@ -296,12 +293,11 @@ async function main() {
         const { runId, run } = resolveRun(projectRoot);
         const guard = validateTransition(run.manifest, run.state, run.checkpoints, "DONE");
         if (!guard.ok) {
-            output({ ok: false, ...guard });
-            process.exit(1);
+            outputGuardFailure(output, guard);
         }
         const result = completeRun(projectRoot, runId);
         if (!result.ok) {
-            fail(result.error);
+            failResult(result);
         }
         output(result);
         return;

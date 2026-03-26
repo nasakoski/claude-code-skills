@@ -242,6 +242,28 @@ done
 echo "DONE"
 echo ""
 
+# CHECK 21: Standalone summary workers (D8)
+echo "=== CHECK 21: Standalone summary workers (D8) ==="
+for f in $SCOPE; do
+  case "$f" in
+    *ln-011-*|*ln-012-*|*ln-013-*|*ln-014-*|*ln-221-*|*ln-222-*|*ln-301-*|*ln-302-*)
+      grep -q 'summaryArtifactPath' "$f" || fail "standalone summary worker missing summaryArtifactPath contract: $f"
+      grep -qi 'standalone' "$f" || fail "standalone summary worker missing standalone wording: $f"
+      grep -nE 'Invoked by ln-|called by ln-|returning control to `ln-|handing control back to `ln-' "$f" >/dev/null && fail "standalone summary worker has caller coupling: $f"
+      ;;
+  esac
+done
+echo "DONE"
+echo ""
+
+# CHECK 22: Run-scoped runtime artifact paths (D2)
+echo "=== CHECK 22: Run-scoped runtime artifact paths (D2) ==="
+for f in $SCOPE; do
+  grep -nP '\.hex-skills/runtime-artifacts/(?!runs/)' "$f" >/dev/null && fail "non-run-scoped runtime artifact path: $f"
+done
+echo "DONE"
+echo ""
+
 # ── SUMMARY ─────────────────────────────────────────────────────────
 echo "================================"
 if [ "$FAILS" -eq 0 ]; then

@@ -199,6 +199,12 @@ Return verdict to coordinator. On NO_GO: coordinator presents issues to user.
 
 ---
 
+## Runtime Summary Artifact
+
+**MANDATORY READ:** Load `shared/references/coordinator_summary_contract.md`
+
+Write `.hex-skills/runtime-artifacts/runs/{run_id}/optimization-validation/{slug}.json` before finishing.
+
 ## Error Handling
 
 | Error | Recovery |
@@ -234,6 +240,7 @@ Return verdict to coordinator. On NO_GO: coordinator presents issues to user.
 - [ ] Iterative Refinement executed or SKIPPED (Phase 5)
 - [ ] Verdict issued (GO / GO_WITH_CONCERNS / NO_GO)
 - [ ] Review summary saved to `.hex-skills/agent-review/review_history.md`
+- [ ] Optimization validation artifact written to the shared location
 
 ---
 

@@ -31,7 +31,7 @@ When running in Plan Mode (per `shared/references/plan_mode_pattern.md`, Workflo
 
 **1. Check disabled flags** (before probing):
 ```
-IF .hex-skills/environment_state.json exists:
+IF `{project_root}/.hex-skills/environment_state.json` exists and passes shared environment-state validation:
   Read file → for each agent (codex, gemini):
     IF agent.disabled == true → exclude from health check
   IF all agents disabled → return {verdict: "SKIPPED", reason: "all agents disabled"}
@@ -176,7 +176,7 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
 
 **Pre-condition:** Phase 5 merge applied all accepted suggestions. The artifact is in its "current best" state.
 
-**Skip condition:** Codex unavailable in health check OR disabled in `environment_state.json`. If skipped -> log `"Iterative Refinement: SKIPPED (Codex unavailable)"`.
+**Skip condition:** Codex unavailable in health check OR disabled in `{project_root}/.hex-skills/environment_state.json`. If skipped -> log `"Iterative Refinement: SKIPPED (Codex unavailable)"`.
 
 **Loop (max 5 iterations):**
 

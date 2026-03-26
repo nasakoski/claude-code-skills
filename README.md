@@ -416,7 +416,7 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-230-story-prioritizer/      # RICE prioritization + market research
 |
 |-- ln-3XX-*/                          # TASK MANAGEMENT
-|   |-- ln-300-task-coordinator/       # Decomposes Story into 1-6 tasks
+|   |-- ln-300-task-coordinator/       # Decomposes Story into 1-8 implementation tasks
 |   |   |-- ln-301-task-creator/       # Universal factory (impl/refactor/test)
 |   |   |-- ln-302-task-replanner/     # Updates when plan changes
 |   |-- ln-310-multi-agent-validator/   # 20 criteria (8 groups), penalty points system + inline agent review

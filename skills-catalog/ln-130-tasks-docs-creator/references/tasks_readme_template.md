@@ -136,7 +136,7 @@ Backlog/Postponed → Todo → In Progress → To Review → Done
 - Tests in implementation tasks (implementation tasks focus on feature code only)
 
 **Process**:
-1. Implementation tasks (1-6 tasks) → To Review → Done
+1. Implementation tasks (1-8 tasks) → To Review → Done
 2. Quality gate → Manual testing
 3. Test planner → Creates Story Finalizer test task
 4. Test executor → Implements all tests (E2E, Integration, Unit)
@@ -238,7 +238,7 @@ Single hierarchical view: **Status → Epic → User Story → Tasks**
 - Sweet spot (3-5 hours): Maximum productivity, clear acceptance criteria
 
 **Story Limits**:
-- Implementation tasks: 1-6 tasks per Story
+- Implementation tasks: 1-8 tasks per Story
 - Test task: 1 Story Finalizer test task (created after implementation)
 - Total: Max 7 tasks per Story
 
