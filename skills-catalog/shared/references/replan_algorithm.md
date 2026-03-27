@@ -38,7 +38,7 @@ Universal comparison logic for REPLAN operations across Epic, Story, and Task le
 | **To Review** | ⚠️ Warning | Ask user, default KEEP |
 | **Done** | ❌ No | KEEP always, CREATE follow-up if needed |
 
-**Rule:** Never auto-modify In Progress/Review/Done items. Show warning, require explicit user confirmation.
+**Rule:** Never auto-modify `In Progress`, `To Review`, or `Done` items. Show warning, require explicit user confirmation.
 
 ## Edge Cases
 
@@ -72,7 +72,7 @@ OPERATIONS:
 
 1. **Show diffs** — Display what changes for UPDATE operations
 2. **Group by operation** — Present KEEP/UPDATE/OBSOLETE/CREATE separately
-3. **Warnings first** — Show In Progress/Review/Done conflicts before proceeding
+3. **Warnings first** — Show `In Progress | To Review | Done` conflicts before proceeding
 4. **Preserve history** — Add comments explaining why items were OBSOLETEd
 5. **Atomic execution** — All operations succeed or none (rollback on failure)
 

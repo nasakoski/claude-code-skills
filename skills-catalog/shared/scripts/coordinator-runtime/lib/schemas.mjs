@@ -1,3 +1,12 @@
+import {
+    OPTIMIZATION_CYCLE_STATUS_LIST,
+    REVIEW_AGENT_STATUS_LIST,
+    RUNTIME_HISTORY_EVENT_TYPE_LIST,
+    STORY_GATE_VERDICT_LIST,
+    STORY_EXECUTION_GROUP_STATUS_LIST,
+    WORKER_SUMMARY_STATUS_LIST,
+} from "./runtime-constants.mjs";
+
 function stringArraySchema() {
     return {
         type: "array",
@@ -7,6 +16,10 @@ function stringArraySchema() {
 
 function nullableStringSchema() {
     return { type: ["string", "null"] };
+}
+
+function nonNegativeIntegerSchema() {
+    return { type: "integer", minimum: 0 };
 }
 
 function dateTimeSchema() {
@@ -108,7 +121,7 @@ export const runtimeHistoryEventSchema = {
         sequence: { type: "integer", minimum: 1 },
         event_type: {
             type: "string",
-            enum: ["RUN_STARTED", "STATE_SAVED", "RUN_PAUSED", "RUN_COMPLETED", "CHECKPOINT_RECORDED"],
+            enum: RUNTIME_HISTORY_EVENT_TYPE_LIST,
         },
         created_at: dateTimeSchema(),
         run_id: { type: "string" },
@@ -144,12 +157,12 @@ export const runtimeStatusResponseSchema = {
 export function buildSummaryEnvelopeSchema(payloadSchema) {
     return {
         type: "object",
-        required: ["schema_version", "summary_kind", "identifier", "producer_skill", "produced_at", "payload"],
+        required: ["schema_version", "summary_kind", "run_id", "identifier", "producer_skill", "produced_at", "payload"],
         additionalProperties: false,
         properties: {
             schema_version: { type: "string", minLength: 1 },
             summary_kind: { type: "string", minLength: 1 },
-            run_id: { type: "string" },
+            run_id: { type: "string", minLength: 1 },
             identifier: { type: "string", minLength: 1 },
             producer_skill: { type: "string", minLength: 1 },
             produced_at: dateTimeSchema(),
@@ -181,7 +194,7 @@ export const environmentWorkerPayloadSchema = {
     required: ["status"],
     additionalProperties: false,
     properties: {
-        status: { type: "string" },
+        status: { type: "string", enum: WORKER_SUMMARY_STATUS_LIST },
         targets: stringArraySchema(),
         changes: stringArraySchema(),
         warnings: stringArraySchema(),
@@ -225,9 +238,47 @@ export const taskPlanWorkerPayloadSchema = {
     },
 };
 
+export const auditSeverityCountsSchema = {
+    type: "object",
+    required: ["critical", "high", "medium", "low"],
+    additionalProperties: false,
+    properties: {
+        critical: nonNegativeIntegerSchema(),
+        high: nonNegativeIntegerSchema(),
+        medium: nonNegativeIntegerSchema(),
+        low: nonNegativeIntegerSchema(),
+    },
+};
+
+export const auditWorkerPayloadSchema = {
+    type: "object",
+    required: ["status", "category", "report_path", "score", "issues_total", "severity_counts", "warnings"],
+    additionalProperties: false,
+    properties: {
+        status: { type: "string", enum: WORKER_SUMMARY_STATUS_LIST },
+        category: { type: "string", minLength: 1 },
+        report_path: { type: "string", minLength: 1 },
+        score: { type: "number" },
+        issues_total: nonNegativeIntegerSchema(),
+        severity_counts: auditSeverityCountsSchema,
+        warnings: stringArraySchema(),
+        diagnostic_scores: {
+            type: "object",
+            additionalProperties: { type: "number" },
+        },
+        domain_name: nullableStringSchema(),
+        scan_scope: nullableStringSchema(),
+        metadata: {
+            type: "object",
+            additionalProperties: true,
+        },
+    },
+};
+
 export const environmentWorkerSummarySchema = buildSummaryEnvelopeSchema(environmentWorkerPayloadSchema);
 export const storyPlanWorkerSummarySchema = buildSummaryEnvelopeSchema(storyPlanWorkerPayloadSchema);
 export const taskPlanWorkerSummarySchema = buildSummaryEnvelopeSchema(taskPlanWorkerPayloadSchema);
+export const auditWorkerSummarySchema = buildSummaryEnvelopeSchema(auditWorkerPayloadSchema);
 
 export const environmentStateSchema = {
     type: "object",
@@ -311,7 +362,7 @@ export const reviewAgentRecordSchema = {
     additionalProperties: false,
     properties: {
         name: { type: "string", minLength: 1 },
-        status: { type: "string" },
+        status: { type: "string", enum: REVIEW_AGENT_STATUS_LIST },
         prompt_file: nullableStringSchema(),
         result_file: nullableStringSchema(),
         log_file: nullableStringSchema(),
@@ -349,7 +400,7 @@ export const storyGroupRecordSchema = {
     properties: {
         group_id: { type: "string", minLength: 1 },
         task_ids: stringArraySchema(),
-        status: { type: "string" },
+        status: { type: "string", enum: STORY_EXECUTION_GROUP_STATUS_LIST },
         result: { type: "string" },
         completed_at: dateTimeSchema(),
         inflight_workers: { type: "object" },
@@ -362,7 +413,7 @@ export const qualitySummarySchema = {
     additionalProperties: false,
     properties: {
         story_id: { type: "string", minLength: 1 },
-        verdict: { type: "string", minLength: 1 },
+        verdict: { type: "string", enum: STORY_GATE_VERDICT_LIST },
         quality_score: { type: "number" },
         issues: stringArraySchema(),
         fast_track: { type: "boolean" },
@@ -422,7 +473,7 @@ export const optimizationCycleSchema = {
     additionalProperties: false,
     properties: {
         cycle: { type: "integer", minimum: 1 },
-        status: { type: "string" },
+        status: { type: "string", enum: OPTIMIZATION_CYCLE_STATUS_LIST },
         next_cycle: { type: "integer" },
         stop_reason: { type: "string" },
         final_result: { type: "string" },

@@ -5,6 +5,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+    STORY_EXECUTION_FINAL_RESULTS,
+    TASK_BOARD_STATUSES,
+} from "../../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "../lib/phases.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cliPath = join(__dirname, "..", "cli.mjs");
@@ -30,14 +35,14 @@ try {
         throw new Error("Failed to start story execution runtime");
     }
 
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_0_CONFIG"]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_1_DISCOVERY"]);
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_1_DISCOVERY"]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_2_WORKTREE_SETUP"]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.CONFIG]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.DISCOVERY]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.DISCOVERY]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.WORKTREE_SETUP]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_2_WORKTREE_SETUP",
+        "--phase", PHASES.WORKTREE_SETUP,
         "--payload",
         JSON.stringify({
             worktree_ready: true,
@@ -45,18 +50,18 @@ try {
             branch: "feature/proj-123-story",
         }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_3_SELECT_WORK"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.SELECT_WORK]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_3_SELECT_WORK",
+        "--phase", PHASES.SELECT_WORK,
         "--payload",
         JSON.stringify({
             current_task_id: "T-100",
             processable_counts: { todo: 1, to_review: 0, to_rework: 0 },
         }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_4_TASK_EXECUTION"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.TASK_EXECUTION]);
     run([
         "record-task",
         "--project-root", projectRoot,
@@ -65,45 +70,45 @@ try {
         JSON.stringify({
             worker: "ln-401",
             result: "review_handoff",
-            from_status: "Todo",
-            to_status: "Done",
+            from_status: TASK_BOARD_STATUSES.TODO,
+            to_status: TASK_BOARD_STATUSES.DONE,
         }),
     ]);
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_4_TASK_EXECUTION"]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_6_VERIFY_STATUSES"]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.TASK_EXECUTION]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.VERIFY_STATUSES]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_6_VERIFY_STATUSES",
+        "--phase", PHASES.VERIFY_STATUSES,
         "--payload",
         JSON.stringify({
             processable_counts: { todo: 0, to_review: 0, to_rework: 0 },
             inflight_workers: {},
         }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_7_STORY_TO_REVIEW"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.STORY_TO_REVIEW]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_7_STORY_TO_REVIEW",
+        "--phase", PHASES.STORY_TO_REVIEW,
         "--payload",
         JSON.stringify({
             story_transition_done: true,
-            story_final_status: "To Review",
-            final_result: "READY_FOR_GATE",
+            story_final_status: TASK_BOARD_STATUSES.TO_REVIEW,
+            final_result: STORY_EXECUTION_FINAL_RESULTS.READY_FOR_GATE,
         }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_8_SELF_CHECK"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.SELF_CHECK]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_8_SELF_CHECK",
+        "--phase", PHASES.SELF_CHECK,
         "--payload",
-        JSON.stringify({ pass: true, final_result: "READY_FOR_GATE" }),
+        JSON.stringify({ pass: true, final_result: STORY_EXECUTION_FINAL_RESULTS.READY_FOR_GATE }),
     ]);
     const completed = run(["complete", "--project-root", projectRoot]);
 
-    if (!completed.ok || completed.state.phase !== "DONE") {
+    if (!completed.ok || completed.state.phase !== PHASES.DONE) {
         throw new Error("Story execution runtime did not complete");
     }
 

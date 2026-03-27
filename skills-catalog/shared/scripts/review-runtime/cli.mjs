@@ -34,6 +34,8 @@ import {
     computeResumeAction,
     validateTransition,
 } from "./lib/guards.mjs";
+import { REVIEW_AGENT_STATUSES } from "../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "./lib/phases.mjs";
 
 const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -76,27 +78,27 @@ function resolveRun(projectRoot) {
 function applyCheckpointToState(state, phase, payload) {
     const nextState = { ...state };
 
-    if (phase === "PHASE_2_AGENT_LAUNCH") {
+    if (phase === PHASES.AGENT_LAUNCH) {
         nextState.health_check_done = payload.health_check_done === true;
         nextState.agents_available = Number(payload.agents_available || 0);
         nextState.agents_required = Array.isArray(payload.agents_required) ? payload.agents_required : [];
         nextState.agents_skipped_reason = payload.agents_skipped_reason || null;
     }
 
-    if (phase === "PHASE_5_MERGE") {
+    if (phase === PHASES.MERGE) {
         nextState.merge_summary = payload.merge_summary || payload.summary || payload;
     }
 
-    if (phase === "PHASE_6_REFINEMENT") {
+    if (phase === PHASES.REFINEMENT) {
         nextState.refinement_iterations = Number(payload.iterations || 0);
     }
 
-    if (phase === "PHASE_7_APPROVE" && payload.verdict) {
+    if (phase === PHASES.APPROVE && payload.verdict) {
         nextState.final_verdict = payload.verdict;
         nextState.final_result = payload.verdict;
     }
 
-    if (phase === "PHASE_8_SELF_CHECK") {
+    if (phase === PHASES.SELF_CHECK) {
         nextState.self_check_passed = payload.pass === true;
         if (payload.final_verdict) {
             nextState.final_verdict = payload.final_verdict;
@@ -138,13 +140,13 @@ function syncOneAgent(projectRoot, agentState) {
     }
 
     if (resultPath && fileExists(resultPath)) {
-        nextAgent.status = "result_ready";
-    } else if (metadata && (metadata.success === false || metadata.status === "failed")) {
-        nextAgent.status = "failed";
+        nextAgent.status = REVIEW_AGENT_STATUSES.RESULT_READY;
+    } else if (metadata && (metadata.success === false || metadata.status === REVIEW_AGENT_STATUSES.FAILED)) {
+        nextAgent.status = REVIEW_AGENT_STATUSES.FAILED;
     } else if (nextAgent.pid && !isProcessAlive(nextAgent.pid)) {
-        nextAgent.status = "dead";
+        nextAgent.status = REVIEW_AGENT_STATUSES.DEAD;
     } else if (!RESOLVED_AGENT_STATUSES.has(nextAgent.status)) {
-        nextAgent.status = "launched";
+        nextAgent.status = REVIEW_AGENT_STATUSES.LAUNCHED;
     }
 
     return nextAgent;
@@ -200,7 +202,7 @@ async function main() {
         const nextState = saveState(projectRoot, runId, {
             ...run.state,
             phase: values.to,
-            complete: values.to === "DONE" ? true : run.state.complete,
+            complete: values.to === PHASES.DONE ? true : run.state.complete,
             paused_reason: null,
         });
         if (nextState?.ok === false) {
@@ -241,7 +243,7 @@ async function main() {
             result_file: values["result-file"] || null,
             log_file: values["log-file"] || null,
             metadata_file: values["metadata-file"] || null,
-            status: "launched",
+            status: REVIEW_AGENT_STATUSES.LAUNCHED,
         });
         if (!result.ok) {
             failResult(result);
@@ -291,7 +293,7 @@ async function main() {
 
     if (command === "complete") {
         const { runId, run } = resolveRun(projectRoot);
-        const guard = validateTransition(run.manifest, run.state, run.checkpoints, "DONE");
+        const guard = validateTransition(run.manifest, run.state, run.checkpoints, PHASES.DONE);
         if (!guard.ok) {
             outputGuardFailure(output, guard);
         }

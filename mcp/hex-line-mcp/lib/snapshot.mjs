@@ -16,7 +16,7 @@ import { readText } from "./format.mjs";
 
 const MAX_FILES = 200;
 const MAX_REVISIONS_PER_FILE = 5;
-const TTL_MS = 5 * 60 * 1000;
+const TTL_MS = 15 * 60 * 1000;
 
 const latestByFile = new Map();
 const revisionsById = new Map();

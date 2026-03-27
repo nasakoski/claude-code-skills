@@ -6,6 +6,7 @@ import {
     createProjectRoot,
     writeJson,
 } from "./cli-test-helpers.mjs";
+import { WORKER_SUMMARY_STATUSES } from "../lib/runtime-constants.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 
@@ -76,7 +77,7 @@ function testEnvironmentReplayFromHistory() {
         "--phase",
         "PHASE_1_ASSESS",
         "--payload",
-        JSON.stringify({ assess_summary: { status: "ok" } }),
+        JSON.stringify({ assess_summary: { status: WORKER_SUMMARY_STATUSES.COMPLETED } }),
     ]);
     run(["advance", "--identifier", "targets-both", "--to", "PHASE_2_DISPATCH_PLAN"]);
 

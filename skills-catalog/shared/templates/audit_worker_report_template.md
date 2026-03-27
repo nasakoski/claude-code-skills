@@ -1,17 +1,22 @@
 # Audit Worker Report Template
 
-Standardized markdown format for audit workers writing file-based reports.
+Standardized markdown format for audit workers writing evidence reports.
 
-## Why File-Based
+## Runtime Layout
 
-Workers write reports to `docs/project/.audit/{audit-id}/{YYYY-MM-DD}/` instead of returning full findings in-context. This keeps coordinator context small while preserving full evidence on disk.
+Workers write markdown evidence to run-scoped runtime artifacts, while coordinators consume JSON summaries first.
 
 **Output directory convention:**
 ```text
-docs/project/.audit/{audit-id}/{YYYY-MM-DD}/
+.hex-skills/runtime-artifacts/runs/{run_id}/audit-report/
 ```
 
-No deletion of previous date folders - history is preserved for comparison.
+**JSON summary convention:**
+```text
+.hex-skills/runtime-artifacts/runs/{run_id}/audit-worker/
+```
+
+Run-scoped runtime artifacts can be cleaned up after the coordinator writes the public consolidated report.
 
 ## File Naming
 
@@ -43,7 +48,7 @@ critical: {N}
 high: {N}
 medium: {N}
 low: {N}
-status: complete
+status: completed
 -->
 
 ## Checks
@@ -78,7 +83,7 @@ HTML comment block parsed by the coordinator. One key-value pair per line.
 | `high` | integer | HIGH count |
 | `medium` | integer | MEDIUM count |
 | `low` | integer | LOW count |
-| `status` | string | `complete` or `error` |
+| `status` | string | `completed`, `skipped`, or `error` |
 
 ### Checks Table
 
@@ -130,7 +135,7 @@ critical: 0
 high: 1
 medium: 2
 low: 0
-status: complete
+status: completed
 -->
 ```
 
@@ -170,19 +175,19 @@ Structure analysis:
 {"tech_stack":{"language":"typescript","framework":"react","structure":"monolith"},"dimensions":{"file_hygiene":{"checks":6,"issues":2},"ignore_files":{"checks":4,"issues":1},"framework_conventions":{"checks":3,"issues":0},"domain_organization":{"checks":3,"issues":1},"naming_conventions":{"checks":3,"issues":0}},"junk_drawers":[{"path":"src/utils","file_count":23}],"naming_dominant_case":"PascalCase","naming_violations_pct":5}
 ```
 
-## Worker Return Value (In-Context)
+## Worker Return Value (Fallback)
 
-After writing the report file, return a compact summary:
+After writing the report file, also write the JSON summary to `summaryArtifactPath` when provided, then return a compact fallback summary:
 
 ```text
-Report written: docs/project/.audit/{audit-id}/{YYYY-MM-DD}/{worker-file}.md
+Report written: .hex-skills/runtime-artifacts/runs/{run_id}/audit-report/{worker-file}.md
 Score: 7.5/10 | Issues: 5 (C:0 H:2 M:2 L:1)
 ```
 
 Workers with diagnostic sub-scores return:
 
 ```text
-Report written: docs/project/.audit/{audit-id}/{YYYY-MM-DD}/{worker-file}.md
+Report written: .hex-skills/runtime-artifacts/runs/{run_id}/audit-report/{worker-file}.md
 Score: 6.0/10 (C:72 K:85 Q:68 I:90) | Issues: 3 (H:1 M:2 L:0)
 ```
 

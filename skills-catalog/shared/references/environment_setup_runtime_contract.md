@@ -2,6 +2,8 @@
 
 Runtime contract for `ln-010`.
 
+Canonical phase/status names: `shared/references/runtime_status_catalog.md`
+
 ## Identifier
 
 - `targets-{normalizedTargets}`
@@ -48,3 +50,5 @@ Workers stay standalone-first and may optionally write:
 - `env-instructions`
 
 Coordinator consumes only the shared summary envelope.
+Every worker summary envelope must include `run_id`; standalone workers generate one when the caller does not pass `runId`.
+Worker payload `status` uses `completed`, `skipped`, or `error`.

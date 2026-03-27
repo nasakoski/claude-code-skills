@@ -2,6 +2,8 @@
 
 Deterministic runtime for `ln-810-performance-optimizer`.
 
+Canonical phase/status names: `shared/references/runtime_status_catalog.md`
+
 ## Runtime Location
 
 ```text
@@ -67,6 +69,13 @@ node shared/scripts/optimization-runtime/cli.mjs complete
 - `PHASE_8_EXECUTE -> PHASE_9_CYCLE_BOUNDARY` requires execution summary or `skipped_by_mode` in `plan_only`
 - `PHASE_9_CYCLE_BOUNDARY -> PHASE_2_PROFILE` only when no stop reason is recorded
 - `DONE` requires final report checkpoint
+
+## Canonical Status Sets
+
+- Wrong Tool Gate verdicts: `PROCEED`, `CONCERNS`, `WAIVED`, `BLOCK`
+- Validation verdicts: `GO`, `GO_WITH_CONCERNS`, `WAIVED`, `NO_GO`
+- Execution checkpoint statuses: `completed`, `skipped_by_mode`
+- Cycle status: `completed`
 
 ## Worker Summary Contract
 

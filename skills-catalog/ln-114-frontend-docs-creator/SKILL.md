@@ -114,7 +114,7 @@ Tables (colors, typography, spacing) > Lists (component inventory) > Text
 - [ ] Design system, typography, colors documented
 - [ ] WCAG references included
 - [ ] **Actuality verified:** all document facts match current code (paths, functions, APIs, configs exist and are accurate)
-- [ ] Status returned to coordinator
+- [ ] Status returned
 
 ## Reference Files
 - Templates: `references/templates/design_guidelines_template.md`

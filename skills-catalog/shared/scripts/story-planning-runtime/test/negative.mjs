@@ -8,6 +8,8 @@ import {
     createProjectRoot,
     writeJson,
 } from "../../coordinator-runtime/test/cli-test-helpers.mjs";
+import { PLANNING_PROGRESS_STATUSES } from "../../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "../lib/phases.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cliPath = join(__dirname, "..", "cli.mjs");
@@ -19,24 +21,24 @@ try {
     writeJson(manifestPath, { task_provider: "file", auto_approve: false });
 
     run(["start", "--project-root", projectRoot, "--epic", "7", "--manifest-file", manifestPath]);
-    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", "PHASE_0_CONFIG"]);
-    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", "PHASE_1_CONTEXT_ASSEMBLY"]);
-    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", "PHASE_1_CONTEXT_ASSEMBLY", "--payload", "{}"]);
-    const missingContext = run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", "PHASE_2_RESEARCH"], { allowFailure: true });
+    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", PHASES.CONFIG]);
+    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", PHASES.CONTEXT_ASSEMBLY]);
+    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", PHASES.CONTEXT_ASSEMBLY, "--payload", "{}"]);
+    const missingContext = run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", PHASES.RESEARCH], { allowFailure: true });
     if (missingContext.error !== "Context assembly not recorded") {
         throw new Error(`Expected context failure, got: ${JSON.stringify(missingContext)}`);
     }
 
-    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", "PHASE_1_CONTEXT_ASSEMBLY", "--payload", "{\"context_ready\":true}"]);
-    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", "PHASE_2_RESEARCH"]);
-    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", "PHASE_2_RESEARCH", "--payload", "{\"research_status\":\"done\",\"research_file\":\"docs/research/rsh-007-auth.md\"}"]);
-    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", "PHASE_3_PLAN"]);
+    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", PHASES.CONTEXT_ASSEMBLY, "--payload", "{\"context_ready\":true}"]);
+    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", PHASES.RESEARCH]);
+    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", PHASES.RESEARCH, "--payload", JSON.stringify({ research_status: PLANNING_PROGRESS_STATUSES.COMPLETED, research_file: "docs/research/rsh-007-auth.md" })]);
+    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", PHASES.PLAN]);
     run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", "PHASE_3_PLAN", "--payload", "{\"ideal_plan_summary\":{\"stories_planned\":2}}"]);
-    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", "PHASE_4_ROUTING"]);
-    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", "PHASE_4_ROUTING", "--payload", "{\"routing_summary\":{\"groups\":[\"7\"]}}"]);
-    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", "PHASE_5_MODE_DETECTION"]);
-    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", "PHASE_5_MODE_DETECTION", "--payload", "{\"epic_group_modes\":{\"7\":\"CREATE\"}}"]);
-    const missingDecision = run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", "PHASE_6_DELEGATE"], { allowFailure: true });
+    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", PHASES.ROUTING]);
+    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", PHASES.ROUTING, "--payload", "{\"routing_summary\":{\"groups\":[\"7\"]}}"]);
+    run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", PHASES.MODE_DETECTION]);
+    run(["checkpoint", "--project-root", projectRoot, "--epic", "7", "--phase", PHASES.MODE_DETECTION, "--payload", "{\"epic_group_modes\":{\"7\":\"CREATE\"}}"]);
+    const missingDecision = run(["advance", "--project-root", projectRoot, "--epic", "7", "--to", PHASES.DELEGATE], { allowFailure: true });
     if (missingDecision.error !== "Preview confirmation decision missing") {
         throw new Error(`Expected preview decision failure, got: ${JSON.stringify(missingDecision)}`);
     }
@@ -48,7 +50,7 @@ try {
     }
     run(["set-decision", "--project-root", projectRoot, "--epic", "7", "--payload", "{\"selected_choice\":\"confirm_preview\"}"]);
     const resumed = run(["status", "--project-root", projectRoot, "--epic", "7"]);
-    if (resumed.state.phase !== "PHASE_6_DELEGATE") {
+    if (resumed.state.phase !== PHASES.DELEGATE) {
         throw new Error("set-decision did not resume story planning run to delegate phase");
     }
 

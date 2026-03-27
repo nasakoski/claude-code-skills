@@ -8,6 +8,7 @@ import {
     testSummarySchema,
 } from "../../coordinator-runtime/lib/schemas.mjs";
 import { assertSchema } from "../../coordinator-runtime/lib/validate.mjs";
+import { PHASES } from "./phases.mjs";
 
 const gateManifestSchema = {
     type: "object",
@@ -54,7 +55,7 @@ const gateStore = createRuntimeStore({
             mode: manifest.mode,
             identifier: manifest.identifier,
             story_id: manifest.story_id,
-            phase: "PHASE_0_CONFIG",
+            phase: PHASES.CONFIG,
             complete: false,
             paused_reason: null,
             pending_decision: null,

@@ -31,6 +31,7 @@ import {
     computeResumeAction,
     validateTransition,
 } from "./lib/guards.mjs";
+import { PHASES } from "./lib/phases.mjs";
 
 const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -73,13 +74,13 @@ function resolveRun(projectRoot) {
 function applyCheckpointToState(state, phase, payload) {
     const nextState = { ...state };
 
-    if (phase === "PHASE_2_WORKTREE_SETUP") {
+    if (phase === PHASES.WORKTREE_SETUP) {
         nextState.worktree_ready = payload.worktree_ready === true;
         nextState.worktree_dir = payload.worktree_dir || nextState.worktree_dir || null;
         nextState.branch = payload.branch || nextState.branch || null;
     }
 
-    if (phase === "PHASE_3_SELECT_WORK") {
+    if (phase === PHASES.SELECT_WORK) {
         nextState.current_task_id = payload.current_task_id || null;
         nextState.current_group_id = payload.current_group_id || null;
         if (payload.processable_counts) {
@@ -87,7 +88,7 @@ function applyCheckpointToState(state, phase, payload) {
         }
     }
 
-    if (phase === "PHASE_6_VERIFY_STATUSES") {
+    if (phase === PHASES.VERIFY_STATUSES) {
         nextState.current_task_id = null;
         nextState.current_group_id = null;
         nextState.inflight_workers = payload.inflight_workers || {};
@@ -96,12 +97,12 @@ function applyCheckpointToState(state, phase, payload) {
         }
     }
 
-    if (phase === "PHASE_7_STORY_TO_REVIEW") {
+    if (phase === PHASES.STORY_TO_REVIEW) {
         nextState.story_transition_done = payload.story_transition_done === true;
         nextState.final_result = payload.final_result || nextState.final_result;
     }
 
-    if (phase === "PHASE_8_SELF_CHECK") {
+    if (phase === PHASES.SELF_CHECK) {
         nextState.self_check_passed = payload.pass === true;
         nextState.final_result = payload.final_result || nextState.final_result;
     }
@@ -151,7 +152,7 @@ async function main() {
             fail("advance requires --to");
         }
         const { runId, run } = resolveRun(projectRoot);
-        if (run.state.phase === "PAUSED" && values.resolve) {
+        if (run.state.phase === PHASES.PAUSED && values.resolve) {
             const resumed = saveState(projectRoot, runId, {
                 ...run.state,
                 phase: values.to,
@@ -170,7 +171,7 @@ async function main() {
         const nextState = saveState(projectRoot, runId, {
             ...run.state,
             phase: values.to,
-            complete: values.to === "DONE" ? true : run.state.complete,
+            complete: values.to === PHASES.DONE ? true : run.state.complete,
             paused_reason: null,
         });
         if (nextState?.ok === false) {
@@ -251,7 +252,7 @@ async function main() {
 
     if (command === "complete") {
         const { runId, run } = resolveRun(projectRoot);
-        const guard = validateTransition(run.manifest, run.state, run.checkpoints, "DONE");
+        const guard = validateTransition(run.manifest, run.state, run.checkpoints, PHASES.DONE);
         if (!guard.ok) {
             outputGuardFailure(output, guard);
         }

@@ -7,7 +7,12 @@ import {
     storyGroupRecordSchema,
     storyTaskRecordSchema,
 } from "../../coordinator-runtime/lib/schemas.mjs";
+import {
+    STORY_EXECUTION_GROUP_STATUSES,
+    TASK_BOARD_STATUSES,
+} from "../../coordinator-runtime/lib/runtime-constants.mjs";
 import { assertSchema } from "../../coordinator-runtime/lib/validate.mjs";
+import { PHASES } from "./phases.mjs";
 
 const executionManifestSchema = {
     type: "object",
@@ -56,7 +61,7 @@ const executionStore = createRuntimeStore({
             mode: manifest.mode,
             identifier: manifest.identifier,
             story_id: manifest.story_id,
-            phase: "PHASE_0_CONFIG",
+            phase: PHASES.CONFIG,
             complete: false,
             paused_reason: null,
             pending_decision: null,
@@ -109,9 +114,9 @@ export function recordTask(projectRoot, runId, taskRecord) {
     }
     return updateState(projectRoot, runId, state => {
         const nextCounters = { ...state.rework_counter_by_task };
-        if (taskRecord.to_status === "To Rework") {
+        if (taskRecord.to_status === TASK_BOARD_STATUSES.TO_REWORK) {
             nextCounters[taskRecord.task_id] = Number(nextCounters[taskRecord.task_id] || 0) + 1;
-        } else if (taskRecord.to_status === "Done") {
+        } else if (taskRecord.to_status === TASK_BOARD_STATUSES.DONE) {
             nextCounters[taskRecord.task_id] = 0;
         }
         return {
@@ -154,7 +159,7 @@ export function recordGroup(projectRoot, runId, groupRecord) {
             [groupRecord.group_id]: {
                 group_id: groupRecord.group_id,
                 task_ids: groupRecord.task_ids || [],
-                status: groupRecord.status || "completed",
+                status: groupRecord.status || STORY_EXECUTION_GROUP_STATUSES.COMPLETED,
                 result: groupRecord.result || null,
                 completed_at: groupRecord.completed_at || new Date().toISOString(),
             },

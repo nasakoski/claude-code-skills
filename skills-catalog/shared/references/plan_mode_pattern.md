@@ -59,13 +59,14 @@ After approval, fixes will be applied.
 
 ## TodoWrite Format (Mandatory)
 
-Before starting, add phases showing Plan Mode awareness:
+Before starting, add phases showing Plan Mode awareness.
+These are TodoWrite tool-local statuses, not runtime status enums:
 
 ```
 - Phase 1: Discovery (in_progress → completed)
-- Phase 2: Analysis (pending → completed)
-- Phase 3: Generate plan preview (pending → completed)
-- Phase 4: Execute (marked "skipped - Plan Mode")
+- Phase 2: Analysis (in_progress → completed)
+- Phase 3: Generate plan preview (in_progress → completed)
+- Phase 4: Execute (leave pending or annotate "not executed in Plan Mode")
 ```
 
 ## Output Requirements
@@ -155,7 +156,7 @@ Files to review:
 | ... | ... | ... |
 | 10 | Side-effects | Pre-existing bugs in touched files |
 
-Expected output: Done/To Rework + Issues list
+Expected output: `Done | To Rework` + Issues list
 ```
 
 ### Replan Preview (Replanners)

@@ -36,7 +36,8 @@ Prefer:
 2. send one `edit_file` call with batched edits
 3. carry `revision` from `read_file` into `base_revision` on follow-up edits
 4. use `set_line`, `replace_lines`, `insert_after`, `replace_between` based on scope
-5. use `verify` before rereading after staleness
+5. if edit returns CONFLICT, call `verify` with stale checksum — it reports VALID/STALE/INVALID without rereading the whole file
+6. only reread (`read_file`) when `verify` confirms STALE
 
 Post-edit output uses `block: post_edit` with checksum — use it directly for follow-up edits or verify.
 
@@ -45,6 +46,20 @@ Avoid:
 - full-file rewrites for local changes
 - using `bulk_replace` for structural block rewrites
 
+
+## hex-graph — Code Analysis
+
+Run `index_project` once per session before using other graph tools.
+
+| Task | Tool | Output |
+|------|------|--------|
+| Refactoring / moving code | `find_references`, `find_implementations` | All usages + implementations |
+| Code review / tech debt | `find_cycles`, `find_hotspots` | Circular deps, complexity hotspots |
+| Dead code cleanup | `find_unused_exports` | Exports nobody imports |
+| Architecture overview | `get_architecture`, `get_module_metrics` | Module map + coupling metrics |
+| Duplicate detection | `find_clones` | Similar code blocks |
+| Impact analysis | `trace_paths` | Call chains A → B |
+| Symbol lookup | `search_symbols`, `get_symbol` | Find by name, get details |
 # Response Style
 
 Keep responses compact and operational. Explain only what is needed to complete the task or justify a non-obvious decision.

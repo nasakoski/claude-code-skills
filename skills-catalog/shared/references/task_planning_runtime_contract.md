@@ -55,3 +55,4 @@ Use shared `pending_decision` schema for:
 ## Worker Summaries
 
 Workers stay standalone-first and may optionally write `task-plan` summaries.
+Every `task-plan` summary uses the shared envelope with mandatory `run_id`; standalone workers generate one when the caller does not pass `runId`.

@@ -5,6 +5,10 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+    REVIEW_AGENT_STATUSES,
+} from "../../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "../lib/phases.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cliPath = join(__dirname, "..", "cli.mjs");
@@ -43,10 +47,10 @@ try {
         throw new Error("Failed to start review runtime");
     }
 
-    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", "PHASE_0_CONFIG"]);
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_1_DISCOVERY"]);
-    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", "PHASE_1_DISCOVERY"]);
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_2_AGENT_LAUNCH"]);
+    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", PHASES.CONFIG]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.DISCOVERY]);
+    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", PHASES.DISCOVERY]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.AGENT_LAUNCH]);
     run([
         "register-agent",
         "--project-root", projectRoot,
@@ -59,7 +63,7 @@ try {
         "checkpoint",
         "--project-root", projectRoot,
         "--skill", "ln-310",
-        "--phase", "PHASE_2_AGENT_LAUNCH",
+        "--phase", PHASES.AGENT_LAUNCH,
         "--payload",
         JSON.stringify({
             health_check_done: true,
@@ -67,65 +71,65 @@ try {
             agents_required: ["codex"],
         }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_3_RESEARCH"]);
-    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", "PHASE_3_RESEARCH"]);
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_4_AUTOFIX"]);
-    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", "PHASE_4_AUTOFIX"]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.RESEARCH]);
+    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", PHASES.RESEARCH]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.AUTOFIX]);
+    run(["checkpoint", "--project-root", projectRoot, "--skill", "ln-310", "--phase", PHASES.AUTOFIX]);
 
     writeFileSync(metadataPath, JSON.stringify({
         pid: process.pid,
         started_at: new Date().toISOString(),
         finished_at: new Date().toISOString(),
-        status: "result_ready",
+        status: REVIEW_AGENT_STATUSES.RESULT_READY,
         success: true,
         exit_code: 0,
     }, null, 2));
     writeFileSync(resultPath, "<!-- AGENT_REVIEW_RESULT -->ok<!-- END_AGENT_REVIEW_RESULT -->");
 
     const synced = run(["sync-agent", "--project-root", projectRoot, "--skill", "ln-310", "--agent", "codex"]);
-    if (synced.agents.codex.status !== "result_ready") {
+    if (synced.agents.codex.status !== REVIEW_AGENT_STATUSES.RESULT_READY) {
         throw new Error("Agent did not resolve to result_ready");
     }
 
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_5_MERGE"]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.MERGE]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
         "--skill", "ln-310",
-        "--phase", "PHASE_5_MERGE",
+        "--phase", PHASES.MERGE,
         "--payload",
         JSON.stringify({ merge_summary: { accepted: 2, rejected: 1 } }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_6_REFINEMENT"]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.REFINEMENT]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
         "--skill", "ln-310",
-        "--phase", "PHASE_6_REFINEMENT",
+        "--phase", PHASES.REFINEMENT,
         "--payload",
         JSON.stringify({ iterations: 1, exit_reason: "APPROVED" }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_7_APPROVE"]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.APPROVE]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
         "--skill", "ln-310",
-        "--phase", "PHASE_7_APPROVE",
+        "--phase", PHASES.APPROVE,
         "--payload",
         JSON.stringify({ verdict: "GO" }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", "PHASE_8_SELF_CHECK"]);
+    run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.SELF_CHECK]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
         "--skill", "ln-310",
-        "--phase", "PHASE_8_SELF_CHECK",
+        "--phase", PHASES.SELF_CHECK,
         "--payload",
         JSON.stringify({ pass: true, final_verdict: "GO" }),
     ]);
     const completed = run(["complete", "--project-root", projectRoot, "--skill", "ln-310"]);
 
-    if (!completed.ok || completed.state.phase !== "DONE") {
+    if (!completed.ok || completed.state.phase !== PHASES.DONE) {
         throw new Error("Runtime did not complete successfully");
     }
 

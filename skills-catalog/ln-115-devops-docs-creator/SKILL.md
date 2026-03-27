@@ -161,7 +161,7 @@ Tables (env vars, ports, services, servers) > Lists (setup steps) > Text
 - [ ] Runbook: setup steps, deployment, troubleshooting documented
 - [ ] All env vars from .env.example included in runbook
 - [ ] **Actuality verified:** all document facts match current code (paths, functions, APIs, configs exist and are accurate)
-- [ ] Status returned to coordinator
+- [ ] Status returned
 
 ## Reference Files
 - Templates: `references/templates/infrastructure_template.md`, `references/templates/runbook_template.md`

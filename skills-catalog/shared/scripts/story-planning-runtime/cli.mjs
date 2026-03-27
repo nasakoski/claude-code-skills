@@ -36,6 +36,7 @@ import {
     pausePlanningRun,
     resolvePlanningRunOrFail,
 } from "../planning-runtime/lib/cli.mjs";
+import { PLANNING_PROGRESS_STATUSES } from "../coordinator-runtime/lib/runtime-constants.mjs";
 
 const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -73,7 +74,7 @@ function applyCheckpointToState(state, phase, payload) {
         nextState.context_ready = payload.context_ready === true;
     }
     if (phase === PHASES.RESEARCH) {
-        nextState.research_status = payload.research_status || "done";
+        nextState.research_status = payload.research_status || PLANNING_PROGRESS_STATUSES.COMPLETED;
         nextState.research_file = payload.research_file || nextState.research_file;
     }
     if (phase === PHASES.PLAN) {

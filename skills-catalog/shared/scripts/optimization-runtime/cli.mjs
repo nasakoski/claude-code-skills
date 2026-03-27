@@ -31,6 +31,12 @@ import {
     computeResumeAction,
     validateTransition,
 } from "./lib/guards.mjs";
+import {
+    OPTIMIZATION_CHECKPOINT_STATUSES,
+    OPTIMIZATION_GATE_VERDICTS,
+    OPTIMIZATION_VALIDATION_VERDICTS,
+} from "../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "./lib/phases.mjs";
 
 const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -80,38 +86,38 @@ function markPhase(state, phase, status, extra = {}) {
 function applyCheckpointToState(state, phase, payload) {
     const nextState = {
         ...state,
-        phases: markPhase(state, phase, payload.phase_status || "done"),
+        phases: markPhase(state, phase, payload.phase_status || OPTIMIZATION_CHECKPOINT_STATUSES.COMPLETED),
     };
 
-    if (phase === "PHASE_1_PARSE_INPUT") {
+    if (phase === PHASES.PARSE_INPUT) {
         nextState.target = payload.target || nextState.target;
         nextState.target_metric = payload.target_metric || nextState.target_metric;
     }
 
-    if (phase === "PHASE_3_WRONG_TOOL_GATE") {
-        nextState.final_result = payload.gate_verdict === "BLOCK" ? (payload.final_result || nextState.final_result) : nextState.final_result;
-        nextState.stop_reason = payload.gate_verdict === "BLOCK" ? (payload.stop_reason || nextState.stop_reason) : nextState.stop_reason;
+    if (phase === PHASES.WRONG_TOOL_GATE) {
+        nextState.final_result = payload.gate_verdict === OPTIMIZATION_GATE_VERDICTS.BLOCK ? (payload.final_result || nextState.final_result) : nextState.final_result;
+        nextState.stop_reason = payload.gate_verdict === OPTIMIZATION_GATE_VERDICTS.BLOCK ? (payload.stop_reason || nextState.stop_reason) : nextState.stop_reason;
     }
 
-    if (phase === "PHASE_5_SET_TARGET") {
+    if (phase === PHASES.SET_TARGET) {
         nextState.target_metric = payload.target_metric || nextState.target_metric;
     }
 
-    if (phase === "PHASE_6_WRITE_CONTEXT") {
+    if (phase === PHASES.WRITE_CONTEXT) {
         nextState.context_file = payload.context_file || nextState.context_file;
     }
 
-    if (phase === "PHASE_7_VALIDATE_PLAN" && payload.validation_verdict === "NO_GO") {
+    if (phase === PHASES.VALIDATE_PLAN && payload.validation_verdict === OPTIMIZATION_VALIDATION_VERDICTS.NO_GO) {
         nextState.paused_reason = payload.paused_reason || nextState.paused_reason;
     }
 
-    if (phase === "PHASE_9_CYCLE_BOUNDARY") {
+    if (phase === PHASES.CYCLE_BOUNDARY) {
         nextState.stop_reason = payload.stop_reason || nextState.stop_reason;
         nextState.final_result = payload.final_result || nextState.final_result;
         nextState.current_cycle = Number(payload.next_cycle || nextState.current_cycle);
     }
 
-    if (phase === "PHASE_11_REPORT") {
+    if (phase === PHASES.REPORT) {
         nextState.final_result = payload.final_result || nextState.final_result;
         nextState.report_ready = payload.report_ready === true;
     }
@@ -161,7 +167,7 @@ async function main() {
             fail("advance requires --to");
         }
         const { runId, run } = resolveRun(projectRoot);
-        if (run.state.phase === "PAUSED" && values.resolve) {
+        if (run.state.phase === PHASES.PAUSED && values.resolve) {
             const resumed = saveState(projectRoot, runId, {
                 ...run.state,
                 phase: values.to,
@@ -180,7 +186,7 @@ async function main() {
         const nextState = saveState(projectRoot, runId, {
             ...run.state,
             phase: values.to,
-            complete: values.to === "DONE" ? true : run.state.complete,
+            complete: values.to === PHASES.DONE ? true : run.state.complete,
             paused_reason: null,
         });
         if (nextState?.ok === false) {
@@ -251,7 +257,7 @@ async function main() {
 
     if (command === "complete") {
         const { runId, run } = resolveRun(projectRoot);
-        const guard = validateTransition(run.manifest, run.state, run.checkpoints, "DONE");
+        const guard = validateTransition(run.manifest, run.state, run.checkpoints, PHASES.DONE);
         if (!guard.ok) {
             outputGuardFailure(output, guard);
         }

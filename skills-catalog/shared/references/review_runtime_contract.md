@@ -2,6 +2,8 @@
 
 Shared deterministic runtime for review coordinators such as `ln-310`.
 
+Canonical phase/status names: `shared/references/runtime_status_catalog.md`
+
 Use this contract when a skill needs:
 - parallel external review agents
 - resumable phase state
@@ -48,6 +50,8 @@ node shared/scripts/review-runtime/cli.mjs complete --skill ln-310
 | `DONE` | terminal success |
 | `PAUSED` | terminal/manual intervention needed |
 
+Legacy aliases are invalid. Use `PHASE_6_REFINEMENT`; `PHASE_6_REFINE` is not accepted.
+
 Mode rules:
 - `story`: all phases required
 - `plan_review`: Phase 4 and 7 must be checkpointed as `skipped_by_mode`
@@ -56,7 +60,6 @@ Mode rules:
 ## Agent Status Contract
 
 Allowed values:
-- `pending`
 - `skipped`
 - `launched`
 - `result_ready`

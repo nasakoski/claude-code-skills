@@ -162,7 +162,7 @@ Tables > Mermaid/ASCII diagrams > Lists > Text
 - [ ] Patterns auto-detected and added to catalog
 - [ ] Self-validation passed (metadata markers, top sections, format)
 - [ ] **Actuality verified:** all document facts match current code (paths, functions, APIs, configs exist and are accurate)
-- [ ] Status returned to coordinator
+- [ ] Status returned
 
 ## Reference Files
 - Templates: `references/templates/requirements_template.md`, `architecture_template.md`, `tech_stack_template.md`

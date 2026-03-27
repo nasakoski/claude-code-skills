@@ -116,7 +116,7 @@ Tables (endpoints, schemas) > Mermaid (ER diagrams) > Lists > Text
 - [ ] ER diagram generated (if database_schema.md created)
 - [ ] Self-validation passed (metadata markers, top sections, format)
 - [ ] **Actuality verified:** all document facts match current code (paths, functions, APIs, configs exist and are accurate)
-- [ ] Status returned to coordinator
+- [ ] Status returned
 
 ## Reference Files
 - Templates: `references/templates/api_spec_template.md`, `database_schema_template.md`

@@ -8,6 +8,11 @@ import {
     createProjectRoot,
     writeJson,
 } from "../../coordinator-runtime/test/cli-test-helpers.mjs";
+import {
+    ENVIRONMENT_SETUP_FINAL_RESULTS,
+    WORKER_SUMMARY_STATUSES,
+} from "../../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "../lib/phases.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cliPath = join(__dirname, "..", "cli.mjs");
@@ -26,24 +31,24 @@ try {
         throw new Error("Failed to start environment setup runtime");
     }
 
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_0_CONFIG"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_1_ASSESS"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_1_ASSESS", "--payload", "{\"assess_summary\":{\"node\":true}}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_2_DISPATCH_PLAN"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_2_DISPATCH_PLAN", "--payload", "{\"dispatch_plan\":{\"workers_to_run\":[\"ln-011\",\"ln-013\"]}}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_3_WORKER_EXECUTION"]);
-    run(["record-worker", "--project-root", projectRoot, "--identifier", "targets-both", "--payload", "{\"schema_version\":\"1.0\",\"summary_kind\":\"env-agent-install\",\"identifier\":\"targets-both\",\"producer_skill\":\"ln-011\",\"produced_at\":\"2026-03-26T00:00:00Z\",\"payload\":{\"status\":\"ok\",\"targets\":[\"codex\"]}}"]);
-    run(["record-worker", "--project-root", projectRoot, "--identifier", "targets-both", "--payload", "{\"schema_version\":\"1.0\",\"summary_kind\":\"env-config-sync\",\"identifier\":\"targets-both\",\"producer_skill\":\"ln-013\",\"produced_at\":\"2026-03-26T00:00:00Z\",\"payload\":{\"status\":\"ok\",\"targets\":[\"gemini\"]}}"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_3_WORKER_EXECUTION"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_4_VERIFY"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_4_VERIFY", "--payload", "{\"verification_summary\":{\"hooks\":\"ok\"}}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_5_WRITE_ENV_STATE"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_5_WRITE_ENV_STATE", "--payload", "{\"env_state_written\":true,\"final_result\":\"READY\"}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_6_SELF_CHECK"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_6_SELF_CHECK", "--payload", "{\"pass\":true,\"final_result\":\"READY\"}"]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.CONFIG]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.ASSESS]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.ASSESS, "--payload", "{\"assess_summary\":{\"node\":true}}"]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.DISPATCH_PLAN]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.DISPATCH_PLAN, "--payload", "{\"dispatch_plan\":{\"workers_to_run\":[\"ln-011\",\"ln-013\"]}}"]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.WORKER_EXECUTION]);
+    run(["record-worker", "--project-root", projectRoot, "--identifier", "targets-both", "--payload", JSON.stringify({ schema_version: "1.0", summary_kind: "env-agent-install", run_id: started.run_id, identifier: "targets-both", producer_skill: "ln-011", produced_at: "2026-03-26T00:00:00Z", payload: { status: WORKER_SUMMARY_STATUSES.COMPLETED, targets: ["codex"] } })]);
+    run(["record-worker", "--project-root", projectRoot, "--identifier", "targets-both", "--payload", JSON.stringify({ schema_version: "1.0", summary_kind: "env-config-sync", run_id: started.run_id, identifier: "targets-both", producer_skill: "ln-013", produced_at: "2026-03-26T00:00:00Z", payload: { status: WORKER_SUMMARY_STATUSES.COMPLETED, targets: ["gemini"] } })]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.WORKER_EXECUTION]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.VERIFY]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.VERIFY, "--payload", "{\"verification_summary\":{\"hooks\":\"ok\"}}"]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.WRITE_ENV_STATE]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.WRITE_ENV_STATE, "--payload", JSON.stringify({ env_state_written: true, final_result: ENVIRONMENT_SETUP_FINAL_RESULTS.READY })]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.SELF_CHECK]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.SELF_CHECK, "--payload", JSON.stringify({ pass: true, final_result: ENVIRONMENT_SETUP_FINAL_RESULTS.READY })]);
     const completed = run(["complete", "--project-root", projectRoot, "--identifier", "targets-both"]);
 
-    if (!completed.ok || completed.state.phase !== "DONE") {
+    if (!completed.ok || completed.state.phase !== PHASES.DONE) {
         throw new Error("Environment setup runtime did not complete");
     }
 

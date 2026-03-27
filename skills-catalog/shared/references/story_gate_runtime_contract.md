@@ -2,6 +2,8 @@
 
 Deterministic runtime for `ln-500-story-quality-gate`.
 
+Canonical phase/status names: `shared/references/runtime_status_catalog.md`
+
 ## Runtime Location
 
 ```text
@@ -60,6 +62,14 @@ node shared/scripts/story-gate-runtime/cli.mjs complete
 - `PHASE_6_VERDICT` must record terminal gate result before finalization
 - FAIL still passes through `PHASE_7_FINALIZATION`, but as `skipped_by_verdict`
 - `DONE` requires `PHASE_8_SELF_CHECK` with `pass=true` and final story state recorded
+
+## Canonical Status Sets
+
+- gate verdicts: `PASS`, `CONCERNS`, `WAIVED`, `FAIL`
+- completed test-task statuses: `Done`, `SKIPPED`, `VERIFIED`
+- finalization shortcut status: `skipped_by_verdict`
+
+These names are canonical for the runtime. Do not replace them with free-form alternatives in checkpoints or examples.
 
 ## Downstream Summary Contract
 

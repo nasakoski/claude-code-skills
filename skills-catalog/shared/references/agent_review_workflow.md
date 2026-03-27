@@ -288,6 +288,9 @@ After returning results, run meta-analysis on agent delegation effectiveness: co
 
 ## Output Schema (common structure)
 
+`runtime_status` follows `shared/references/runtime_status_catalog.md`.
+`execution_outcome` is runner-local transport telemetry, not a review-runtime enum.
+
 ```yaml
 verdict: "{verdict_acceptable} | SUGGESTIONS | SKIPPED"
 suggestions:
@@ -303,7 +306,8 @@ agent_stats:
     duration_s: 12.4
     suggestion_count: 3
     accepted_count: 2
-    status: "success | failed | timeout"
+    runtime_status: "result_ready | failed | dead | skipped"
+    execution_outcome: "success | failed | timeout"
 refinement:
   iterations: 3
   exit_reason: "APPROVED | MAX_ITER | ERROR | ZERO_ACCEPTED | SKIPPED"

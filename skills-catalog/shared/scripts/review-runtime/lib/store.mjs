@@ -5,8 +5,10 @@ import {
     readJsonFile,
     resolveTrackedPath,
 } from "../../coordinator-runtime/lib/core.mjs";
+import { REVIEW_AGENT_STATUSES } from "../../coordinator-runtime/lib/runtime-constants.mjs";
 import { reviewAgentRecordSchema } from "../../coordinator-runtime/lib/schemas.mjs";
 import { assertSchema } from "../../coordinator-runtime/lib/validate.mjs";
+import { PHASES } from "./phases.mjs";
 
 const reviewManifestSchema = {
     type: "object",
@@ -52,7 +54,7 @@ const reviewStore = createRuntimeStore({
             skill: manifest.skill,
             mode: manifest.mode,
             identifier: manifest.identifier,
-            phase: "PHASE_0_CONFIG",
+            phase: PHASES.CONFIG,
             complete: false,
             paused_reason: null,
             pending_decision: null,
@@ -104,7 +106,7 @@ export function registerAgent(projectRoot, runId, agentRecord) {
             ...state.agents,
             [agentRecord.name]: {
                 name: agentRecord.name,
-                status: agentRecord.status || "launched",
+                status: agentRecord.status || REVIEW_AGENT_STATUSES.LAUNCHED,
                 prompt_file: agentRecord.prompt_file || null,
                 result_file: agentRecord.result_file || null,
                 log_file: agentRecord.log_file || null,

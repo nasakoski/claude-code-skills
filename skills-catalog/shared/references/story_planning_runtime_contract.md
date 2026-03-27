@@ -2,6 +2,8 @@
 
 Runtime contract for `ln-220`.
 
+Canonical phase/status names: `shared/references/runtime_status_catalog.md`
+
 ## Identifier
 
 - `epic-{epicId}`
@@ -23,7 +25,7 @@ Runtime contract for `ln-220`.
 ## Required State
 
 - `context_ready`
-- `research_status`
+- `research_status` (`completed`)
 - `research_file`
 - `ideal_plan_summary`
 - `routing_summary`
@@ -56,3 +58,4 @@ Use shared `pending_decision` schema for:
 ## Worker Summaries
 
 Workers stay standalone-first and may optionally write `story-plan` summaries.
+Every `story-plan` summary uses the shared envelope with mandatory `run_id`; standalone workers generate one when the caller does not pass `runId`.

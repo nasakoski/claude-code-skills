@@ -31,13 +31,15 @@ Required fields for every worker summary:
 
 Rules:
 - `summary_kind` describes the operation, not the coordinator.
+- `run_id` is mandatory for every summary envelope.
+- If the caller does not pass `runId`, the worker generates a standalone `run_id` before emitting the summary.
 - `identifier` is domain-specific and stable inside the run.
 - `payload` shape is domain-specific and validated by schema.
 - the envelope itself is validated by the shared coordinator-runtime schema layer
 
 ## Environment Worker Summaries
 
-Used by `ln-011`, `ln-012`, `ln-013`, `ln-014`.
+Status names follow `shared/references/runtime_status_catalog.md`.
 
 Allowed `summary_kind` values:
 - `env-agent-install`
@@ -46,15 +48,13 @@ Allowed `summary_kind` values:
 - `env-instructions`
 
 Payload fields:
-- `status`
+- `status` (`completed`, `skipped`, `error`)
 - `targets`
 - `changes`
 - `warnings`
 - `detail`
 
 ## Story Plan Worker Summary
-
-Used by `ln-221` and `ln-222`.
 
 `summary_kind`:
 - `story-plan`
@@ -72,8 +72,6 @@ Payload fields:
 - `research_path_used`
 
 ## Task Plan Worker Summary
-
-Used by `ln-301` and `ln-302`.
 
 `summary_kind`:
 - `task-plan`

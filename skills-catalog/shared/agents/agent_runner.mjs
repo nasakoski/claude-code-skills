@@ -26,6 +26,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { REVIEW_AGENT_STATUSES } from "../scripts/coordinator-runtime/lib/runtime-constants.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -477,7 +478,7 @@ function executeAgent(agentCfg, cmd, stdinPrompt, hardTimeout,
             if (logFh) logFh.end();
             writeMetadataFile(metadataFile, {
                 agent: agentName,
-                status: "failed",
+                status: REVIEW_AGENT_STATUSES.FAILED,
                 started_at: startedAt,
                 finished_at: utcTimestamp(),
                 success: false,
@@ -506,7 +507,7 @@ function executeAgent(agentCfg, cmd, stdinPrompt, hardTimeout,
 
         writeMetadataFile(metadataFile, {
             agent: agentName,
-            status: "launched",
+            status: REVIEW_AGENT_STATUSES.LAUNCHED,
             pid: child.pid,
             started_at: startedAt,
             success: null,
@@ -526,7 +527,7 @@ function executeAgent(agentCfg, cmd, stdinPrompt, hardTimeout,
             if (logFh) logFh.end();
             writeMetadataFile(metadataFile, {
                 agent: agentName,
-                status: "failed",
+                status: REVIEW_AGENT_STATUSES.FAILED,
                 pid: child.pid || null,
                 started_at: startedAt,
                 finished_at: utcTimestamp(),
@@ -639,7 +640,7 @@ function executeAgent(agentCfg, cmd, stdinPrompt, hardTimeout,
             if (timedOut) {
                 writeMetadataFile(metadataFile, {
                     agent: agentName,
-                    status: "failed",
+                    status: REVIEW_AGENT_STATUSES.FAILED,
                     pid: child.pid || null,
                     started_at: startedAt,
                     finished_at: finishedAt,
@@ -697,7 +698,7 @@ function executeAgent(agentCfg, cmd, stdinPrompt, hardTimeout,
             if (code !== 0) {
                 writeMetadataFile(metadataFile, {
                     agent: agentName,
-                    status: "failed",
+                    status: REVIEW_AGENT_STATUSES.FAILED,
                     pid: child.pid || null,
                     started_at: startedAt,
                     finished_at: finishedAt,
@@ -727,7 +728,7 @@ function executeAgent(agentCfg, cmd, stdinPrompt, hardTimeout,
 
             writeMetadataFile(metadataFile, {
                 agent: agentName,
-                status: "result_ready",
+                status: REVIEW_AGENT_STATUSES.RESULT_READY,
                 pid: child.pid || null,
                 started_at: startedAt,
                 finished_at: finishedAt,

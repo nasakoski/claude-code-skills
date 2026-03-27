@@ -31,6 +31,8 @@ import {
     computeResumeAction,
     validateTransition,
 } from "./lib/guards.mjs";
+import { STORY_GATE_FINALIZATION_STATUSES } from "../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "./lib/phases.mjs";
 
 const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -67,38 +69,38 @@ function resolveRun(projectRoot) {
 function applyCheckpointToState(state, phase, payload) {
     const nextState = { ...state };
 
-    if (phase === "PHASE_2_FAST_TRACK") {
+    if (phase === PHASES.FAST_TRACK) {
         nextState.fast_track = payload.fast_track === true;
     }
 
-    if (phase === "PHASE_3_QUALITY_CHECKS") {
+    if (phase === PHASES.QUALITY_CHECKS) {
         nextState.quality_summary = payload.quality_summary || nextState.quality_summary;
         nextState.quality_score = payload.quality_score ?? nextState.quality_score;
     }
 
-    if (phase === "PHASE_4_TEST_PLANNING") {
+    if (phase === PHASES.TEST_PLANNING) {
         nextState.test_planner_invoked = payload.test_planner_invoked === true || nextState.test_planner_invoked;
         nextState.test_task_id = payload.test_task_id || nextState.test_task_id;
         nextState.test_task_status = payload.test_task_status || nextState.test_task_status;
     }
 
-    if (phase === "PHASE_5_TEST_VERIFICATION") {
+    if (phase === PHASES.TEST_VERIFICATION) {
         nextState.test_task_status = payload.test_task_status || nextState.test_task_status;
     }
 
-    if (phase === "PHASE_6_VERDICT") {
+    if (phase === PHASES.VERDICT) {
         nextState.quality_score = payload.quality_score ?? nextState.quality_score;
         nextState.nfr_validation = payload.nfr_validation || nextState.nfr_validation;
         nextState.fix_tasks_created = payload.fix_tasks_created || nextState.fix_tasks_created;
         nextState.final_result = payload.final_result || payload.verdict || nextState.final_result;
     }
 
-    if (phase === "PHASE_7_FINALIZATION") {
-        nextState.branch_finalized = payload.branch_finalized === true || payload.status === "skipped_by_verdict";
+    if (phase === PHASES.FINALIZATION) {
+        nextState.branch_finalized = payload.branch_finalized === true || payload.status === STORY_GATE_FINALIZATION_STATUSES.SKIPPED_BY_VERDICT;
         nextState.story_final_status = payload.story_final_status || nextState.story_final_status;
     }
 
-    if (phase === "PHASE_8_SELF_CHECK") {
+    if (phase === PHASES.SELF_CHECK) {
         nextState.self_check_passed = payload.pass === true;
         nextState.final_result = payload.final_result || nextState.final_result;
     }
@@ -148,7 +150,7 @@ async function main() {
             fail("advance requires --to");
         }
         const { runId, run } = resolveRun(projectRoot);
-        if (run.state.phase === "PAUSED" && values.resolve) {
+        if (run.state.phase === PHASES.PAUSED && values.resolve) {
             const resumed = saveState(projectRoot, runId, {
                 ...run.state,
                 phase: values.to,
@@ -167,7 +169,7 @@ async function main() {
         const nextState = saveState(projectRoot, runId, {
             ...run.state,
             phase: values.to,
-            complete: values.to === "DONE" ? true : run.state.complete,
+            complete: values.to === PHASES.DONE ? true : run.state.complete,
             paused_reason: null,
         });
         if (nextState?.ok === false) {
@@ -232,7 +234,7 @@ async function main() {
 
     if (command === "complete") {
         const { runId, run } = resolveRun(projectRoot);
-        const guard = validateTransition(run.manifest, run.state, run.checkpoints, "DONE");
+        const guard = validateTransition(run.manifest, run.state, run.checkpoints, PHASES.DONE);
         if (!guard.ok) {
             outputGuardFailure(output, guard);
         }

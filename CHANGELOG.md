@@ -4,6 +4,9 @@
 
 ## 2026-03-27
 - **Marketplace install docs** — updated README, plugin docs, and GitHub Pages site to use the current Claude Code marketplace flow (`/plugin marketplace add` + `/plugin install plugin@marketplace`) instead of deprecated `/plugin add`
+- **Audit runtime unification** — 6XX coordinators and 31 workers migrated to run-scoped artifacts, audit-runtime CLI, and JSON summary contract with `summaryArtifactPath`
+- **Runtime status catalog** — canonical status sets codified across all runtime contracts (story-gate, optimization, review, environment)
+- **Worker independence cleanup** — removed 36 coordinator-aware DoD references, fixed 3 false positives in review-skills checks (R12/R13/R16)
 
 ## 2026-03-26
 - **State platform runtime** — shared coordinator runtime now enforces manifest, state, checkpoints, history, active-pointer, and status schemas across stateful skill families

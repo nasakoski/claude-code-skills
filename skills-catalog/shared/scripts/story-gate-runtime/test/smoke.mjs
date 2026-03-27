@@ -5,6 +5,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+    STORY_GATE_VERDICTS,
+    TASK_BOARD_STATUSES,
+} from "../../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "../lib/phases.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cliPath = join(__dirname, "..", "cli.mjs");
@@ -30,52 +35,52 @@ try {
         throw new Error("Failed to start story gate runtime");
     }
 
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_0_CONFIG"]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_1_DISCOVERY"]);
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_1_DISCOVERY"]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_2_FAST_TRACK"]);
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_2_FAST_TRACK", "--payload", "{\"fast_track\":false}"]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_3_QUALITY_CHECKS"]);
-    run(["record-quality", "--project-root", projectRoot, "--payload", "{\"story_id\":\"PROJ-123\",\"verdict\":\"PASS\",\"quality_score\":92}"]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.CONFIG]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.DISCOVERY]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.DISCOVERY]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.FAST_TRACK]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.FAST_TRACK, "--payload", "{\"fast_track\":false}"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.QUALITY_CHECKS]);
+    run(["record-quality", "--project-root", projectRoot, "--payload", JSON.stringify({ story_id: "PROJ-123", verdict: STORY_GATE_VERDICTS.PASS, quality_score: 92 })]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_3_QUALITY_CHECKS",
+        "--phase", PHASES.QUALITY_CHECKS,
         "--payload",
-        "{\"quality_summary\":{\"story_id\":\"PROJ-123\",\"verdict\":\"PASS\"},\"quality_score\":92}",
+        JSON.stringify({ quality_summary: { story_id: "PROJ-123", verdict: STORY_GATE_VERDICTS.PASS }, quality_score: 92 }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_4_TEST_PLANNING"]);
-    run(["record-test-status", "--project-root", projectRoot, "--payload", "{\"story_id\":\"PROJ-123\",\"planner_invoked\":true,\"status\":\"SKIPPED\"}"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.TEST_PLANNING]);
+    run(["record-test-status", "--project-root", projectRoot, "--payload", JSON.stringify({ story_id: "PROJ-123", planner_invoked: true, status: TASK_BOARD_STATUSES.SKIPPED })]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_4_TEST_PLANNING",
+        "--phase", PHASES.TEST_PLANNING,
         "--payload",
-        "{\"test_planner_invoked\":true,\"test_task_status\":\"SKIPPED\"}",
+        JSON.stringify({ test_planner_invoked: true, test_task_status: TASK_BOARD_STATUSES.SKIPPED }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_5_TEST_VERIFICATION"]);
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_5_TEST_VERIFICATION", "--payload", "{\"test_task_status\":\"SKIPPED\"}"]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_6_VERDICT"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.TEST_VERIFICATION]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.TEST_VERIFICATION, "--payload", JSON.stringify({ test_task_status: TASK_BOARD_STATUSES.SKIPPED })]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.VERDICT]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_6_VERDICT",
+        "--phase", PHASES.VERDICT,
         "--payload",
-        "{\"final_result\":\"PASS\",\"quality_score\":92,\"nfr_validation\":{\"security\":\"PASS\"}}",
+        JSON.stringify({ final_result: STORY_GATE_VERDICTS.PASS, quality_score: 92, nfr_validation: { security: STORY_GATE_VERDICTS.PASS } }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_7_FINALIZATION"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.FINALIZATION]);
     run([
         "checkpoint",
         "--project-root", projectRoot,
-        "--phase", "PHASE_7_FINALIZATION",
+        "--phase", PHASES.FINALIZATION,
         "--payload",
-        "{\"branch_finalized\":true,\"story_final_status\":\"Done\"}",
+        JSON.stringify({ branch_finalized: true, story_final_status: TASK_BOARD_STATUSES.DONE }),
     ]);
-    run(["advance", "--project-root", projectRoot, "--to", "PHASE_8_SELF_CHECK"]);
-    run(["checkpoint", "--project-root", projectRoot, "--phase", "PHASE_8_SELF_CHECK", "--payload", "{\"pass\":true,\"final_result\":\"PASS\"}"]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.SELF_CHECK]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.SELF_CHECK, "--payload", JSON.stringify({ pass: true, final_result: STORY_GATE_VERDICTS.PASS })]);
     const completed = run(["complete", "--project-root", projectRoot]);
 
-    if (!completed.ok || completed.state.phase !== "DONE") {
+    if (!completed.ok || completed.state.phase !== PHASES.DONE) {
         throw new Error("Story gate runtime did not complete");
     }
 

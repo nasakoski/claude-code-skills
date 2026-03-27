@@ -1,6 +1,6 @@
 # Audit Worker Core Contract
 
-Shared contract for audit workers that analyze one category, write one report file, and return a compact summary to a coordinator.
+Shared contract for audit workers that analyze one category, write one report file, and return a machine-readable summary to a coordinator.
 
 ## Required Inputs
 
@@ -9,7 +9,8 @@ Workers receive the minimum context needed to stay decision-complete:
 ```json
 {
   "codebase_root": ".",
-  "output_dir": "docs/project/.audit/{audit-id}/{YYYY-MM-DD}",
+  "output_dir": ".hex-skills/runtime-artifacts/runs/{run_id}/audit-report",
+  "summaryArtifactPath": ".hex-skills/runtime-artifacts/runs/{run_id}/audit-worker/{worker-id}.json",
   "tech_stack": {},
   "best_practices": {},
   "principles": {},
@@ -24,6 +25,8 @@ Workers receive the minimum context needed to stay decision-complete:
 
 Rules:
 - Pass only the fields the worker actually uses.
+- `output_dir` is a run-scoped runtime artifact directory, not a public project docs directory.
+- If `summaryArtifactPath` is present, write the worker JSON summary there per `shared/references/audit_summary_contract.md`.
 - If `domain_mode="domain-aware"`, scope scanning to `scan_path` and tag findings with the domain.
 - If `domain_mode="global"`, use `codebase_root` unless the skill defines a narrower scan target.
 
@@ -42,21 +45,28 @@ Rules:
 - Use the template's `AUDIT-META`, `Checks`, and `Findings` structure.
 - Add optional blocks such as `FINDINGS-EXTENDED` or `DATA-EXTENDED` only when the worker's local workflow requires them.
 
-## Summary Return Format
+## Summary Contract
 
-Standard workers return:
+**MANDATORY READ:** Load `shared/references/audit_summary_contract.md`.
 
-```text
-Report written: docs/project/.audit/{audit-id}/{YYYY-MM-DD}/{worker-file}.md
-Score: 7.5/10 | Issues: 5 (C:0 H:2 M:2 L:1)
-```
+Workers must produce the JSON summary envelope when `summaryArtifactPath` is provided.
 
-Workers with diagnostic sub-scores return:
+Compact text output is optional compatibility fallback only.
 
-```text
-Report written: docs/project/.audit/{audit-id}/{YYYY-MM-DD}/{worker-file}.md
-Score: 6.0/10 (C:72 K:85 Q:68 I:90) | Issues: 3 (H:1 M:2 L:0)
-```
+Required JSON fields:
+- `schema_version`
+- `summary_kind`
+- `run_id`
+- `identifier`
+- `producer_skill`
+- `produced_at`
+- `payload.status`
+- `payload.category`
+- `payload.report_path`
+- `payload.score`
+- `payload.issues_total`
+- `payload.severity_counts`
+- `payload.warnings`
 
 Diagnostic sub-scores never replace the primary penalty-based score.
 
@@ -76,4 +86,4 @@ Diagnostic sub-scores never replace the primary penalty-based score.
 - Findings collected with severity, location, recommendation, and effort.
 - Score calculated via the shared scoring reference.
 - Report written to `{output_dir}/...` using the shared report template.
-- Summary returned to the coordinator in the required compact format.
+- JSON summary written to `summaryArtifactPath` or returned in structured output.

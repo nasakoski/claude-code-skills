@@ -1,22 +1,23 @@
-export const RESOLVED_AGENT_STATUSES = new Set([
-    "result_ready",
-    "dead",
-    "failed",
-    "skipped",
-]);
+import {
+    REVIEW_AGENT_STATUSES,
+    REVIEW_RESOLVED_AGENT_STATUS_SET,
+} from "../../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "./phases.mjs";
+
+export const RESOLVED_AGENT_STATUSES = REVIEW_RESOLVED_AGENT_STATUS_SET;
 
 const ALLOWED_TRANSITIONS = new Map([
-    ["PHASE_0_CONFIG", new Set(["PHASE_1_DISCOVERY"])],
-    ["PHASE_1_DISCOVERY", new Set(["PHASE_2_AGENT_LAUNCH"])],
-    ["PHASE_2_AGENT_LAUNCH", new Set(["PHASE_3_RESEARCH"])],
-    ["PHASE_3_RESEARCH", new Set(["PHASE_4_AUTOFIX", "PHASE_5_MERGE"])],
-    ["PHASE_4_AUTOFIX", new Set(["PHASE_5_MERGE"])],
-    ["PHASE_5_MERGE", new Set(["PHASE_6_REFINEMENT"])],
-    ["PHASE_6_REFINEMENT", new Set(["PHASE_7_APPROVE", "PHASE_8_SELF_CHECK"])],
-    ["PHASE_7_APPROVE", new Set(["PHASE_8_SELF_CHECK"])],
-    ["PHASE_8_SELF_CHECK", new Set(["DONE"])],
-    ["PAUSED", new Set([])],
-    ["DONE", new Set([])],
+    [PHASES.CONFIG, new Set([PHASES.DISCOVERY])],
+    [PHASES.DISCOVERY, new Set([PHASES.AGENT_LAUNCH])],
+    [PHASES.AGENT_LAUNCH, new Set([PHASES.RESEARCH])],
+    [PHASES.RESEARCH, new Set([PHASES.AUTOFIX, PHASES.MERGE])],
+    [PHASES.AUTOFIX, new Set([PHASES.MERGE])],
+    [PHASES.MERGE, new Set([PHASES.REFINEMENT])],
+    [PHASES.REFINEMENT, new Set([PHASES.APPROVE, PHASES.SELF_CHECK])],
+    [PHASES.APPROVE, new Set([PHASES.SELF_CHECK])],
+    [PHASES.SELF_CHECK, new Set([PHASES.DONE])],
+    [PHASES.PAUSED, new Set([])],
+    [PHASES.DONE, new Set([])],
 ]);
 
 function hasCheckpoint(checkpoints, phase) {
@@ -43,7 +44,7 @@ export function validateTransition(manifest, state, checkpoints, toPhase) {
         };
     }
 
-    if (toPhase === "PHASE_3_RESEARCH") {
+    if (toPhase === PHASES.RESEARCH) {
         if (!state.health_check_done) {
             return { ok: false, error: "Phase 2 health check not recorded" };
         }
@@ -55,8 +56,8 @@ export function validateTransition(manifest, state, checkpoints, toPhase) {
         }
     }
 
-    if (toPhase === "PHASE_5_MERGE") {
-        if (manifest.mode === "story" && state.phase !== "PHASE_4_AUTOFIX") {
+    if (toPhase === PHASES.MERGE) {
+        if (manifest.mode === "story" && state.phase !== PHASES.AUTOFIX) {
             return { ok: false, error: "Story mode must pass through Phase 4 before merge" };
         }
         if (state.agents_available > 0 && !agentsResolved(state)) {
@@ -64,15 +65,15 @@ export function validateTransition(manifest, state, checkpoints, toPhase) {
         }
     }
 
-    if (toPhase === "PHASE_6_REFINEMENT" && !state.merge_summary) {
+    if (toPhase === PHASES.REFINEMENT && !state.merge_summary) {
         return { ok: false, error: "Merge summary missing" };
     }
 
-    if (toPhase === "PHASE_8_SELF_CHECK" && manifest.mode === "story" && state.phase !== "PHASE_7_APPROVE") {
+    if (toPhase === PHASES.SELF_CHECK && manifest.mode === "story" && state.phase !== PHASES.APPROVE) {
         return { ok: false, error: "Story mode requires approval checkpoint before self-check" };
     }
 
-    if (toPhase === "DONE" && !state.self_check_passed) {
+    if (toPhase === PHASES.DONE && !state.self_check_passed) {
         return { ok: false, error: "Self-check must pass before completion" };
     }
 
@@ -80,30 +81,30 @@ export function validateTransition(manifest, state, checkpoints, toPhase) {
 }
 
 export function computeResumeAction(manifest, state, checkpoints) {
-    if (state.complete || state.phase === "DONE") {
+    if (state.complete || state.phase === PHASES.DONE) {
         return "Run complete";
     }
-    if (state.phase === "PAUSED") {
+    if (state.phase === PHASES.PAUSED) {
         return `Paused: ${state.paused_reason || "manual intervention required"}`;
     }
     if (!checkpoints?.[state.phase]) {
         return `Complete ${state.phase} and write its checkpoint`;
     }
-    if (state.phase === "PHASE_2_AGENT_LAUNCH" && state.agents_available > 0 && !agentsResolved(state)) {
+    if (state.phase === PHASES.AGENT_LAUNCH && state.agents_available > 0 && !agentsResolved(state)) {
         return "Sync agent metadata until every launched agent is resolved";
     }
-    if (state.phase === "PHASE_5_MERGE" && !state.merge_summary) {
+    if (state.phase === PHASES.MERGE && !state.merge_summary) {
         return "Record merge summary checkpoint before advancing";
     }
-    if (state.phase === "PHASE_8_SELF_CHECK" && !state.self_check_passed) {
+    if (state.phase === PHASES.SELF_CHECK && !state.self_check_passed) {
         return "Fix self-check failures, then checkpoint Phase 8 with pass=true";
     }
 
     const nextPhase = Array.from(ALLOWED_TRANSITIONS.get(state.phase) || []).find(phase => {
-        if (phase === "PHASE_4_AUTOFIX" && manifest.mode !== "story") {
+        if (phase === PHASES.AUTOFIX && manifest.mode !== "story") {
             return false;
         }
-        if (phase === "PHASE_7_APPROVE" && manifest.mode !== "story") {
+        if (phase === PHASES.APPROVE && manifest.mode !== "story") {
             return false;
         }
         return true;

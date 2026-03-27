@@ -8,6 +8,7 @@ import {
     optimizationWorkerResultSchema,
 } from "../../coordinator-runtime/lib/schemas.mjs";
 import { assertSchema } from "../../coordinator-runtime/lib/validate.mjs";
+import { PHASES } from "./phases.mjs";
 
 const optimizationManifestSchema = {
     type: "object",
@@ -57,7 +58,7 @@ const optimizationStore = createRuntimeStore({
             identifier: manifest.identifier,
             slug: manifest.slug,
             target: manifest.target,
-            phase: "PHASE_0_PREFLIGHT",
+            phase: PHASES.PREFLIGHT,
             complete: false,
             paused_reason: null,
             pending_decision: null,

@@ -133,6 +133,8 @@ R12_FAILS=0
 for f in skills-catalog/ln-*/SKILL.md; do
   level=$(grep '\*\*Type:\*\*' "$f" | grep -oE 'L[12]' | head -1)
   [ -z "$level" ] && continue
+  # Skip L2 Workers -- only Coordinators/Orchestrators delegate
+  grep '\*\*Type:\*\*' "$f" | grep -qi 'worker' && continue
   self=$(basename $(dirname "$f") | grep -oE 'ln-[0-9]+-[a-z-]+')
   worker_count=$(grep -oE 'ln-[0-9]+-[a-z-]+' "$f" | sort -u | grep -v "$self" | wc -l)
   [ "$worker_count" -eq 0 ] && continue
@@ -146,7 +148,10 @@ done
 R13_FAILS=0
 for f in skills-catalog/ln-*/SKILL.md; do
   grep -q '\*\*Type:\*\*.*L3' "$f" || continue
-  rg -n 'Called by|Invoked by ln-|Caller:|returning control to `ln-|for `ln-[0-9]+`|returned to coordinator|handing control back to `ln-' "$f" >/dev/null 2>&1 && R13_FAILS=$((R13_FAILS + 1))
+  self_id=$(basename $(dirname "$f") | grep -oE 'ln-[0-9]+')
+  # Exclude self-references (e.g. ln-813 referencing itself)
+  hits=$(rg 'Called by|Invoked by ln-|Caller:|returning control to `ln-|for `ln-[0-9]+`|returned to coordinator|handing control back to `ln-' "$f" 2>/dev/null | grep -v "for \`$self_id\`" || true)
+  [ -n "$hits" ] && R13_FAILS=$((R13_FAILS + 1))
 done
 [ "$R13_FAILS" -eq 0 ] && add_result R13 "Worker independence (no coordinator refs)" PASS || add_result R13 "Worker independence (no coordinator refs)" "FAIL ($R13_FAILS worker contracts)"
 
@@ -172,7 +177,7 @@ done
 [ "$R15_FAILS" -eq 0 ] && add_result R15 "Standalone-first worker contract" PASS || add_result R15 "Standalone-first worker contract" "FAIL ($R15_FAILS missing contract markers)"
 
 # === R16: Run-scoped artifact paths ===
-R16_FAILS=$(rg -n '\.hex-skills/runtime-artifacts/(?!runs/)' skills-catalog README.md docs site AGENTS.md -P 2>/dev/null | wc -l)
+R16_FAILS=$(rg -n '\.hex-skills/runtime-artifacts/(?!runs/)' skills-catalog README.md docs site AGENTS.md -P --glob '!skills-catalog/ln-162-skill-reviewer/**' --glob '!.claude/commands/review-skills.md' 2>/dev/null | wc -l)
 [ "$R16_FAILS" -eq 0 ] && add_result R16 "Run-scoped artifact paths" PASS || add_result R16 "Run-scoped artifact paths" "FAIL ($R16_FAILS non-run-scoped paths)"
 
 echo ""

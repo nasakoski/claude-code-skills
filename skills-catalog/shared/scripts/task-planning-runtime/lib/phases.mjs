@@ -1,3 +1,5 @@
+import { TERMINAL_RUNTIME_PHASES } from "../../coordinator-runtime/lib/runtime-constants.mjs";
+
 export const PHASES = Object.freeze({
     CONFIG: "PHASE_0_CONFIG",
     DISCOVERY: "PHASE_1_DISCOVERY",
@@ -7,6 +9,6 @@ export const PHASES = Object.freeze({
     DELEGATE: "PHASE_5_DELEGATE",
     VERIFY: "PHASE_6_VERIFY",
     SELF_CHECK: "PHASE_7_SELF_CHECK",
-    PAUSED: "PAUSED",
-    DONE: "DONE",
+    PAUSED: TERMINAL_RUNTIME_PHASES.PAUSED,
+    DONE: TERMINAL_RUNTIME_PHASES.DONE,
 });

@@ -139,7 +139,7 @@ const CMD_PATTERNS = [
 const LINE_THRESHOLD = 50;
 const HEAD_LINES = 15;
 const TAIL_LINES = 15;
-const LARGE_FILE_BYTES = 15 * 1024;
+const LARGE_FILE_BYTES = 5 * 1024;
 const LARGE_EDIT_CHARS = 1200;
 
 // ---- Helpers ----
@@ -328,7 +328,10 @@ function handlePreToolUse(data) {
                 process.exit(0);
             }
             if (fileSize !== null && fileSize <= LARGE_FILE_BYTES) {
-                advise("hex-line read_file returns hash-annotated lines for verified edit workflow. For code files, outline gives a compact structural map first.");
+                const hint = filePath
+                    ? `NEXT READ: use mcp__hex-line__read_file(path="${filePath}"). Built-in Read allowed this time but wastes edit context.`
+                    : "NEXT READ: use mcp__hex-line__read_file. Built-in Read allowed this time but wastes edit context.";
+                advise(hint);
             }
             const target = filePath
                 ? `Use mcp__hex-line__outline or mcp__hex-line__read_file with path="${filePath}"`
@@ -522,7 +525,8 @@ function handleSessionStart() {
 
 import { fileURLToPath } from "node:url";
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+const _norm = (p) => p.replace(/\\/g, "/");
+if (_norm(process.argv[1]) === _norm(fileURLToPath(import.meta.url))) {
     let input = "";
     process.stdin.on("data", (chunk) => {
         input += chunk;

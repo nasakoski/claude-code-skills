@@ -169,7 +169,7 @@ Tables/ASCII > Lists (enumerations only) > Text (last resort)
 - [ ] All placeholders replaced; no `[TBD: ...]` markers or template metadata remain in root docs
 - [ ] Self-validation passed (SCOPE, metadata markers, top sections, Maintenance, POSIX)
 - [ ] **Actuality verified:** all document facts match current code (paths, functions, APIs, configs exist and are accurate)
-- [ ] Status returned to coordinator
+- [ ] Status returned
 
 ## Reference Files
 - Templates: `references/templates/agents_md_template.md`, `claude_md_template.md`, `docs_root_readme_template.md`, `documentation_standards_template.md`, `principles_template.md`, `tools_config_template.md`

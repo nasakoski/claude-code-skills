@@ -86,6 +86,8 @@ node shared/agents/agent_runner.mjs --health-check
 
 ### Metadata File (when `--metadata-file` used)
 
+This file is written by `agent_runner.mjs`. Review runtime may later resolve the same agent to `dead` or `skipped`, but those values are runtime state, not runner-written metadata.
+
 ```json
 {
   "agent": "codex",

@@ -2,25 +2,34 @@
 
 Shared aggregation pattern for coordinators that collect worker summaries, read worker report files, and assemble one consolidated audit report.
 
-## Output Directory
+## Runtime Artifact Directories
 
-Use one dated directory per run:
+Use one run-scoped artifact directory per run:
 
 ```text
-docs/project/.audit/{audit-id}/{YYYY-MM-DD}/
+.hex-skills/runtime-artifacts/runs/{run_id}/audit-report/
+.hex-skills/runtime-artifacts/runs/{run_id}/audit-worker/
 ```
 
 Rules:
-- Create the directory before delegating.
-- Delete the dated output directory after the consolidated report and results-log row are written (see Worker File Cleanup below).
+- Create the run-scoped directories before delegating.
+- Delete the run-scoped artifact directory after the consolidated report and results-log row are written (see Worker File Cleanup below).
 
 ## Parse Worker Summaries First
 
-Prefer worker return values for numbers:
+Prefer JSON worker summaries for numbers:
 
-```text
-Report written: docs/project/.audit/{audit-id}/{YYYY-MM-DD}/{worker-file}.md
-Score: 7.5/10 | Issues: 5 (C:0 H:2 M:2 L:1)
+```json
+{
+  "summary_kind": "audit-worker",
+  "identifier": "ln-621-global",
+  "payload": {
+    "report_path": ".hex-skills/runtime-artifacts/runs/{run_id}/audit-report/621-security.md",
+    "score": 7.5,
+    "issues_total": 5,
+    "severity_counts": {"critical": 0, "high": 2, "medium": 2, "low": 1}
+  }
+}
 ```
 
 Extract:
@@ -35,14 +44,14 @@ Use file reads later for detailed findings, not for numbers you already have.
 
 ## Standard Aggregation Steps
 
-1. Parse return values from all completed workers.
+1. Parse JSON summaries from all completed workers.
 2. Build score tables by category.
 3. Roll up severity totals across workers.
 4. Read worker report files for findings tables and optional machine-readable blocks.
 5. Apply worker-specific or coordinator-specific post-filters.
 6. Assemble the final consolidated report.
 7. Append a results-log row (mandatory for all coordinators).
-8. Delete the dated output directory (`rm -rf {output_dir}`).
+8. Delete the current run-scoped runtime artifact directory.
 
 ## Score Handling
 
@@ -66,7 +75,7 @@ Avoid rescanning the codebase in the coordinator when worker outputs already con
 If a worker fails:
 - record the failure explicitly
 - continue aggregating other workers
-- mark the failed category as `error`, `skipped`, or equivalent per workflow
+- mark the failed category as `error` or `skipped` with explicit reason
 - never silently drop missing worker output
 
 ## Results Log
@@ -77,12 +86,12 @@ Append one row after the final score is known.
 
 ## Worker File Cleanup
 
-After the results-log row is appended, delete the current run's dated output directory:
+After the results-log row is appended, delete the current run's runtime artifact directory:
 
 ```bash
-rm -rf {output_dir}
+rm -rf .hex-skills/runtime-artifacts/runs/{run_id}
 ```
 
-This removes `docs/project/.audit/{audit-id}/{YYYY-MM-DD}/` and all worker report files within it. Worker files are intermediate artifacts; the consolidated report and results log preserve all needed history.
+This removes run-scoped worker markdown reports and JSON summaries. Worker files are intermediate artifacts; the consolidated report and results log preserve all needed history.
 
 Do NOT delete `docs/project/.audit/results_log.md` — it lives outside the dated directory.

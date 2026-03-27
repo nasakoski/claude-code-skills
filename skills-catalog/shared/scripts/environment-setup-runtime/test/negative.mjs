@@ -8,6 +8,8 @@ import {
     createProjectRoot,
     writeJson,
 } from "../../coordinator-runtime/test/cli-test-helpers.mjs";
+import { ENVIRONMENT_SETUP_FINAL_RESULTS } from "../../coordinator-runtime/lib/runtime-constants.mjs";
+import { PHASES } from "../lib/phases.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const cliPath = join(__dirname, "..", "cli.mjs");
@@ -19,12 +21,12 @@ try {
     writeJson(manifestPath, { targets: ["both"], dry_run: false });
 
     run(["start", "--project-root", projectRoot, "--identifier", "targets-both", "--manifest-file", manifestPath]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_0_CONFIG"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_1_ASSESS"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_1_ASSESS", "--payload", "{\"assess_summary\":{\"node\":true}}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_2_DISPATCH_PLAN"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", "PHASE_2_DISPATCH_PLAN", "--payload", "{}"]);
-    const missingDispatch = run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", "PHASE_3_WORKER_EXECUTION"], { allowFailure: true });
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.CONFIG]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.ASSESS]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.ASSESS, "--payload", "{\"assess_summary\":{\"node\":true}}"]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.DISPATCH_PLAN]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-both", "--phase", PHASES.DISPATCH_PLAN, "--payload", "{}"]);
+    const missingDispatch = run(["advance", "--project-root", projectRoot, "--identifier", "targets-both", "--to", PHASES.WORKER_EXECUTION], { allowFailure: true });
     if (missingDispatch.error !== "Dispatch plan missing") {
         throw new Error(`Expected dispatch plan failure, got: ${JSON.stringify(missingDispatch)}`);
     }
@@ -37,21 +39,21 @@ try {
     const dryRunManifestPath = join(projectRoot, "manifest-dry.json");
     writeJson(dryRunManifestPath, { targets: ["codex"], dry_run: true });
     run(["start", "--project-root", projectRoot, "--identifier", "targets-codex", "--manifest-file", dryRunManifestPath]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", "PHASE_0_CONFIG"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", "PHASE_1_ASSESS"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", "PHASE_1_ASSESS", "--payload", "{\"assess_summary\":{\"node\":true}}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", "PHASE_2_DISPATCH_PLAN"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", "PHASE_2_DISPATCH_PLAN", "--payload", "{\"dispatch_plan\":{\"workers_to_run\":[]}}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", "PHASE_3_WORKER_EXECUTION"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", "PHASE_3_WORKER_EXECUTION"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", "PHASE_4_VERIFY"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", "PHASE_4_VERIFY", "--payload", "{\"verification_summary\":{\"status\":\"dry-run\"}}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", "PHASE_5_WRITE_ENV_STATE"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", "PHASE_5_WRITE_ENV_STATE", "--payload", "{\"env_state_written\":false,\"final_result\":\"DRY_RUN_PLAN\"}"]);
-    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", "PHASE_6_SELF_CHECK"]);
-    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", "PHASE_6_SELF_CHECK", "--payload", "{\"pass\":true,\"final_result\":\"DRY_RUN_PLAN\"}"]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", PHASES.CONFIG]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", PHASES.ASSESS]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", PHASES.ASSESS, "--payload", "{\"assess_summary\":{\"node\":true}}"]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", PHASES.DISPATCH_PLAN]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", PHASES.DISPATCH_PLAN, "--payload", "{\"dispatch_plan\":{\"workers_to_run\":[]}}"]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", PHASES.WORKER_EXECUTION]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", PHASES.WORKER_EXECUTION]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", PHASES.VERIFY]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", PHASES.VERIFY, "--payload", "{\"verification_summary\":{\"status\":\"dry-run\"}}"]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", PHASES.WRITE_ENV_STATE]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", PHASES.WRITE_ENV_STATE, "--payload", JSON.stringify({ env_state_written: false, final_result: ENVIRONMENT_SETUP_FINAL_RESULTS.DRY_RUN_PLAN })]);
+    run(["advance", "--project-root", projectRoot, "--identifier", "targets-codex", "--to", PHASES.SELF_CHECK]);
+    run(["checkpoint", "--project-root", projectRoot, "--identifier", "targets-codex", "--phase", PHASES.SELF_CHECK, "--payload", JSON.stringify({ pass: true, final_result: ENVIRONMENT_SETUP_FINAL_RESULTS.DRY_RUN_PLAN })]);
     const completed = run(["complete", "--project-root", projectRoot, "--identifier", "targets-codex"]);
-    if (!completed.ok || completed.state.final_result !== "DRY_RUN_PLAN") {
+    if (!completed.ok || completed.state.final_result !== ENVIRONMENT_SETUP_FINAL_RESULTS.DRY_RUN_PLAN) {
         throw new Error("Dry-run environment setup should complete without env_state_written");
     }
 
