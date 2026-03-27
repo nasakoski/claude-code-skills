@@ -121,7 +121,7 @@ export async function runWorkflows(config) {
 
         workflowResults.push({
             id: "W2",
-            scenario: "Adjust setup_hooks guidance and verify",
+            scenario: "Read-edit-verify round-trip on setup module",
             chars,
             ops: 3,
         });

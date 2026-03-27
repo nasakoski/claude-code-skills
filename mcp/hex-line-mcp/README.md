@@ -11,7 +11,7 @@ Every line carries an FNV-1a content hash. Every edit must present those hashes 
 
 ## Features
 
-### 11 MCP Tools
+### 10 MCP Tools
 
 Core day-to-day tools:
 
@@ -28,7 +28,6 @@ Advanced / occasional:
 - `directory_tree`
 - `get_file_info`
 - `changes`
-- `setup_hooks`
 
 | Tool | Description | Key Feature |
 |------|-------------|-------------|
@@ -40,7 +39,6 @@ Advanced / occasional:
 | `verify` | Check if held checksums / revision are still current | Staleness check without full re-read |
 | `directory_tree` | Compact directory tree with root .gitignore support | Skips node_modules/.git, shows file sizes |
 | `get_file_info` | File metadata without reading content | Size, lines, mtime, type, binary detection |
-| `setup_hooks` | Configure Claude hooks + install output style | Gemini/Codex get guidance only; no hooks |
 | `changes` | Compare file against git ref, shows added/removed/modified symbols | AST-level semantic diff |
 | `bulk_replace` | Search-and-replace across multiple files by glob | Compact summary (default) or capped diffs via `format`, dry_run, max_files |
 
@@ -70,23 +68,9 @@ ripgrep is bundled via `@vscode/ripgrep` — no manual install needed for `grep_
 
 ### Hooks
 
-Automatic setup (run once after MCP install):
+Hooks and output style are auto-synced on every MCP server startup. The server compares installed files with bundled versions and updates only when content differs. First run after `npm i -g` triggers full install automatically.
 
-```
-mcp__hex-line__setup_hooks(agent="claude")
-```
-
-Hooks are written to global `~/.claude/settings.json` with absolute path to `hook.mjs` from the global npm install. Manual configuration is not needed.
-
-### Output Style
-
-Optional: install a persistent Output Style that embeds tool preferences directly in Claude's system prompt. Reduces hook firings by making Claude prefer hex-line tools from the start.
-
-```
-mcp__hex-line__setup_hooks(agent="claude")
-```
-
-The `setup_hooks` tool automatically installs the output style to `~/.claude/output-styles/hex-line.md` and activates it if no other style is set. To activate manually: `/config` > Output style > hex-line.
+Hooks are written to global `~/.claude/settings.json` with absolute path to `hook.mjs`. Output style is installed to `~/.claude/output-styles/hex-line.md` and activated if no other style is set. To activate manually: `/config` > Output style > hex-line.
 
 ## Validation
 

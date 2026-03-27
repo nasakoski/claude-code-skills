@@ -40,6 +40,12 @@ const BINARY_EXT = new Set([
     ".ttf", ".otf", ".woff", ".woff2",
 ]);
 
+const OUTLINEABLE_EXT = new Set([
+    ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx",
+    ".py", ".go", ".rs", ".java", ".c", ".h", ".cpp", ".cs",
+    ".rb", ".php", ".kt", ".swift", ".sh", ".bash",
+]);
+
 const REVERSE_TOOL_HINTS = {
     "mcp__hex-line__read_file":      "Read (file_path, offset, limit)",
     "mcp__hex-line__edit_file":      "Edit (old_string, new_string, replace_all)",
@@ -51,7 +57,6 @@ const REVERSE_TOOL_HINTS = {
     "mcp__hex-line__verify":         "Read (re-read file to check freshness)",
     "mcp__hex-line__changes":        "Bash(git diff)",
     "mcp__hex-line__bulk_replace":   "Edit (text rename/refactor across files)",
-    "mcp__hex-line__setup_hooks":    "Not available (hex-line disabled)",
 };
 
 const TOOL_HINTS = {
@@ -71,7 +76,6 @@ const TOOL_HINTS = {
     verify:  "mcp__hex-line__verify (staleness / revision check without re-read)",
     changes: "mcp__hex-line__changes (git diff with change symbols)",
     bulk:    "mcp__hex-line__bulk_replace (multi-file search-replace)",
-    setup:   "mcp__hex-line__setup_hooks (configure hooks for agents)",
 };
 
 const BASH_REDIRECTS = [
@@ -328,15 +332,21 @@ function handlePreToolUse(data) {
                 process.exit(0);
             }
             if (fileSize !== null && fileSize <= LARGE_FILE_BYTES) {
-                const hint = filePath
-                    ? `NEXT READ: use mcp__hex-line__read_file(path="${filePath}"). Built-in Read allowed this time but wastes edit context.`
-                    : "NEXT READ: use mcp__hex-line__read_file. Built-in Read allowed this time but wastes edit context.";
+                const ext = filePath ? extOf(filePath) : "";
+                const hint = (filePath && OUTLINEABLE_EXT.has(ext))
+                    ? `mcp__hex-line__outline(path="${filePath}") gives a compact structural map. For edits, use mcp__hex-line__read_file(path="${filePath}") with ranges.`
+                    : filePath
+                        ? `NEXT READ: use mcp__hex-line__read_file(path="${filePath}"). Built-in Read allowed this time but wastes edit context.`
+                        : "NEXT READ: use mcp__hex-line__read_file. Built-in Read allowed this time but wastes edit context.";
                 advise(hint);
             }
-            const target = filePath
-                ? `Use mcp__hex-line__outline or mcp__hex-line__read_file with path="${filePath}"`
-                : "Use mcp__hex-line__directory_tree or mcp__hex-line__read_file";
-            redirect(target, "For large or unknown full reads: call outline first, then read_file with offset/limit or ranges. Do not use built-in Read here.");
+            const ext = filePath ? extOf(filePath) : "";
+            const outlineHint = (filePath && OUTLINEABLE_EXT.has(ext))
+                ? `Use mcp__hex-line__outline(path="${filePath}") for structure, then mcp__hex-line__read_file(path="${filePath}") with ranges to read only what you need.`
+                : filePath
+                    ? `Use mcp__hex-line__read_file(path="${filePath}") with ranges or offset/limit`
+                    : "Use mcp__hex-line__directory_tree or mcp__hex-line__read_file";
+            redirect(outlineHint, "Do not use built-in Read for full reads of large files.");
         }
 
         if (toolName === "Edit") {

@@ -2,7 +2,7 @@
 /**
  * hex-line-mcp — MCP server for hash-verified file operations.
  *
- * 11 tools: read_file, edit_file, write_file, grep_search, outline, verify, directory_tree, get_file_info, setup_hooks, changes, bulk_replace
+ * 10 tools: read_file, edit_file, write_file, grep_search, outline, verify, directory_tree, get_file_info, changes, bulk_replace
  * FNV-1a 2-char tags + range checksums
  * Security: root policy, path validation, binary/size rejection
  * Transport: stdio
@@ -32,7 +32,7 @@ import { verifyChecksums } from "./lib/verify.mjs";
 import { validateWritePath } from "./lib/security.mjs";
 import { directoryTree } from "./lib/tree.mjs";
 import { fileInfo } from "./lib/info.mjs";
-import { setupHooks } from "./lib/setup.mjs";
+import { autoSync } from "./lib/setup.mjs";
 import { fileChanges } from "./lib/changes.mjs";
 import { bulkReplace } from "./lib/bulk-replace.mjs";
 
@@ -304,27 +304,6 @@ server.registerTool("get_file_info", {
 });
 
 
-// ==================== setup_hooks ====================
-
-server.registerTool("setup_hooks", {
-    title: "Setup Hooks",
-    description:
-        "Install or uninstall hex-line hooks in CLI agent settings. Idempotent.",
-    inputSchema: z.object({
-        agent: z.string().optional().describe('Target agent: "claude", "gemini", "codex", or "all" (default: "all")'),
-        action: z.string().optional().describe('"install" (default) or "uninstall"'),
-    }),
-    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
-}, async (rawParams) => {
-    const { agent, action } = coerceParams(rawParams);
-    try {
-        return { content: [{ type: "text", text: setupHooks(agent, action) }] };
-    } catch (e) {
-        return { content: [{ type: "text", text: e.message }], isError: true };
-    }
-});
-
-
 // ==================== changes ====================
 
 server.registerTool("changes", {
@@ -386,3 +365,4 @@ server.registerTool("bulk_replace", {
 const transport = new StdioServerTransport();
 await server.connect(transport);
 void checkForUpdates("@levnikolaevich/hex-line-mcp", version);
+try { autoSync(); } catch { /* startup sync is best-effort */ }
