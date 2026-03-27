@@ -154,6 +154,26 @@ Documents describe **contracts and decisions**, NOT implementations:
 ### Format Priority (MANDATORY)
 Tables > Mermaid/ASCII diagrams > Lists > Text
 
+## Runtime Summary Artifact
+
+**MANDATORY READ:** Load `shared/references/docs_generation_summary_contract.md`
+
+Accept optional `summaryArtifactPath`.
+
+Summary kind:
+- `docs-generation`
+
+Required payload semantics:
+- `worker = "ln-112"`
+- `status`
+- `created_files`
+- `skipped_files`
+- `quality_inputs`
+- `validation_status`
+- `warnings`
+
+Write the summary to the provided artifact path or return the same envelope in structured output.
+
 ## Definition of Done
 - [ ] Context Store received and validated
 - [ ] 4 core documents created (or skipped if exist)

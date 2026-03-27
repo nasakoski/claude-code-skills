@@ -72,6 +72,12 @@ const checks = [
         message: "Use STORY_GATE_FINALIZATION_STATUSES.SKIPPED_BY_VERDICT instead of string literals.",
         include: filePath => isJavaScript(filePath) && !filePath.endsWith("runtime-constants.mjs") && normalizePath(filePath) !== selfPath,
     },
+    {
+        name: "pipeline phase field drift in docs",
+        regex: /state\.stage/,
+        message: "Use canonical runtime field `state.phase`, not `state.stage`.",
+        include: filePath => isDocumentationLike(filePath),
+    },
 ];
 
 const rootsToScan = [

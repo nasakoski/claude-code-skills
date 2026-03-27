@@ -98,4 +98,80 @@ Examples:
 - story test summaries
 - optimization summaries
 
+## Quality Worker Summary
+
+`summary_kind`:
+- `quality-worker`
+
+Payload fields:
+- `worker`
+- `status`
+- `verdict`
+- `score`
+- `issues`
+- `warnings`
+- `artifact_path`
+- `metadata`
+
+## Test Planning Worker Summary
+
+`summary_kind`:
+- `test-planning-worker`
+
+Payload fields:
+- `worker`
+- `status`
+- `warnings`
+- `research_comment_path`
+- `manual_result_path`
+- `test_task_id`
+- `test_task_url`
+- `coverage_summary`
+- `planned_scenarios`
+- `metadata`
+
+## Docs Generation Summary
+
+`summary_kind`:
+- `docs-generation`
+
+Payload fields:
+- `worker`
+- `status`
+- `created_files`
+- `skipped_files`
+- `quality_inputs`
+- `validation_status`
+- `warnings`
+- `metadata`
+
+## Epic Planning Summary
+
+`summary_kind`:
+- `epic-plan`
+
+Payload fields:
+- `mode`
+- `scope_identifier`
+- `epics_created`
+- `epics_updated`
+- `epics_canceled`
+- `epic_urls`
+- `warnings`
+- `kanban_updated`
+- `infrastructure_epic_included`
+
+## Scope Decomposition Summary
+
+`summary_kind`:
+- `scope-decomposition`
+
+Payload fields:
+- `scope_identifier`
+- `epic_runs_completed`
+- `story_runs_completed`
+- `prioritization_runs_completed`
+- `warnings`
+- `final_result`
+
 The envelope remains the same. Only `summary_kind` and `payload` change.

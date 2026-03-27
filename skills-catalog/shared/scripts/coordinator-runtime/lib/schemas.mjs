@@ -238,6 +238,99 @@ export const taskPlanWorkerPayloadSchema = {
     },
 };
 
+export const qualityWorkerPayloadSchema = {
+    type: "object",
+    required: ["worker", "status", "verdict", "issues", "warnings"],
+    additionalProperties: false,
+    properties: {
+        worker: { type: "string", minLength: 1 },
+        status: { type: "string", enum: WORKER_SUMMARY_STATUS_LIST },
+        verdict: { type: "string", minLength: 1 },
+        score: { type: "number" },
+        issues: stringArraySchema(),
+        warnings: stringArraySchema(),
+        artifact_path: nullableStringSchema(),
+        metadata: {
+            type: "object",
+            additionalProperties: true,
+        },
+    },
+};
+
+export const testPlanningWorkerPayloadSchema = {
+    type: "object",
+    required: ["worker", "status", "warnings"],
+    additionalProperties: false,
+    properties: {
+        worker: { type: "string", minLength: 1 },
+        status: { type: "string", enum: WORKER_SUMMARY_STATUS_LIST },
+        warnings: stringArraySchema(),
+        research_comment_path: nullableStringSchema(),
+        manual_result_path: nullableStringSchema(),
+        test_task_id: nullableStringSchema(),
+        test_task_url: nullableStringSchema(),
+        coverage_summary: nullableStringSchema(),
+        planned_scenarios: stringArraySchema(),
+        metadata: {
+            type: "object",
+            additionalProperties: true,
+        },
+    },
+};
+
+export const docsGenerationWorkerPayloadSchema = {
+    type: "object",
+    required: ["worker", "status", "created_files", "skipped_files", "quality_inputs", "validation_status", "warnings"],
+    additionalProperties: false,
+    properties: {
+        worker: { type: "string", minLength: 1 },
+        status: { type: "string", enum: WORKER_SUMMARY_STATUS_LIST },
+        created_files: stringArraySchema(),
+        skipped_files: stringArraySchema(),
+        quality_inputs: {
+            type: "object",
+            additionalProperties: true,
+        },
+        validation_status: { type: "string", minLength: 1 },
+        warnings: stringArraySchema(),
+        metadata: {
+            type: "object",
+            additionalProperties: true,
+        },
+    },
+};
+
+export const epicPlanCoordinatorPayloadSchema = {
+    type: "object",
+    required: ["mode", "scope_identifier", "epics_created", "epics_updated", "epics_canceled", "epic_urls", "warnings", "kanban_updated"],
+    additionalProperties: false,
+    properties: {
+        mode: { type: "string" },
+        scope_identifier: { type: "string", minLength: 1 },
+        epics_created: { type: "integer" },
+        epics_updated: { type: "integer" },
+        epics_canceled: { type: "integer" },
+        epic_urls: stringArraySchema(),
+        warnings: stringArraySchema(),
+        kanban_updated: { type: "boolean" },
+        infrastructure_epic_included: { type: "boolean" },
+    },
+};
+
+export const scopeDecompositionPayloadSchema = {
+    type: "object",
+    required: ["scope_identifier", "epic_runs_completed", "story_runs_completed", "warnings"],
+    additionalProperties: false,
+    properties: {
+        scope_identifier: { type: "string", minLength: 1 },
+        epic_runs_completed: { type: "integer" },
+        story_runs_completed: { type: "integer" },
+        prioritization_runs_completed: { type: "integer" },
+        warnings: stringArraySchema(),
+        final_result: { type: "string" },
+    },
+};
+
 export const auditSeverityCountsSchema = {
     type: "object",
     required: ["critical", "high", "medium", "low"],
@@ -278,6 +371,11 @@ export const auditWorkerPayloadSchema = {
 export const environmentWorkerSummarySchema = buildSummaryEnvelopeSchema(environmentWorkerPayloadSchema);
 export const storyPlanWorkerSummarySchema = buildSummaryEnvelopeSchema(storyPlanWorkerPayloadSchema);
 export const taskPlanWorkerSummarySchema = buildSummaryEnvelopeSchema(taskPlanWorkerPayloadSchema);
+export const qualityWorkerSummarySchema = buildSummaryEnvelopeSchema(qualityWorkerPayloadSchema);
+export const testPlanningWorkerSummarySchema = buildSummaryEnvelopeSchema(testPlanningWorkerPayloadSchema);
+export const docsGenerationWorkerSummarySchema = buildSummaryEnvelopeSchema(docsGenerationWorkerPayloadSchema);
+export const epicPlanCoordinatorSummarySchema = buildSummaryEnvelopeSchema(epicPlanCoordinatorPayloadSchema);
+export const scopeDecompositionSummarySchema = buildSummaryEnvelopeSchema(scopeDecompositionPayloadSchema);
 export const auditWorkerSummarySchema = buildSummaryEnvelopeSchema(auditWorkerPayloadSchema);
 
 export const environmentStateSchema = {
