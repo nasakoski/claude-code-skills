@@ -194,6 +194,7 @@
         "./skills-catalog/ln-012-mcp-configurator",
         "./skills-catalog/ln-013-config-syncer",
         "./skills-catalog/ln-014-agent-instructions-manager",
+        "./skills-catalog/ln-015-hex-line-uninstaller",
         "./skills-catalog/ln-020-codegraph"
       ]
     }

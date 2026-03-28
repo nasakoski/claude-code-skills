@@ -2,6 +2,11 @@
 
 <!-- SCOPE: User-facing changes only. Max 5 bullets per entry. Focus: new capabilities, workflow changes, breaking changes. -->
 
+## 2026-03-28
+
+- **ln-015-hex-line-uninstaller** — standalone skill to remove hex-line hooks, output style, and settings from the system
+- **hex-line auto-sync** — `setup_hooks` tool removed; hooks and output style now auto-sync on MCP server startup via content comparison
+
 ## 2026-03-27
 - **Marketplace install docs** — updated README, plugin docs, and GitHub Pages site to use the current Claude Code marketplace flow (`/plugin marketplace add` + `/plugin install plugin@marketplace`) instead of deprecated `/plugin add`
 - **Audit runtime unification** — 6XX coordinators and 31 workers migrated to run-scoped artifacts, audit-runtime CLI, and JSON summary contract with `summaryArtifactPath`

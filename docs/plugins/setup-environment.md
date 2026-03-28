@@ -26,6 +26,7 @@ Sets up and maintains the multi-agent development environment. The coordinator i
 | ln-012-mcp-configurator | Register MCP servers and analyze token budget |
 | ln-013-config-syncer | Sync settings from Claude to Gemini/Codex |
 | ln-014-agent-instructions-manager | Create missing instruction files and audit all for quality |
+| ln-015-hex-line-uninstaller | Remove hex-line hooks, output style, and cached files from system |
 | ln-020-codegraph | Code knowledge graph for dependency analysis and impact checking |
 
 ## How it works

@@ -1,7 +1,7 @@
 # Claude Code Skills
 
 ![Version](https://img.shields.io/badge/version-2026.03.27-blue)
-![Skills](https://img.shields.io/badge/skills-128-green)
+![Skills](https://img.shields.io/badge/skills-129-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![GitHub stars](https://img.shields.io/github/stars/levnikolaevich/claude-code-skills?style=social)](https://github.com/levnikolaevich/claude-code-skills)
 
@@ -398,7 +398,7 @@ Yes — create symlinks/junctions to the plugin directory, or use `ln-013-config
 ## What's Inside
 
 <details>
-<summary><b>Full Skill Tree (128 skills)</b></summary>
+<summary><b>Full Skill Tree (129 skills)</b></summary>
 
 ```
 claude-code-skills/                      # MARKETPLACE
@@ -573,6 +573,7 @@ claude-code-skills/                      # MARKETPLACE
 |   |-- ln-012-mcp-configurator/       # MCP server setup & budget analysis
 |   |-- ln-013-config-syncer/          # Sync settings to Gemini/Codex
 |   |-- ln-014-agent-instructions-manager/ # Create + audit CLAUDE.md/AGENTS.md/GEMINI.md
+|   |-- ln-015-hex-line-uninstaller/   # Remove hex-line hooks and output style from system
 |-- ln-020-codegraph/                  # Code knowledge graph for dependency analysis & impact checking
 |
 |  └──────────────────────────────────────────────┘
