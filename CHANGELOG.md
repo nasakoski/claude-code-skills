@@ -2,6 +2,10 @@
 
 <!-- SCOPE: User-facing changes only. Max 5 bullets per entry. Focus: new capabilities, workflow changes, breaking changes. -->
 
+## 2026-03-29
+
+- **ln-310 quality-based refinement** — Codex iterative loop now exits by quality (MEDIUM/HIGH findings drive continuation), not just iteration count; added Architecture Gate, patience requirements, and risk mitigation criterion
+
 ## 2026-03-28
 
 - **ln-015-hex-line-uninstaller** — standalone skill to remove hex-line hooks, output style, and settings from the system

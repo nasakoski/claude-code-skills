@@ -137,6 +137,17 @@ Only after ALL checks confirm DEAD -> mark agent as failed/timed out.
 | > 3 min | error/empty | DEAD | FAILED -- agent crashed |
 | > 3 min | last line = work | ALIVE | WAIT -- agent may be in long operation |
 
+> **PATIENCE REQUIREMENT — DO NOT PREMATURELY SKIP AGENTS:**
+> Codex typically takes 10-20 minutes for complex reviews. This is NORMAL, not a sign of failure.
+>
+> **Prohibited behaviors:**
+> - Deciding an agent is "stuck" because it has been running for 5, 10, or even 20 minutes
+> - Rationalizing "we can proceed without agent results" when the agent is still alive
+> - Treating slow progress as equivalent to no progress
+> - Skipping an agent because "it's taking too long" when liveness checks show ALIVE
+>
+> **The ONLY path to marking an agent as failed** is the Liveness Protocol above where ALL 3 checks confirm DEAD. If any check returns ALIVE — WAIT. The hard timeout in `agent_runner.mjs` (30 min) is the only valid time boundary.
+
 b) When first agent completes (background task notification):
    - Result file is already written by agent_runner.mjs -- do NOT write or rewrite it
    - Read `.hex-skills/agent-review/{agent}/{identifier}_{review_type}_result.md`
@@ -162,6 +173,12 @@ For EACH suggestion from agent results:
 a) **Claude Evaluation:** Independently assess against the actual code -- is the issue real? Actionable? Conflicts with project patterns? Read the agent's Analysis Process and Evidence sections from the report for deeper understanding of the suggestion's basis.
 
 b) **AGREE** -> accept as-is. **REJECT** -> skip (Claude's independent judgment is final).
+
+**Architecture Gate (MANDATORY for every AGREE'd suggestion):**
+Before applying any accepted suggestion, explicitly verify:
+> "Does this change implement the architecturally correct solution directly, without backward compatibility shims, legacy workarounds, or transitional scaffolding?"
+- If the suggestion introduces compat layers or legacy support where a clean implementation is feasible -> convert AGREE to REJECT. Note: "Rejected at Architecture Gate: introduces legacy/compat layer."
+- If the suggestion is the clean, direct solution -> proceed to apply.
 
 c) **Persist:** all evaluation decisions in review summary.
 
@@ -192,20 +209,28 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
      --cwd {project_dir}
    ```
 5. **Parse result:** Extract JSON from `## Structured Data` section
-6. **Exit conditions:**
-   - `verdict == "APPROVED"` -> converged, exit loop
-   - `iteration == 5` -> max iterations, exit loop
-   - Codex failed/timed out -> exit loop, use current state
-   - 0 suggestions accepted by Claude -> exit loop (prevents infinite rejection loop)
-7. **Apply fixes:** Claude evaluates each suggestion (AGREE/REJECT), applies accepted fixes
-8. **Build `{previous_findings_summary}`** for next iteration, return to step 1
+6. **Classify suggestions by impact:**
+   - HIGH: `impact_percent >= 20`
+   - MEDIUM: `impact_percent` 10-19
+   - LOW: `impact_percent < 10`
+7. **Exit conditions (evaluated in order):**
+   a. `verdict == "APPROVED"` → exit: CONVERGED
+   b. Codex failed/timed out → exit: ERROR
+      Note: "timed out" means agent_runner.mjs returned timeout status. Claude MUST NOT self-declare timeout.
+   c. `iteration == 5` → exit: MAX_ITER (log WARNING if MEDIUM/HIGH suggestions remain unresolved)
+   d. All suggestions in this iteration are LOW → exit: CONVERGED_LOW_IMPACT
+   e. Any MEDIUM or HIGH suggestions exist → apply accepted fixes, **continue to next iteration**
 
-**Post-loop display:** `"Iterative Refinement: {N} iterations, {total} suggestions, {applied} applied, exit: {reason}"`
+   "0 accepted" alone does NOT exit. If Codex returned MEDIUM/HIGH findings that Claude rejected, Claude must explain rejection reasoning in `{previous_findings_summary}` so Codex can adjust in next iteration.
+8. **Apply fixes:** Claude evaluates each suggestion (AGREE/REJECT). **Architecture Gate:** before applying each accepted fix, verify: "Does this implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers. Apply remaining accepted fixes.
+9. **Build `{previous_findings_summary}`** for next iteration, return to step 1
+
+**Post-loop display:** `"Iterative Refinement: {N} iterations, {total} suggestions, {applied} applied, exit: {reason}, remaining MEDIUM/HIGH: {count}"`
 
 **Append to `.hex-skills/agent-review/review_history.md`:**
 ```markdown
 ### Refinement: {identifier} | {YYYY-MM-DD}
-- Iterations: {N}/{max}, Exit: {APPROVED|MAX_ITER|ERROR|ZERO_ACCEPTED}
+- Iterations: {N}/{max}, Exit: {CONVERGED|CONVERGED_LOW_IMPACT|MAX_ITER|ERROR|ZERO_ACCEPTED_STREAK}
 - Total suggestions: {count}, Applied: {count}
 - Per-iteration: iter1 ({applied}/{total}), iter2 ({applied}/{total}), ...
 ```

@@ -23,6 +23,7 @@ Evaluate the artifact for:
 3. **Best practices** — Does it follow modern best practices (2025-2026)? Industry standards, RFC compliance?
 4. **Optimality** — Is this the optimal approach for the stated goal? Unnecessary complexity? Missing simpler alternatives?
 5. **Centralization/Unification** — Are there opportunities to deduplicate, reuse existing code, unify patterns? Are we reinventing the wheel?
+6. **Risk mitigation** — Are all implementation risks addressed? What could go wrong in production? Unmitigated failure modes, data loss paths, security gaps?
 
 ## Internal Reuse Check
 Before suggesting new code or patterns, search the codebase for:
@@ -39,7 +40,7 @@ This is iteration {iteration_number} of {max_iterations}.
 
 Return ALL suggestions at once. Be maximally thorough — this is your only chance per iteration.
 
-If no issues found, return verdict APPROVED.
+If no issues found AND all risks are mitigated, return verdict APPROVED with empty remaining_risks.
 
 ## Structured Data
 
@@ -48,12 +49,19 @@ If no issues found, return verdict APPROVED.
   "verdict": "APPROVED | SUGGESTIONS",
   "suggestions": [
     {
-      "area": "correctness | architecture | best_practices | optimality | unification",
+      "area": "correctness | architecture | best_practices | optimality | unification | risk",
       "issue": "What is wrong",
       "suggestion": "Specific fix to apply",
       "location": "Section header, line reference, or quote from the artifact",
       "confidence": 95,
       "impact_percent": 15
+    }
+  ],
+  "remaining_risks": [
+    {
+      "risk": "What could go wrong",
+      "severity": "HIGH | MEDIUM | LOW",
+      "mitigation_status": "unmitigated | partially_mitigated | mitigated"
     }
   ]
 }

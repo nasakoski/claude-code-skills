@@ -187,11 +187,13 @@ node shared/scripts/review-runtime/cli.mjs sync-agent --skill ln-310
 ```
 
 2. Do not merge until all required agents are in `result_ready | dead | failed | skipped`.
+   > **WAIT PATIENTLY.** Codex typically takes 10-20 minutes. Do NOT skip or declare Codex failed because it runs longer than expected. If `sync-agent` shows the agent is still running — keep waiting. Only the Liveness Protocol determines failure, not elapsed time.
 3. Parse available result files.
 4. For each suggestion:
    - deduplicate against own findings + review history
    - verify independently
    - mark `AGREE` or `REJECT`
+   **Architecture Gate:** Before applying, verify each AGREE'd suggestion: "Does this implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" If a suggestion introduces unnecessary compat layers -> convert to REJECT.
 5. Apply accepted suggestions:
    - `story`: patch Story/Tasks after re-reading Phase 4 output
    - `context`: patch target docs/context files
@@ -207,7 +209,10 @@ node shared/scripts/review-runtime/cli.mjs sync-agent --skill ln-310
    - `story`: Story + Tasks concatenation
    - `plan_review`: plan file
    - `context`: context docs
-2. Run Codex refinement loop up to 5 iterations if Codex was available in Phase 2.
+2. Run Codex refinement loop (max 5 iterations) if Codex was available in Phase 2. Loop continues while MEDIUM/HIGH suggestions exist. Exits early only when all remaining findings are LOW or verdict is APPROVED.
+   > **Synchronous Codex calls may take 5-15 minutes per iteration. This is expected.** Do NOT abort or skip iterations because a call takes several minutes. The runner's hard timeout (30 min) is the only valid abort boundary.
+   >
+   > **Architecture Gate per iteration:** Before applying fixes from each refinement iteration, verify: "Does this fix implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers.
 3. Skip only with machine-readable reason:
    - disabled
    - unavailable in health check
