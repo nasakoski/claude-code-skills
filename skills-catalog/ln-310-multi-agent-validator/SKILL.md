@@ -215,6 +215,8 @@ node shared/scripts/review-runtime/cli.mjs sync-agent --skill ln-310
    > **Architecture Gate per iteration:** Before applying fixes from each refinement iteration, verify: "Does this fix implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers.
    >
    > **Process cleanup per iteration:** After each Codex call, extract `pid` from runner output and run `--verify-dead {pid}`. Codex processes accumulate on Windows if not killed. This is MANDATORY.
+   >
+   > **Fresh session only:** NEVER use `--resume-session` in refinement. Each iteration = new Codex session. Clean previous iteration's result + log files before launching. Phase 2 session data pollutes context window.
 3. Skip only with machine-readable reason:
    - disabled
    - unavailable in health check

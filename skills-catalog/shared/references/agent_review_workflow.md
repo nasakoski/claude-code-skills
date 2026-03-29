@@ -207,7 +207,9 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
     Parse the matching `## perspective_{name}` section and fill `{review_perspective}` placeholder in prompt.
 2. **Build prompt:** Load `shared/agents/prompt_templates/iterative_refinement.md`, fill placeholders (`{artifact_type}`, `{artifact_content}`, `{project_context}`, `{review_perspective}`, `{iteration_number}`, `{max_iterations}`, `{previous_findings_summary}`)
 3. **Save prompt:** `.hex-skills/agent-review/refinement/{identifier}_refinement_iter{N}_prompt.md`
-3b. **Delete previous result:** If iteration > 1, remove `.hex-skills/agent-review/refinement/{identifier}_refinement_iter{N-1}_result.md` — Codex in resume mode reads project files and gets confused by stale feedback
+3b. **Clean stale artifacts:** If iteration > 1, remove previous iteration's result AND log files from `.hex-skills/agent-review/refinement/`. Codex reads project files and gets confused by stale feedback from prior iterations.
+
+> **FRESH SESSION ONLY.** Every refinement iteration MUST launch Codex as a new session. NEVER use `--resume-session` in Phase 6. Codex context window fills up with prior session data (Phase 2 review accumulated ~1000 lines), leaving no room for the refinement prompt. The `_session.json` files from Phase 2 are for audit trail only — do NOT pass their session_id to refinement calls.
 4. **Send to Codex** (foreground, synchronous -- NOT background):
    ```
    node shared/agents/agent_runner.mjs --agent codex \

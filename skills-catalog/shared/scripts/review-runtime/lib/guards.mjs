@@ -69,8 +69,19 @@ export function validateTransition(manifest, state, checkpoints, toPhase) {
         return { ok: false, error: "Merge summary missing" };
     }
 
-    if ((toPhase === PHASES.APPROVE || toPhase === PHASES.SELF_CHECK) && state.phase === PHASES.REFINEMENT && !state.refinement_exit_reason) {
-        return { ok: false, error: "Refinement exit reason missing — checkpoint Phase 6 with exit_reason before advancing" };
+    if ((toPhase === PHASES.APPROVE || toPhase === PHASES.SELF_CHECK) && state.phase === PHASES.REFINEMENT) {
+        if (!state.refinement_exit_reason) {
+            return { ok: false, error: "Refinement exit reason missing \u2014 checkpoint Phase 6 with exit_reason before advancing" };
+        }
+        // SKIPPED is only valid when Codex was genuinely unavailable
+        if (state.refinement_exit_reason === "SKIPPED" && state.agents_available > 0) {
+            // Check if Codex specifically was unavailable (dead/failed/disabled)
+            const codex = state.agents?.codex;
+            const codexDead = codex && (codex.status === "dead" || codex.status === "failed" || codex.status === "skipped");
+            if (!codexDead) {
+                return { ok: false, error: "Refinement SKIPPED but Codex was available \u2014 Phase 6 is mandatory when Codex is healthy" };
+            }
+        }
     }
 
     if (toPhase === PHASES.SELF_CHECK && manifest.mode === "story" && state.phase !== PHASES.APPROVE) {
