@@ -213,12 +213,14 @@ node shared/scripts/review-runtime/cli.mjs sync-agent --skill ln-310
    > **Synchronous Codex calls may take 5-15 minutes per iteration. This is expected.** Do NOT abort or skip iterations because a call takes several minutes. The runner's hard timeout (30 min) is the only valid abort boundary.
    >
    > **Architecture Gate per iteration:** Before applying fixes from each refinement iteration, verify: "Does this fix implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers.
+   >
+   > **Process cleanup per iteration:** After each Codex call, extract `pid` from runner output and run `--verify-dead {pid}`. Codex processes accumulate on Windows if not killed. This is MANDATORY.
 3. Skip only with machine-readable reason:
    - disabled
    - unavailable in health check
    - dead/failed after runtime sync
 4. Persist prompts/results to `.hex-skills/agent-review/refinement/`
-5. Checkpoint Phase 6 with `iterations`, `exit_reason`, `applied`.
+5. Checkpoint Phase 6 with `iterations` (int), `exit_reason` (one of: CONVERGED, CONVERGED_LOW_IMPACT, MAX_ITER, ERROR, SKIPPED), `applied` (int: total fixes applied).
 
 ### Phase 7: Approve & Notify (`mode=story` only)
 
@@ -245,6 +247,7 @@ Required checks:
 - [ ] All required agents resolved before Phase 5 merge
 - [ ] Phase 5 merge summary exists
 - [ ] Phase 6 refinement exit reason exists
+- [ ] All Codex/Gemini processes verified dead (no orphaned agent processes)
 - [ ] Phase 7 checkpoint exists (`story`) or `skipped_by_mode`
 - [ ] Final verdict and user-facing output are ready
 

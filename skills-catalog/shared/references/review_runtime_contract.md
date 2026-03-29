@@ -123,9 +123,9 @@ Per-agent fields:
 |------|-------------------|
 | `PHASE_2_AGENT_LAUNCH` | `health_check_done`, `agents_available`, `agents_required`, optional `agents_skipped_reason` |
 | `PHASE_5_MERGE` | `merge_summary` |
-| `PHASE_6_REFINEMENT` | `iterations`, `exit_reason`, `applied` |
+| `PHASE_6_REFINEMENT` | `iterations` (int), `exit_reason` (enum: CONVERGED, CONVERGED_LOW_IMPACT, MAX_ITER, ERROR, SKIPPED), `applied` (int: fixes applied across all iterations) |
 | `PHASE_7_APPROVE` | approval/status result summary |
-| `PHASE_8_SELF_CHECK` | `pass`, optional `final_verdict` |
+| `PHASE_8_SELF_CHECK` | `pass`, `processes_verified_dead` (bool: all agent PIDs confirmed dead), optional `final_verdict` |
 
 ## Relationship to `agent_runner`
 

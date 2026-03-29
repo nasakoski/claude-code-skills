@@ -91,6 +91,8 @@ function applyCheckpointToState(state, phase, payload) {
 
     if (phase === PHASES.REFINEMENT) {
         nextState.refinement_iterations = Number(payload.iterations || 0);
+        nextState.refinement_exit_reason = payload.exit_reason || null;
+        nextState.refinement_applied = Number(payload.applied || 0);
     }
 
     if (phase === PHASES.APPROVE && payload.verdict) {
@@ -100,9 +102,14 @@ function applyCheckpointToState(state, phase, payload) {
 
     if (phase === PHASES.SELF_CHECK) {
         nextState.self_check_passed = payload.pass === true;
+        nextState.processes_verified_dead = payload.processes_verified_dead === true;
         if (payload.final_verdict) {
             nextState.final_verdict = payload.final_verdict;
             nextState.final_result = payload.final_verdict;
+        }
+        // Guard: pass cannot be true if processes not verified
+        if (nextState.self_check_passed && !nextState.processes_verified_dead) {
+            nextState.self_check_passed = false;
         }
     }
 

@@ -208,12 +208,13 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
      --output-file .hex-skills/agent-review/refinement/{identifier}_refinement_iter{N}_result.md \
      --cwd {project_dir}
    ```
-5. **Parse result:** Extract JSON from `## Structured Data` section
-6. **Classify suggestions by impact:**
+5. **Kill Codex process:** Extract `pid` from runner stdout JSON. Run `node shared/agents/agent_runner.mjs --verify-dead {pid}`. If process alive (exit code 1) → runner auto-kills it. Log: `"Codex PID {pid} cleanup: DEAD"`. This is MANDATORY after every Codex call — processes accumulate on Windows if not killed.
+6. **Parse result:** Extract JSON from `## Structured Data` section
+7. **Classify suggestions by impact:**
    - HIGH: `impact_percent >= 20`
    - MEDIUM: `impact_percent` 10-19
    - LOW: `impact_percent < 10`
-7. **Exit conditions (evaluated in order):**
+8. **Exit conditions (evaluated in order):**
    a. `verdict == "APPROVED"` → exit: CONVERGED
    b. Codex failed/timed out → exit: ERROR
       Note: "timed out" means agent_runner.mjs returned timeout status. Claude MUST NOT self-declare timeout.
@@ -222,15 +223,15 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
    e. Any MEDIUM or HIGH suggestions exist → apply accepted fixes, **continue to next iteration**
 
    "0 accepted" alone does NOT exit. If Codex returned MEDIUM/HIGH findings that Claude rejected, Claude must explain rejection reasoning in `{previous_findings_summary}` so Codex can adjust in next iteration.
-8. **Apply fixes:** Claude evaluates each suggestion (AGREE/REJECT). **Architecture Gate:** before applying each accepted fix, verify: "Does this implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers. Apply remaining accepted fixes.
-9. **Build `{previous_findings_summary}`** for next iteration, return to step 1
+9. **Apply fixes:** Claude evaluates each suggestion (AGREE/REJECT). **Architecture Gate:** before applying each accepted fix, verify: "Does this implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers. Apply remaining accepted fixes.
+10. **Build `{previous_findings_summary}`** for next iteration, return to step 1
 
 **Post-loop display:** `"Iterative Refinement: {N} iterations, {total} suggestions, {applied} applied, exit: {reason}, remaining MEDIUM/HIGH: {count}"`
 
 **Append to `.hex-skills/agent-review/review_history.md`:**
 ```markdown
 ### Refinement: {identifier} | {YYYY-MM-DD}
-- Iterations: {N}/{max}, Exit: {CONVERGED|CONVERGED_LOW_IMPACT|MAX_ITER|ERROR|ZERO_ACCEPTED_STREAK}
+- Iterations: {N}/{max}, Exit: {CONVERGED|CONVERGED_LOW_IMPACT|MAX_ITER|ERROR|SKIPPED}
 - Total suggestions: {count}, Applied: {count}
 - Per-iteration: iter1 ({applied}/{total}), iter2 ({applied}/{total}), ...
 ```
@@ -251,10 +252,10 @@ After collecting results from all agents, verify no orphaned processes remain:
 node shared/agents/agent_runner.mjs --verify-dead {pid}
 ```
 3. Expected: exit code 0, `{"pid": N, "status": "DEAD"}`
-4. If exit code 1 (process alive after cleanup attempt): log warning `"WARNING: Agent PID {pid} still alive after cleanup"` — continue, do not block workflow
+4. If exit code 1 (process alive after cleanup attempt): runner auto-kills it. Re-run `--verify-dead` to confirm. If still alive after second attempt → log ERROR.
 5. Display: `"Agent cleanup: {agent} PID {pid} DEAD"` for each agent
 
-**Note:** `agent_runner.mjs` kills process trees automatically on both completion and timeout. This step is a safety net — it should always find processes dead. If it doesn't, `--verify-dead` will attempt a second tree kill.
+**Note:** `agent_runner.mjs` kills process trees automatically on both completion and timeout. Per-call cleanup (step 4b in Iterative Refinement) handles most cases. This final step is a sweep for any missed PIDs — especially from Phase 2 background agents. On Windows, Codex processes accumulate if not explicitly killed via `--verify-dead`.
 
 ## Step: Save Review Summary
 
@@ -335,7 +336,7 @@ agent_stats:
     execution_outcome: "success | failed | timeout"
 refinement:
   iterations: 3
-  exit_reason: "APPROVED | MAX_ITER | ERROR | ZERO_ACCEPTED | SKIPPED"
+  exit_reason: "CONVERGED | CONVERGED_LOW_IMPACT | MAX_ITER | ERROR | SKIPPED"
   total_suggestions: 8
   total_applied: 6
 ```

@@ -69,6 +69,10 @@ export function validateTransition(manifest, state, checkpoints, toPhase) {
         return { ok: false, error: "Merge summary missing" };
     }
 
+    if ((toPhase === PHASES.APPROVE || toPhase === PHASES.SELF_CHECK) && state.phase === PHASES.REFINEMENT && !state.refinement_exit_reason) {
+        return { ok: false, error: "Refinement exit reason missing — checkpoint Phase 6 with exit_reason before advancing" };
+    }
+
     if (toPhase === PHASES.SELF_CHECK && manifest.mode === "story" && state.phase !== PHASES.APPROVE) {
         return { ok: false, error: "Story mode requires approval checkpoint before self-check" };
     }

@@ -96,3 +96,12 @@ Execution checkpoint statuses:
 
 Cycle statuses:
 - `completed`
+
+## Iterative Refinement Exit Reasons
+
+Canonical exit reasons for `PHASE_6_REFINEMENT` checkpoint:
+- `CONVERGED` — verdict APPROVED, all risks mitigated
+- `CONVERGED_LOW_IMPACT` — all suggestions in iteration are LOW impact (<10%)
+- `MAX_ITER` — reached iteration limit (5); WARNING if MEDIUM/HIGH remain
+- `ERROR` — Codex failed or timed out
+- `SKIPPED` — Codex unavailable or disabled

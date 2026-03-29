@@ -107,7 +107,7 @@ try {
         "--skill", "ln-310",
         "--phase", PHASES.REFINEMENT,
         "--payload",
-        JSON.stringify({ iterations: 1, exit_reason: "APPROVED" }),
+        JSON.stringify({ iterations: 1, exit_reason: "CONVERGED", applied: 3 }),
     ]);
     run(["advance", "--project-root", projectRoot, "--skill", "ln-310", "--to", PHASES.APPROVE]);
     run([
@@ -125,7 +125,7 @@ try {
         "--skill", "ln-310",
         "--phase", PHASES.SELF_CHECK,
         "--payload",
-        JSON.stringify({ pass: true, final_verdict: "GO" }),
+        JSON.stringify({ pass: true, processes_verified_dead: true, final_verdict: "GO" }),
     ]);
     const completed = run(["complete", "--project-root", projectRoot, "--skill", "ln-310"]);
 
