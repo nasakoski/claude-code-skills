@@ -7,6 +7,8 @@
 - **ln-310 quality-based refinement** — Codex iterative loop now exits by quality (MEDIUM/HIGH findings drive continuation), not just iteration count; added Architecture Gate, patience requirements, and risk mitigation criterion
 - **Process cleanup enforcement** — mandatory `--verify-dead {pid}` after every Codex call in ln-310, ln-510, ln-813; runtime guard blocks self-check pass without process verification
 - **Exit reason enum canonicalized** — CONVERGED/CONVERGED_LOW_IMPACT/MAX_ITER/ERROR/SKIPPED unified across workflow, runtime contract, status catalog, and smoke tests
+- **Perspective-based refinement** — 5 iterations now use different review angles (Generic, Dry-Run, New Dev, Adversarial, Final Sweep) instead of repeating the same criteria; exits on 2 consecutive APPROVED
+- **Guard integration tests** — new `guards.mjs` test validates all machine-enforced state transitions (exit_reason, processes_verified_dead)
 
 ## 2026-03-28
 

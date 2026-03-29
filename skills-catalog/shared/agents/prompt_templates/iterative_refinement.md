@@ -15,15 +15,9 @@ You are performing an independent quality review of {artifact_type} that has alr
 ## Artifact Under Review
 {artifact_content}
 
-## Review Criteria
-Evaluate the artifact for:
+## Review Perspective
 
-1. **Correctness** — Are there factual errors? Wrong file paths, API names, library capabilities? Do referenced files/functions actually exist?
-2. **Architectural correctness** — Does the design fit the project's architecture? Correct layers, patterns, module boundaries?
-3. **Best practices** — Does it follow modern best practices (2025-2026)? Industry standards, RFC compliance?
-4. **Optimality** — Is this the optimal approach for the stated goal? Unnecessary complexity? Missing simpler alternatives?
-5. **Centralization/Unification** — Are there opportunities to deduplicate, reuse existing code, unify patterns? Are we reinventing the wheel?
-6. **Risk mitigation** — Are all implementation risks addressed? What could go wrong in production? Unmitigated failure modes, data loss paths, security gaps?
+{review_perspective}
 
 ## Internal Reuse Check
 Before suggesting new code or patterns, search the codebase for:

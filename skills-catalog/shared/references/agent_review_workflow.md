@@ -198,7 +198,14 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
 **Loop (max 5 iterations):**
 
 1. **Build artifact:** Read current state of the reviewed artifact (Story+Tasks / plan file / context docs)
-2. **Build prompt:** Load `shared/agents/prompt_templates/iterative_refinement.md`, fill placeholders (`{artifact_type}`, `{artifact_content}`, `{project_context}`, `{iteration_number}`, `{max_iterations}`, `{previous_findings_summary}`)
+1b. **Select perspective:** Load perspective from `shared/agents/prompt_templates/refinement_perspectives.md` based on iteration:
+    - iter 1: `generic_quality`
+    - iter 2: `dry_run_executor`
+    - iter 3: `new_dev_tester`
+    - iter 4: `adversarial_reviewer`
+    - iter 5: `final_sweep`
+    Parse the matching `## perspective_{name}` section and fill `{review_perspective}` placeholder in prompt.
+2. **Build prompt:** Load `shared/agents/prompt_templates/iterative_refinement.md`, fill placeholders (`{artifact_type}`, `{artifact_content}`, `{project_context}`, `{review_perspective}`, `{iteration_number}`, `{max_iterations}`, `{previous_findings_summary}`)
 3. **Save prompt:** `.hex-skills/agent-review/refinement/{identifier}_refinement_iter{N}_prompt.md`
 3b. **Delete previous result:** If iteration > 1, remove `.hex-skills/agent-review/refinement/{identifier}_refinement_iter{N-1}_result.md` — Codex in resume mode reads project files and gets confused by stale feedback
 4. **Send to Codex** (foreground, synchronous -- NOT background):
@@ -215,14 +222,14 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
    - MEDIUM: `impact_percent` 10-19
    - LOW: `impact_percent < 10`
 8. **Exit conditions (evaluated in order):**
-   a. `verdict == "APPROVED"` → exit: CONVERGED
-   b. Codex failed/timed out → exit: ERROR
+   a. Codex failed/timed out → exit: ERROR
       Note: "timed out" means agent_runner.mjs returned timeout status. Claude MUST NOT self-declare timeout.
+   b. 2 consecutive perspectives returned APPROVED → exit: CONVERGED
    c. `iteration == 5` → exit: MAX_ITER (log WARNING if MEDIUM/HIGH suggestions remain unresolved)
-   d. All suggestions in this iteration are LOW → exit: CONVERGED_LOW_IMPACT
-   e. Any MEDIUM or HIGH suggestions exist → apply accepted fixes, **continue to next iteration**
+   d. Current perspective returned APPROVED or all-LOW → proceed to **next perspective**
+   e. Any MEDIUM or HIGH suggestions exist → apply accepted fixes, proceed to **next perspective**
 
-   "0 accepted" alone does NOT exit. If Codex returned MEDIUM/HIGH findings that Claude rejected, Claude must explain rejection reasoning in `{previous_findings_summary}` so Codex can adjust in next iteration.
+   Note: a single perspective returning APPROVED does NOT exit the loop — the next perspective may find issues from a different angle. Only 2 consecutive APPROVED exits.
 9. **Apply fixes:** Claude evaluates each suggestion (AGREE/REJECT). **Architecture Gate:** before applying each accepted fix, verify: "Does this implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers. Apply remaining accepted fixes.
 10. **Build `{previous_findings_summary}`** for next iteration, return to step 1
 

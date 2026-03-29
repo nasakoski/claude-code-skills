@@ -209,7 +209,7 @@ node shared/scripts/review-runtime/cli.mjs sync-agent --skill ln-310
    - `story`: Story + Tasks concatenation
    - `plan_review`: plan file
    - `context`: context docs
-2. Run Codex refinement loop (max 5 iterations) if Codex was available in Phase 2. Loop continues while MEDIUM/HIGH suggestions exist. Exits early only when all remaining findings are LOW or verdict is APPROVED.
+2. Run Codex refinement loop (max 5 iterations) if Codex was available in Phase 2. Each iteration uses a different review perspective (Generic → Dry-Run → New Dev → Adversarial → Final Sweep). Loop exits on 2 consecutive APPROVED or MAX_ITER.
    > **Synchronous Codex calls may take 5-15 minutes per iteration. This is expected.** Do NOT abort or skip iterations because a call takes several minutes. The runner's hard timeout (30 min) is the only valid abort boundary.
    >
    > **Architecture Gate per iteration:** Before applying fixes from each refinement iteration, verify: "Does this fix implement the correct architecture directly, without backward compatibility shims or legacy workarounds?" Reject fixes that introduce unnecessary compat layers.
