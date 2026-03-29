@@ -210,15 +210,20 @@ After Critical Verification, run a deterministic refinement loop using Codex. Th
 3b. **Clean stale artifacts:** If iteration > 1, remove previous iteration's result AND log files from `.hex-skills/agent-review/refinement/`. Codex reads project files and gets confused by stale feedback from prior iterations.
 
 > **FRESH SESSION ONLY.** Every refinement iteration MUST launch Codex as a new session. NEVER use `--resume-session` in Phase 6. Codex context window fills up with prior session data (Phase 2 review accumulated ~1000 lines), leaving no room for the refinement prompt. The `_session.json` files from Phase 2 are for audit trail only — do NOT pass their session_id to refinement calls.
-4. **Send to Codex** (foreground, synchronous -- NOT background):
+4. **Send to Codex** (background):
    ```
    node shared/agents/agent_runner.mjs --agent codex \
      --prompt-file .hex-skills/agent-review/refinement/{identifier}_refinement_iter{N}_prompt.md \
      --output-file .hex-skills/agent-review/refinement/{identifier}_refinement_iter{N}_result.md \
      --cwd {project_dir}
    ```
-5. **Kill Codex process:** Extract `pid` from runner stdout JSON. Run `node shared/agents/agent_runner.mjs --verify-dead {pid}`. If process alive (exit code 1) → runner auto-kills it. Log: `"Codex PID {pid} cleanup: DEAD"`. This is MANDATORY after every Codex call — processes accumulate on Windows if not killed.
-6. **Parse result:** Extract JSON from `## Structured Data` section
+4b. **Wait for result (minimum 1 minute between checks):** Do NOT poll metadata/result files in a tight loop. Codex typically takes 5-15 minutes per iteration.
+   - **First check:** wait at least **1 minute** after launch, then check log file mtime.
+   - **Subsequent checks:** minimum **1 minute** between polls. Check log mtime (growing = alive) and result file existence.
+   - **Result ready:** file exists AND contains `<!-- END_AGENT_REVIEW_RESULT -->` end marker. Partial files will NOT have this marker.
+   - **Timeout:** log stops growing for >3 min AND result file absent → run Liveness Protocol.
+5. **Parse result:** Extract JSON from `## Structured Data` section. Read the result file ONLY after end marker `<!-- END_AGENT_REVIEW_RESULT -->` is confirmed present.
+6. **Kill Codex process:** Extract `pid` from runner stdout or metadata JSON. Run `node shared/agents/agent_runner.mjs --verify-dead {pid}`. ONLY after result file is confirmed written and parsed. Never kill before results are accepted — runner writes the file after Codex exits, killing early = lost results.
 7. **Classify suggestions by impact:**
    - HIGH: `impact_percent >= 20`
    - MEDIUM: `impact_percent` 10-19
