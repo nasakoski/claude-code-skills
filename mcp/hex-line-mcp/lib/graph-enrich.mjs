@@ -16,8 +16,7 @@ import { existsSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { createRequire } from "node:module";
 
-const HEX_LINE_CONTRACT_VERSION_MIN = 1;
-const HEX_LINE_CONTRACT_VERSION_MAX = 2;
+const HEX_LINE_CONTRACT_VERSION = 2;
 const _dbs = new Map();
 let _driverUnavailable = false;
 
@@ -64,24 +63,11 @@ export function _resetGraphDBCache() {
     _driverUnavailable = false;
 }
 
-const _cloneViewAvailable = new WeakMap();
-
-function _hasCloneView(db) {
-    if (_cloneViewAvailable.has(db)) return _cloneViewAvailable.get(db);
-    try {
-        db.prepare("SELECT node_id, norm_hash, file, line_start, display_name FROM hex_line_clone_siblings LIMIT 0").run();
-        _cloneViewAvailable.set(db, true);
-        return true;
-    } catch {
-        _cloneViewAvailable.set(db, false);
-        return false;
-    }
-}
 
 function validateHexLineContract(db) {
     try {
         const contract = db.prepare("SELECT contract_version FROM hex_line_contract LIMIT 1").get();
-        if (!contract || contract.contract_version < HEX_LINE_CONTRACT_VERSION_MIN || contract.contract_version > HEX_LINE_CONTRACT_VERSION_MAX) return false;
+        if (!contract || contract.contract_version !== HEX_LINE_CONTRACT_VERSION) return false;
         db.prepare("SELECT node_id, file, line_start, line_end, display_name, kind, callees, callers FROM hex_line_symbol_annotations LIMIT 1").all();
         db.prepare("SELECT source_id, target_id, source_file, source_line, source_display_name, target_file, target_line, target_display_name, confidence FROM hex_line_call_edges LIMIT 1").all();
         return true;
@@ -193,7 +179,6 @@ export function callImpact(db, file, startLine, endLine) {
  */
 export function cloneWarning(db, file, startLine, endLine) {
     try {
-        if (!_hasCloneView(db)) return [];
 
         const modified = db.prepare(
             `SELECT node_id
