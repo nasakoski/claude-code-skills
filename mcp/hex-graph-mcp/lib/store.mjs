@@ -238,7 +238,7 @@ class Store {
 
         this.db.exec(`
             CREATE VIEW IF NOT EXISTS hex_line_contract AS
-            SELECT 1 AS contract_version;
+            SELECT 2 AS contract_version;
 
             CREATE VIEW IF NOT EXISTS hex_line_symbol_annotations AS
             SELECT
@@ -253,12 +253,12 @@ class Store {
                     ELSE n.name
                 END AS display_name,
                 (
-                    SELECT COUNT(*)
+                    SELECT COUNT(DISTINCT e.target_id)
                     FROM edges e
                     WHERE e.source_id = n.id AND e.kind = 'calls'
                 ) AS callees,
                 (
-                    SELECT COUNT(*)
+                    SELECT COUNT(DISTINCT e.source_id)
                     FROM edges e
                     WHERE e.target_id = n.id AND e.kind = 'calls'
                 ) AS callers
@@ -292,6 +292,22 @@ class Store {
             WHERE e.kind = 'calls'
               AND src.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol')
               AND tgt.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol');
+        `);
+
+        // hex-line clone siblings view (contract v2)
+        this.db.exec(`
+            CREATE VIEW IF NOT EXISTS hex_line_clone_siblings AS
+            SELECT
+                cb.node_id AS node_id,
+                cb.norm_hash AS norm_hash,
+                n.file AS file,
+                n.line_start AS line_start,
+                CASE
+                    WHEN n.name = '__default_export__' THEN 'default export'
+                    ELSE n.name
+                END AS display_name
+            FROM clone_blocks cb
+            JOIN nodes n ON n.id = cb.node_id;
         `);
 
         // Module-level import edges (file-to-file raw evidence)
