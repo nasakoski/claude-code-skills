@@ -14,7 +14,7 @@ import { existsSync, unlinkSync, mkdirSync } from "node:fs";
 import { confidenceAtLeast, dedupeStrongest } from "./confidence.mjs";
 import { normalizeProviderRun } from "./precise/provider-status.mjs";
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 export const CODEGRAPH_DIR = ".hex-skills/codegraph";
 const EXTERNAL_FILE_PREFIX = "[[external]]/";
 const NODE_SELECT_COLUMNS = `
