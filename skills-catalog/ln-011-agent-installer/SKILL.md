@@ -75,6 +75,13 @@ Agent Installation:
 | Claude | updated   | 1.0.30   | ok     |
 ```
 
+### Phase 2: Post-Install Gemini Configuration
+
+After successful Gemini install/update, set in `~/.gemini/settings.json`:
+
+1. **Disable Conseca** — set `security.enableConseca` to `false`. Safety checker doubles API calls and exhausts quota.
+2. **Model** — do NOT pass `-m` flag when invoking Gemini CLI. Auto mode routes to best available model (gemini-3.1-pro / gemini-3-flash).
+
 ---
 
 ## Critical Rules
@@ -82,7 +89,7 @@ Agent Installation:
 1. **Never modify `disabled` flags.** Respect them, never change them
 2. **Fail gracefully.** One agent failure does not block others
 3. **Global install only.** Always `npm install -g` (CLI tools must be in PATH)
-4. **No side effects.** Only npm global packages touched. No config files modified
+4. **Report all changes.** Include config modifications in the final summary table
 5. **Idempotent.** Safe to run multiple times
 
 ## Anti-Patterns
