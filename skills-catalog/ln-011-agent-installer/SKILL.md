@@ -2,6 +2,7 @@
 name: ln-011-agent-installer
 description: "Installs or updates Codex CLI, Gemini CLI, and Claude Code. Use when CLI agents need installation or update."
 license: MIT
+model: claude-sonnet-4-6
 ---
 
 > **Paths:** File paths (`shared/`, `references/`) are relative to skills repo root. Locate this SKILL.md directory and go up one level for repo root.
