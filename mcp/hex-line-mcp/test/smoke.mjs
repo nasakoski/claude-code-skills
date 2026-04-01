@@ -13,7 +13,8 @@ const HOOK_PATH = resolve(__dirname, "../hook.mjs");
 const require = createRequire(import.meta.url);
 const HAS_GRAPH_SQLITE = (() => {
     try {
-        require("better-sqlite3");
+        const db = require("better-sqlite3")(":memory:");
+        db.close();
         return true;
     } catch {
         return false;

@@ -1938,7 +1938,7 @@ describe("WASM dependency contract", () => {
         assert.deepEqual(missing, [], `WASM files missing for: ${missing.join(", ")}`);
     });
 
-    it("dist/queries/ contains all .scm files after build", () => {
+    it("dist/queries/ contains all .scm files after build", { skip: !fs.existsSync(resolve(__dirname, "../dist")) }, () => {
         const distQueries = resolve(__dirname, "../dist/queries");
         const expected = ["javascript.scm", "typescript.scm", "python.scm", "c_sharp.scm", "php.scm"];
         const missing = expected.filter(f => !fs.existsSync(resolve(distQueries, f)));
