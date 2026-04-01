@@ -17,6 +17,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install ripgrep
+        run: sudo apt-get update -qq && sudo apt-get install -y ripgrep
+
       - name: Install MCP dependencies
         run: cd mcp && npm install --ignore-scripts
 
