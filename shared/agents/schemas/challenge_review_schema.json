@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["DEFEND", "WITHDRAW", "MODIFY"]
+    },
+    "defense": {
+      "type": "string",
+      "description": "Detailed argument if DEFEND or MODIFY"
+    },
+    "evidence": {
+      "type": "string",
+      "description": "Standards, benchmarks, code references"
+    },
+    "revised_suggestion": {
+      "type": "string",
+      "description": "Only if MODIFY — the updated suggestion text"
+    },
+    "confidence_after_challenge": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Agent's confidence after considering the counterargument"
+    }
+  },
+  "required": ["decision", "confidence_after_challenge"],
+  "additionalProperties": false
+}
