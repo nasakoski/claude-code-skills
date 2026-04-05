@@ -42,8 +42,7 @@ const BINARY_EXT = new Set([
 
 const OUTLINEABLE_EXT = new Set([
     ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx",
-    ".py", ".go", ".rs", ".java", ".c", ".h", ".cpp", ".cs",
-    ".rb", ".php", ".kt", ".swift", ".sh", ".bash",
+    ".py", ".cs", ".php",
 ]);
 
 const REVERSE_TOOL_HINTS = {

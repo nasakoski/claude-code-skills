@@ -45,7 +45,7 @@ Two transport types: **stdio** (local process) and **HTTP** (cloud endpoint).
 ## Workflow
 
 ```
-Check Status & Version → Register & Configure → Verify Runtime Deps → Hooks → Permissions → Migrate → Report
+Check Status & Version → Register & Configure → Verify Graph Provider Deps → Hooks → Permissions → Migrate → Report
 ```
 
 ### Phase 1: Check Status & Version
@@ -146,9 +146,11 @@ If corrupted: fix via `mcp__hex-line__edit_file` (set_line the arg to `"/c"`).
 | API key missing (Ref) | Prompt user for key, skip if declined |
 
 
-### Phase 2b: Verify Runtime Dependencies
+### Phase 2b: Verify Graph Provider Dependencies
 
-After registration + connection, verify that MCP packages have all system-level dependencies available. npx installs npm modules, but some packages require system binaries or native compilation that may silently fail.
+**MANDATORY READ:** Load `skills-catalog/ln-012-mcp-configurator/references/hex_graph_provider_matrix.md` and `skills-catalog/ln-700-project-bootstrap/references/stack_detection.md`.
+
+After registration + connection, verify only the extra system binaries or packages needed for fuller MCP behavior. Assume the project already has its own runtimes and app dependencies. This phase does NOT install project dependencies, framework packages, or runtimes.
 
 **Step 1: Identify which servers are connected**
 Reuse Phase 2 verification state. Only check deps for connected hex-* servers.
@@ -173,22 +175,59 @@ Ripgrep install by platform:
 
 If `rg --version` fails: ask user whether to auto-install (suggest platform-appropriate command). If user declines, WARN but continue — hex-line will degrade on grep.
 
-**Step 3: Verify hex-graph-mcp dependencies**
+**Step 3: Detect current project language(s) for hex-graph**
 
-| Dependency | Check | Required | Auto-fix | Fallback |
-|-----------|-------|----------|----------|----------|
-| better-sqlite3 | hex-graph connected (Phase 2) | Yes | Needs C++ build tools | hex-graph won't start |
-| basedpyright | `basedpyright-langserver --version` | No | `pip install basedpyright` | Python precise analysis skipped |
-| csharp-ls | `csharp-ls --version` | No | `dotnet tool install -g csharp-ls` | C# precise analysis skipped |
-| phpactor | `phpactor --version` | No | — | PHP precise analysis skipped |
+Detect from the current project root only:
 
-For optional language servers: check availability, report status. Auto-install only if the corresponding runtime is already present (Python for basedpyright, .NET for csharp-ls). Never install a runtime just for a language server.
+1. `docs/project/tech_stack.md` if present
+2. marker files in the project root
+3. fallback source-extension scan
 
-**Step 4: Verify hex-ssh-mcp dependencies**
+Use framework markers only to confirm language:
+
+| Framework hint | Language |
+|-----------|----------|
+| FastAPI, Django, Flask | Python |
+| ASP.NET Core | C# |
+| Laravel | PHP |
+| React, Next.js, Express, NestJS | JavaScript / TypeScript |
+
+If no relevant language is detected for `hex-graph`, skip the optional provider checks and report `SKIP`.
+
+**Step 4: Verify hex-graph-mcp graph-specific providers and SCIP exporters**
+
+Use the MCP tool `install_graph_providers` from `hex-graph-mcp` as the source of truth:
+
+- First call it with `mode: "check"`
+- Reuse its `instructions_for_agent` output as the remediation text
+- Only if the user agrees, rerun it with `mode: "install"`
+- Treat the matrix below as reference policy, not as a second implementation source
+
+| Detected project language | Tool | Check | Required | Auto-fix | Fallback |
+|-----------|------|-------|----------|----------|----------|
+| JavaScript / TypeScript | None | None | No | None | Embedded TypeScript precise overlay and SCIP export are already available |
+| Python | `basedpyright` | `basedpyright-langserver --version` | No | `pip install basedpyright` | Python precise analysis skipped |
+| Python | `scip-python` | `scip-python index --help` | No | Windows: `npm install -g github:levnikolaevich/scip-python#fix/windows-path-sep-regex`; macOS/Linux: `npm install -g @sourcegraph/scip-python` | Python `export_scip` skipped |
+| C# | `csharp-ls` | `csharp-ls --version` | No | `dotnet tool install -g csharp-ls` | C# precise analysis skipped |
+| C# | `scip-dotnet` | `scip-dotnet --help` | No | `dotnet tool install -g scip-dotnet` | C# `export_scip` skipped |
+| PHP | `phpactor` | `phpactor --version` | No | Project-specific PHP install path | PHP precise analysis skipped |
+| PHP | `scip-php` | `scip-php --help` or `php vendor/bin/scip-php --help` | No | `composer global config repositories.levnikolaevich-scip-php vcs https://github.com/levnikolaevich/scip-php` then `composer global require davidrjenni/scip-php:dev-fix/windows-runtime-fixes --prefer-source` | PHP `export_scip` skipped |
+
+For `hex-graph`, think only about graph-specific providers and optional SCIP exporters:
+
+- DO install or recommend `basedpyright`, `csharp-ls`, `phpactor`, `scip-python`, `scip-dotnet`, and `scip-php` when their language is detected
+- DO prefer the patched `scip-python` install on Windows until the upstream Windows fix is released
+- DO mention `HEX_GRAPH_SCIP_PYTHON_BINARY` when a patched Python SCIP binary lives outside the default `PATH`
+- DO prefer the isolated patched `scip-php` fork for PHP SCIP export when project-local Composer install is blocked or the upstream binary emits an empty artifact
+- DO NOT install `python`, `.NET`, `php`, `fastapi`, `django`, `laravel`, `nestjs`, or any project dependency
+- DO NOT install anything for framework overlays alone; Stage 4 framework support is parser/convention-based
+- Ask the user before any provider install command
+
+**Step 5: Verify hex-ssh-mcp dependencies**
 
 No system dependencies (pure JS ssh2). Skip.
 
-**Step 5: Report dependency table**
+**Step 6: Report dependency table**
 
 Print table with columns: Server | Dependency | Status | Action.
 
@@ -197,7 +236,7 @@ Print table with columns: Server | Dependency | Status | Action.
 | OK | Available and functional |
 | INSTALLED | Was missing, auto-installed |
 | WARN | Missing, user declined install |
-| SKIP | Optional, runtime not present |
+| SKIP | Not needed for detected project language(s) |
 | FAIL | Required, cannot install |
 
 **Error handling:**
@@ -207,6 +246,8 @@ Print table with columns: Server | Dependency | Status | Action.
 | Required dep missing + user declines | WARN, continue with degraded functionality |
 | Auto-install fails | WARN, show manual install instructions |
 | Optional dep missing | INFO, note in report |
+
+For `hex-graph`, also report the detected language(s) that drove the provider/exporter checks.
 ### Phase 3: Hooks & Output Style [CRITICAL]
 
 MUST call `mcp__hex-line__setup_hooks(agent="all")` AFTER all Phase 2 registrations complete (not just hex-line). This ensures the latest hook.mjs and output-style.md from the updated package are installed.
@@ -337,7 +378,7 @@ MCP Configuration:
 7. **Minimize `claude mcp list` calls.** Phase 1 runs it once (discovery). Phase 2 reuses that data. Only Phase 2 Step 4 runs it again (post-mutation verify). Max 2 calls total
 8. **Always check npm drift.** Connected != up to date. Compare npm latest against the newest locally cached npx package version before skipping
 9. **MSYS2 path safety.** On Windows with Git Bash/MSYS2, always prefix `claude mcp add` with `MSYS_NO_PATHCONV=1`. After registration, verify `args[0]` in `.claude.json` is `"/c"` not `"C:/"`. Fix inline if corrupted.
-10. **Verify runtime deps after install.** After Phase 2 registration, check system binaries (rg, git) and optional language servers. Auto-install only with user consent. Never install a runtime just for a language server.
+10. **Verify graph-specific deps after install.** After Phase 2 registration, check system binaries for hex-line, graph-specific optional providers, and optional SCIP exporters for detected project languages. Auto-install only with user consent. Never install project runtimes or framework packages here.
 
 ## Anti-Patterns
 
@@ -352,8 +393,8 @@ MCP Configuration:
 | Assume connected = up to date | Check `npm view` version vs newest cached npx package version |
 | Call `setup_hooks` before all packages re-registered | Call `setup_hooks(agent="all")` AFTER all Phase 2 registrations complete |
 | Run `claude mcp add` without MSYS_NO_PATHCONV on Windows bash | Always `MSYS_NO_PATHCONV=1 claude mcp add ...` or verify+fix args after |
-| Skip runtime dependency verification | Always run Phase 2b after registration to catch missing system binaries |
-| Auto-install system packages without asking | Ask user before running platform package managers (apt, brew, winget) |
+| Skip provider verification for hex-graph | Detect project language(s) first, then verify only relevant graph-specific providers and SCIP exporters |
+| Auto-install project/framework/runtime packages | Limit this phase to MCP-relevant graph providers and SCIP exporters, and ask user before install |
 
 ---
 
@@ -362,7 +403,7 @@ MCP Configuration:
 - [ ] MCP packages installed and versions verified against npm registry (Phase 1)
 - [ ] Missing servers registered and verified connected (Phase 2)
 - [ ] Outdated servers re-registered with latest version (Phase 2)
-- [ ] Runtime dependencies verified: ripgrep available, optional deps reported (Phase 2b)
+- [ ] Graph-specific dependencies verified: ripgrep available, detected hex-graph providers and SCIP exporters reported (Phase 2b)
 - [ ] Hooks installed (PreToolUse, PostToolUse, SessionStart) and `disableAllHooks: false` (Phase 3)
 - [ ] Output style installed (Phase 3)
 - [ ] Permissions granted for all configured servers (Phase 7)

@@ -11,7 +11,7 @@ Any skill that modifies code checks its git context and creates isolation if nee
 | 1 | `git branch --show-current` — if already on `feature/*` / `optimize/*` / `upgrade/*` / `modernize/*` → skip to step 4 |
 | 2 | Check for uncommitted changes: `changes=$(git diff HEAD)` |
 | 2a | IF changes not empty: `git diff HEAD > .hex-skills/pipeline/carry-changes.patch` |
-| 2b | Sync base branch: `git fetch origin && git merge origin/master` (ensure develop has all master changes) |
+| 2b | Detect base branch per `shared/references/git_scope_detection.md` §Base Branch Detection, then: `git fetch origin && git merge origin/{base_branch}` |
 | 3 | `git worktree add {worktree_dir} -b {branch}` |
 | 3a | IF patch exists: `git -C {worktree_dir} apply .hex-skills/pipeline/carry-changes.patch && rm .hex-skills/pipeline/carry-changes.patch` |
 | 3b | IF apply fails (conflicts): warn user "Patch conflicts — continuing without uncommitted changes", continue (non-blocking) |

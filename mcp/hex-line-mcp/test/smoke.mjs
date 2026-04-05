@@ -112,27 +112,6 @@ describe("FNV-1a hash", () => {
     });
 });
 
-// ==================== coerce ====================
-
-describe("coerce params (identity — no aliases)", () => {
-    it("passes canonical params through unchanged", async () => {
-        const { coerceParams } = await import("../lib/coerce.mjs");
-        const result = coerceParams({ path: "test.js", dry_run: true, pattern: "foo" });
-        assert.equal(result.path, "test.js");
-        assert.equal(result.dry_run, true);
-        assert.equal(result.pattern, "foo");
-    });
-
-    it("does not normalize old aliases", async () => {
-        const { coerceParams } = await import("../lib/coerce.mjs");
-        const result = coerceParams({ file_path: "test.js", dryRun: true, query: "foo" });
-        assert.equal(result.file_path, "test.js");  // NOT mapped to path
-        assert.equal(result.path, undefined);        // canonical not set
-        assert.equal(result.dryRun, true);            // NOT mapped to dry_run
-        assert.equal(result.query, "foo");            // NOT mapped to pattern
-    });
-});
-
 // ==================== normalize ====================
 
 describe("normalize output", () => {
@@ -1413,27 +1392,23 @@ describe("PostToolUse RTK", () => {
 // ==================== WASM dependency contract ====================
 
 describe("WASM dependency contract", () => {
-    it("package.json declares tree-sitter runtime deps", () => {
+    it("package.json declares the parser runtime dependency only once", () => {
         const pkg = JSON.parse(fs.readFileSync(
             resolve(__dirname, "../package.json"), "utf8"
         ));
         const deps = pkg.dependencies || {};
         assert.ok(deps["web-tree-sitter"],
             "web-tree-sitter missing from dependencies — outline will fail after npm install");
-        assert.ok(deps["tree-sitter-wasms"],
-            "tree-sitter-wasms missing from dependencies — WASM grammars unavailable after npm install");
+        assert.ok(!deps["tree-sitter-wasms"],
+            "tree-sitter-wasms should not be a direct dependency anymore — grammars now come from hex-common artifacts");
     });
 
-    it("WASM files exist for all supported grammars", () => {
-        const pkgPath = require.resolve("tree-sitter-wasms/package.json");
-        const grammars = [
-            "javascript", "typescript", "tsx", "python", "go", "rust",
-            "java", "c", "cpp", "c_sharp", "ruby", "php", "kotlin", "swift", "bash"
-        ];
-        const missing = grammars.filter(g => {
-            const wasm = resolve(pkgPath, "..", "out", `tree-sitter-${g}.wasm`);
-            return !fs.existsSync(wasm);
-        });
+    it("hex-common artifact bundle exists for all supported grammars", () => {
+        const artifactDir = resolve(__dirname, "../../hex-common/artifacts/tree-sitter");
+        const manifest = JSON.parse(fs.readFileSync(resolve(artifactDir, "manifest.json"), "utf8"));
+        const missing = (manifest.grammars || [])
+            .map(entry => entry.file)
+            .filter(file => !fs.existsSync(resolve(artifactDir, file)));
         assert.deepEqual(missing, [], `WASM files missing for: ${missing.join(", ")}`);
     });
 });

@@ -49,12 +49,12 @@ Run `index_project` once per session before using other graph tools.
 | Task | Tool | Output |
 |------|------|--------|
 | Refactoring / moving code | `find_references`, `find_implementations` | All usages + implementations |
-| Code review / tech debt | `find_cycles`, `find_hotspots` | Circular deps, complexity hotspots |
-| Dead code cleanup | `find_unused_exports` | Exports nobody imports |
-| Architecture overview | `get_architecture`, `get_module_metrics` | Module map + coupling metrics |
-| Duplicate detection | `find_clones` | Similar code blocks |
+| Code review / tech debt | `analyze_changes`, `audit_workspace` | Diff risk, hotspots, duplicate groups |
+| Dead code cleanup | `audit_workspace` | Unused exports + cleanup signals |
+| Architecture overview | `analyze_architecture` | Module map, cycles, coupling metrics |
+| Duplicate detection | `analyze_edit_region`, `audit_workspace` | Local duplicate risk + workspace clone groups |
 | Impact analysis | `trace_paths` | Call chains A → B |
-| Symbol lookup | `search_symbols`, `get_symbol` | Find by name, get details |
+| Symbol lookup | `find_symbols`, `inspect_symbol` | Find by name, get details |
 # Response Style
 
 Keep responses compact and operational. Explain only what is needed to complete the task or justify a non-obvious decision.

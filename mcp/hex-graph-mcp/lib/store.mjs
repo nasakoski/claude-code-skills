@@ -15,7 +15,7 @@ import { confidenceAtLeast, dedupeStrongest } from "./confidence.mjs";
 import { normalizeProviderRun } from "./precise/provider-status.mjs";
 import { anchorKey, anchorsEqual, DEFAULT_FLOW_LIMIT, DEFAULT_FLOW_MAX_HOPS, normalizeAnchor } from "./flow.mjs";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 export const CODEGRAPH_DIR = ".hex-skills/codegraph";
 const EXTERNAL_FILE_PREFIX = "[[external]]/";
 const NODE_SELECT_COLUMNS = `
@@ -28,6 +28,8 @@ const NODE_SELECT_COLUMNS = `
     file,
     line_start,
     line_end,
+    column_start,
+    column_end,
     signature,
     is_exported,
     is_default_export,
@@ -142,6 +144,8 @@ class Store {
                 workspace_module_id INTEGER REFERENCES workspace_modules(id) ON DELETE SET NULL,
                 line_start INTEGER,
                 line_end INTEGER,
+                column_start INTEGER,
+                column_end INTEGER,
                 parent_id INTEGER REFERENCES nodes(id) ON DELETE SET NULL,
                 signature TEXT,
                 is_exported INTEGER NOT NULL DEFAULT 0,
@@ -817,11 +821,11 @@ class Store {
         this._insertNode = this.db.prepare(`
             INSERT INTO nodes (
                 name, qualified_name, workspace_qualified_name, kind, language, file,
-                package_id, workspace_module_id, line_start, line_end, parent_id, signature
+                package_id, workspace_module_id, line_start, line_end, column_start, column_end, parent_id, signature
             )
             VALUES (
                 @name, @qualified_name, @workspace_qualified_name, @kind, @language, @file,
-                @package_id, @workspace_module_id, @line_start, @line_end, @parent_id, @signature
+                @package_id, @workspace_module_id, @line_start, @line_end, @column_start, @column_end, @parent_id, @signature
             )
         `);
 
@@ -830,6 +834,8 @@ class Store {
             VALUES (@source_id, @target_id, @layer, @kind, @confidence, @origin, @evidence_json, @file, @line, @edge_hash)
         `);
         this._clearEdgesByOrigin = this.db.prepare("DELETE FROM edges WHERE origin = ?");
+        this._clearEdgesByLayer = this.db.prepare("DELETE FROM edges WHERE layer = ?");
+        this._clearNodesByKind = this.db.prepare("DELETE FROM nodes WHERE kind = ?");
         this._upsertProviderRun = this.db.prepare(`
             INSERT INTO provider_runs (provider, language, status, version, detail, indexed_at)
             VALUES (@provider, @language, @status, @version, @detail, CURRENT_TIMESTAMP)
@@ -916,7 +922,7 @@ class Store {
         );
 
         this._nodesByFile = this.db.prepare(
-            `SELECT ${NODE_SELECT_COLUMNS} FROM nodes WHERE file = ? ORDER BY line_start`
+            `SELECT ${NODE_SELECT_COLUMNS} FROM nodes WHERE file = ? ORDER BY line_start, column_start`
         );
 
         this._fileOwnership = this.db.prepare(`
@@ -1145,11 +1151,21 @@ class Store {
     insertNode(node) {
         const ownership = node.file ? this.describeFileOwnership(node.file) : null;
         const normalized = {
-            ...node,
+            name: node.name,
+            qualified_name: node.qualified_name ?? null,
             workspace_qualified_name: node.workspace_qualified_name
                 ?? buildWorkspaceQualifiedName(node, ownership),
+            kind: node.kind,
+            language: node.language,
+            file: node.file,
             package_id: node.package_id ?? ownership?.package_id ?? null,
             workspace_module_id: node.workspace_module_id ?? ownership?.workspace_module_id ?? null,
+            line_start: node.line_start ?? null,
+            line_end: node.line_end ?? node.line_start ?? null,
+            column_start: node.column_start ?? null,
+            column_end: node.column_end ?? null,
+            parent_id: node.parent_id ?? null,
+            signature: node.signature ?? null,
         };
         const result = this._insertNode.run(normalized);
         return result.lastInsertRowid;
@@ -1251,6 +1267,16 @@ class Store {
 
     clearEdgesByOrigin(origin) {
         this._clearEdgesByOrigin.run(origin);
+    }
+
+    clearEdgesByLayer(layer) {
+        this._clearEdgesByLayer.run(layer);
+    }
+
+    clearNodesByKinds(kinds) {
+        for (const kind of kinds || []) {
+            this._clearNodesByKind.run(kind);
+        }
     }
 
     upsertProviderRun(run) {
@@ -1509,6 +1535,18 @@ class Store {
         return this._findReferences.all(nodeId);
     }
 
+    frameworkIncomingEdges(nodeId) {
+        return this.db.prepare(`
+            SELECT e.kind, e.line, e.file, e.confidence, e.origin, e.evidence_json,
+                   n.id as source_id, n.name, n.kind as node_kind, n.file as node_file, n.line_start, n.qualified_name as source_qualified_name
+            FROM edges e
+            JOIN nodes n ON n.id = e.source_id
+            WHERE e.target_id = ?
+              AND e.layer = 'framework'
+            ORDER BY e.kind, e.file, e.line
+        `).all(nodeId);
+    }
+
     // --- Bulk operations (transaction) ---
 
     clearFile(filePath) {
@@ -1545,6 +1583,8 @@ class Store {
                     file: filePath,
                     line_start: def.line_start,
                     line_end: def.line_end,
+                    column_start: def.column_start ?? null,
+                    column_end: def.column_end ?? null,
                     parent_id: def.parent ? (classIndex.get(def.parent) || null) : null,
                     signature: def.signature || null,
                 });
@@ -1570,6 +1610,8 @@ class Store {
                     file: filePath,
                     line_start: imp.line,
                     line_end: imp.line,
+                    column_start: imp.column_start ?? null,
+                    column_end: imp.column_end ?? null,
                     parent_id: null,
                     signature: null,
                 });
@@ -1703,7 +1745,15 @@ class Store {
         const crossEdges = [...grouped.values()]
             .sort((a, b) => b.edge_count - a.edge_count || a.source_module_key.localeCompare(b.source_module_key));
 
-        return { modules, hotspots, crossEdges };
+        const frameworkRows = this.db.prepare(`
+            SELECT kind, origin, COUNT(*) AS count
+            FROM edges
+            WHERE layer = 'framework'
+            GROUP BY kind, origin
+            ORDER BY count DESC, kind, origin
+        `).all();
+
+        return { modules, hotspots, crossEdges, frameworkRows };
     }
 
     // --- Query: Hotspots (complexity × callers) ---
@@ -1838,6 +1888,15 @@ class Store {
         return { files, nodes, edges };
     }
 
+    indexedLanguages() {
+        return this.db.prepare(`
+            SELECT DISTINCT language
+            FROM files
+            WHERE language IS NOT NULL AND language != ''
+            ORDER BY language
+        `).all().map(row => row.language);
+    }
+
     close() {
         this.db.close();
         _stores.delete(this.projectPath);
@@ -1967,7 +2026,7 @@ function normalizeSelector(selector = {}) {
         return selectorError(
             "INVALID_SELECTOR",
             "Selector must provide exactly one of: symbol_id, workspace_qualified_name, qualified_name, or name+file",
-            "Use search_symbols first to discover valid identifiers"
+            "Use find_symbols first to discover valid identifiers"
         );
     }
     if (hasId) return { kind: "symbol_id", value: Number(symbol_id), query: { symbol_id: Number(symbol_id) } };
@@ -1983,7 +2042,7 @@ function resolveSelector(store, selector = {}) {
     if (normalized.kind === "symbol_id") {
         const node = store.getNodeById(normalized.value);
         if (!node) {
-            return selectorError("SYMBOL_NOT_FOUND", `No symbol with id ${normalized.value}`, "Run search_symbols to find a valid symbol_id");
+            return selectorError("SYMBOL_NOT_FOUND", `No symbol with id ${normalized.value}`, "Run find_symbols to find a valid symbol_id");
         }
         return { query: normalized.query, node, reason: "resolved_by_symbol_id", confidence: "exact" };
     }
@@ -1991,7 +2050,7 @@ function resolveSelector(store, selector = {}) {
     if (normalized.kind === "qualified_name") {
         const matches = store.findByQualified(normalized.value);
         if (matches.length === 0) {
-            return selectorError("SYMBOL_NOT_FOUND", `No symbol with qualified_name '${normalized.value}'`, "Run search_symbols to inspect available qualified names");
+            return selectorError("SYMBOL_NOT_FOUND", `No symbol with qualified_name '${normalized.value}'`, "Run find_symbols to inspect available qualified names");
         }
         if (matches.length > 1) {
             return {
@@ -2009,7 +2068,7 @@ function resolveSelector(store, selector = {}) {
     if (normalized.kind === "workspace_qualified_name") {
         const matches = store.findByWorkspaceQualified(normalized.value);
         if (matches.length === 0) {
-            return selectorError("SYMBOL_NOT_FOUND", `No symbol with workspace_qualified_name '${normalized.value}'`, "Run search_symbols to inspect available workspace-qualified names");
+            return selectorError("SYMBOL_NOT_FOUND", `No symbol with workspace_qualified_name '${normalized.value}'`, "Run find_symbols to inspect available workspace-qualified names");
         }
         if (matches.length > 1) {
             return {
@@ -2029,7 +2088,7 @@ function resolveSelector(store, selector = {}) {
         n.file === file || n.file.endsWith(file) || n.file.endsWith(`/${file}`)
     );
     if (matches.length === 0) {
-        return selectorError("SYMBOL_NOT_FOUND", `No symbol '${name}' found in '${file}'`, "Run search_symbols to inspect file paths and symbol names");
+        return selectorError("SYMBOL_NOT_FOUND", `No symbol '${name}' found in '${file}'`, "Run find_symbols to inspect file paths and symbol names");
     }
     const semantic = matches.filter(n => n.kind !== "import");
     if (semantic.length > 1) {
@@ -2439,7 +2498,10 @@ export function tracePaths(selector, {
                     ? new Set(["extends", "implements", "overrides"])
                     : path_kind === "flow"
                         ? new Set()
-                        : new Set(["calls", "ref_read", "ref_type", "imports", "reexports", "extends", "implements", "overrides"]);
+                        : new Set([
+                            "calls", "ref_read", "ref_type", "imports", "reexports", "extends", "implements", "overrides",
+                            "route_to_handler", "injects", "registers", "renders", "middleware_for",
+                        ]);
 
     const getNeighbors = (nodeId) => {
         const rows = [];
@@ -2798,7 +2860,7 @@ export function getModuleMetricsReport({ scopePath, sort, minCoupling, path } = 
 export function getArchitectureReport({ scopePath, limit = 15, path } = {}) {
     const store = resolveStore(path);
     if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
-    const { modules, hotspots, crossEdges } = store.architectureReportData(scopePath);
+    const { modules, hotspots, crossEdges, frameworkRows } = store.architectureReportData(scopePath);
     const stats = store.stats();
     return {
         query: { scopePath: scopePath || null, limit },
@@ -2816,6 +2878,7 @@ export function getArchitectureReport({ scopePath, limit = 15, path } = {}) {
                 callers: h.callers,
             })),
             cross_module_edges: crossEdges,
+            framework: frameworkRows,
             stats,
         },
         confidence: "exact",

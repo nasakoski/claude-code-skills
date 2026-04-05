@@ -35,7 +35,7 @@ Advanced / occasional:
 | `edit_file` | Revision-aware anchor edits (`set_line`, `replace_lines`, `insert_after`, `replace_between`) | Batched same-file edits + conservative auto-rebase |
 | `write_file` | Create new file or overwrite, auto-creates parent dirs | Path validation, no hash overhead |
 | `grep_search` | Search with ripgrep, 3 output modes, per-group checksums | Plain `files`/`count`, compact edit-ready `content` |
-| `outline` | AST-based structural overview with hash anchors via tree-sitter WASM. Supports code (15+ langs) and fence-aware markdown headings | 95% token reduction, direct edit anchors |
+| `outline` | AST-based structural overview with hash anchors via tree-sitter WASM. Supports JavaScript/TypeScript, Python, C#, PHP, and fence-aware markdown headings | 95% token reduction, direct edit anchors |
 | `verify` | Check if held checksums / revision are still current | Staleness check without full re-read |
 | `directory_tree` | Compact directory tree with root .gitignore support | Skips node_modules/.git, shows file sizes |
 | `get_file_info` | File metadata without reading content | Size, lines, mtime, type, binary detection |
@@ -229,13 +229,13 @@ Search file contents using ripgrep. Three output modes: `content` (canonical `se
 
 ### outline
 
-AST-based structural outline with hash anchors for direct `edit_file` usage. Supports code files (15+ languages) and fence-aware markdown heading navigation (`.md`/`.mdx`). Each entry includes a hash tag for immediate anchor use without intermediate `read_file`.
+AST-based structural outline with hash anchors for direct `edit_file` usage. Supports JavaScript/TypeScript, Python, C#, PHP, and fence-aware markdown heading navigation (`.md`/`.mdx`). Each entry includes a hash tag for immediate anchor use without intermediate `read_file`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `path` | string | yes | Source file path |
 
-Supported languages: JavaScript, TypeScript (JSX/TSX), Python, Go, Rust, Java, C, C++, C#, Ruby, PHP, Kotlin, Swift, Bash -- 15+ via tree-sitter WASM.
+Supported languages: JavaScript (`.js`, `.mjs`, `.cjs`, `.jsx`), TypeScript (`.ts`, `.tsx`), Python (`.py`), C# (`.cs`), and PHP (`.php`) via tree-sitter WASM.
 
 Not for `.json`, `.yaml`, `.txt` -- use `read_file` directly for those.
 
@@ -392,7 +392,7 @@ The edit is rejected with an error showing which lines changed since the last re
 <details>
 <summary><b>Is outline available for all file types?</b></summary>
 
-Outline works on code files (15+ languages via tree-sitter WASM) and markdown heading navigation (`.md`/`.mdx`, fenced code blocks ignored). For JSON, YAML, and text files use `read_file` directly. Each outline entry includes a hash anchor (`tag.line-range: symbol`) for direct use in `edit_file`.
+Outline works on JavaScript/TypeScript, Python, C#, PHP, and markdown heading navigation (`.md`/`.mdx`, fenced code blocks ignored). For JSON, YAML, and text files use `read_file` directly. Each outline entry includes a hash anchor (`tag.line-range: symbol`) for direct use in `edit_file`.
 
 </details>
 

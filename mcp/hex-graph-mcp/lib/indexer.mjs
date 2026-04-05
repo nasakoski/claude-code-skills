@@ -14,6 +14,7 @@ import { readFileSync, statSync, readdirSync, existsSync, mkdirSync } from "node
 import { resolve, extname, relative, join, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { getStore, CODEGRAPH_DIR } from "./store.mjs";
+import { runFrameworkOverlay } from "./framework.mjs";
 import { parseFile, languageFor, supportedExtensions } from "./parser.mjs";
 import { discoverWorkspace, persistWorkspace } from "./workspace.mjs";
 import { runPreciseOverlay } from "./precise/index.mjs";
@@ -160,6 +161,11 @@ export async function indexProject(projectPath, { languages } = {}) {
         languages: projectLanguages,
         sourceFiles: allSourceFiles.map(file => file.relPath),
     });
+    const framework = runFrameworkOverlay({
+        projectPath: absPath,
+        store,
+        sourceFiles: allSourceFiles.map(file => file.relPath),
+    });
 
     const elapsed = Date.now() - t0;
     const stats = store.stats();
@@ -170,6 +176,7 @@ export async function indexProject(projectPath, { languages } = {}) {
         `Parsed ${parsed} files (${filesToIndex.length - parsed} skipped, unchanged)`,
         `Built ${edgeCount} new call edges`,
         precise.precise_edges > 0 ? `Added ${precise.precise_edges} precise overlay edges` : null,
+        framework.edge_count > 0 ? `Added ${framework.edge_count} framework overlay edges` : null,
         ...(precise.providers || [])
             .filter(provider => provider.status && provider.status !== "available")
             .map(provider => provider.message)
@@ -224,6 +231,11 @@ export async function reindexFile(projectPath, filePath) {
         projectPath: absPath,
         store,
         languages: projectLanguages,
+        sourceFiles: allSourceFiles.map(file => file.relPath),
+    });
+    runFrameworkOverlay({
+        projectPath: absPath,
+        store,
         sourceFiles: allSourceFiles.map(file => file.relPath),
     });
 }

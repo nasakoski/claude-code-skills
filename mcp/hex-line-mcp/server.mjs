@@ -15,7 +15,6 @@ const version = typeof __HEX_VERSION__ !== "undefined" ? __HEX_VERSION__ // esli
 import { z } from "zod";
 import { createServerRuntime } from "@levnikolaevich/hex-common/runtime/mcp-bootstrap";
 import { flexBool, flexNum } from "@levnikolaevich/hex-common/runtime/schema";
-import { coerceParams } from "@levnikolaevich/hex-common/runtime/coerce";
 import { checkForUpdates } from "@levnikolaevich/hex-common/runtime/update-check";
 // LLM clients may send booleans as strings ("true"/"false").
 // z.coerce.boolean() is unsafe: Boolean("false") === true.
@@ -81,7 +80,7 @@ server.registerTool("read_file", {
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, paths: multi, offset, limit, ranges: rawRanges, include_graph, plain } = coerceParams(rawParams);
+    const { path: p, paths: multi, offset, limit, ranges: rawRanges, include_graph, plain } = rawParams ?? {};
     try {
         const ranges = parseReadRanges(rawRanges);
         if (multi && multi.length > 0 && !p) {
@@ -124,7 +123,7 @@ server.registerTool("edit_file", {
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
 }, async (rawParams) => {
-    const { path: p, edits: json, dry_run, restore_indent, base_revision, conflict_policy } = coerceParams(rawParams);
+    const { path: p, edits: json, dry_run, restore_indent, base_revision, conflict_policy } = rawParams ?? {};
     try {
         let parsed;
         try { parsed = typeof json === "string" ? JSON.parse(json) : json; }
@@ -160,7 +159,7 @@ server.registerTool("write_file", {
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, content } = coerceParams(rawParams);
+    const { path: p, content } = rawParams ?? {};
     try {
         const abs = validateWritePath(p);
         mkdirSync(dirname(abs), { recursive: true });
@@ -197,7 +196,7 @@ server.registerTool("grep_search", {
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
     const { pattern, path: p, glob, type, output, case_insensitive, smart_case, literal, multiline,
-            context, context_before, context_after, limit, total_limit, plain } = coerceParams(rawParams);
+            context, context_before, context_after, limit, total_limit, plain } = rawParams ?? {};
     try {
         const result = await grepSearch(pattern, {
             path: p, glob, type, output, caseInsensitive: case_insensitive, smartCase: smart_case,
@@ -217,13 +216,13 @@ server.registerTool("outline", {
     title: "File Outline",
     description:
         "AST-based structural outline with hash anchors for direct edit_file usage. " +
-        "Supports code files (JS/TS/Python/Go/Rust/Java/C/C++/C#/Ruby/PHP/Kotlin/Swift/Bash) and markdown headings (.md/.mdx, fence-aware).",
+        "Supports JavaScript/TypeScript, Python, C#, and PHP code files plus markdown headings (.md/.mdx, fence-aware).",
     inputSchema: z.object({
         path: z.string().describe("Source file path"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p } = coerceParams(rawParams);
+    const { path: p } = rawParams ?? {};
     try {
         const result = await fileOutline(p);
         return { content: [{ type: "text", text: result }] };
@@ -245,7 +244,7 @@ server.registerTool("verify", {
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, checksums, base_revision } = coerceParams(rawParams);
+    const { path: p, checksums, base_revision } = rawParams ?? {};
     try {
         if (!Array.isArray(checksums) || checksums.length === 0) {
             throw new Error("checksums must be a non-empty array of strings");
@@ -274,7 +273,7 @@ server.registerTool("directory_tree", {
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, max_depth, gitignore, format, pattern, type: entryType } = coerceParams(rawParams);
+    const { path: p, max_depth, gitignore, format, pattern, type: entryType } = rawParams ?? {};
     try {
         return { content: [{ type: "text", text: directoryTree(p, { max_depth, gitignore, format, pattern, type: entryType }) }] };
     } catch (e) {
@@ -295,7 +294,7 @@ server.registerTool("get_file_info", {
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p } = coerceParams(rawParams);
+    const { path: p } = rawParams ?? {};
     try {
         return { content: [{ type: "text", text: fileInfo(p) }] };
     } catch (e) {
@@ -316,7 +315,7 @@ server.registerTool("changes", {
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, compare_against } = coerceParams(rawParams);
+    const { path: p, compare_against } = rawParams ?? {};
     try {
         return { content: [{ type: "text", text: await fileChanges(p, compare_against) }] };
     } catch (e) {
@@ -341,7 +340,7 @@ server.registerTool("bulk_replace", {
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
 }, async (rawParams) => {
     try {
-        const params = coerceParams(rawParams);
+        const params = rawParams ?? {};
         const raw = params.replacements;
         let replacementsInput;
         try { replacementsInput = typeof raw === "string" ? JSON.parse(raw) : raw; }
