@@ -982,6 +982,66 @@ describe("grep_search output modes", () => {
         }
     });
 
+    it("grep_search applies a default total_limit unless explicitly disabled", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        const dir = makeTempRepo("hex-test-grep-cap-", Object.fromEntries(
+            Array.from({ length: 3 }, (_, fileIdx) => [
+                `src/file-${fileIdx + 1}.txt`,
+                Array.from({ length: 100 }, (_, lineIdx) => `MATCH ${fileIdx}-${lineIdx}`).join("\n") + "\n",
+            ]),
+        ));
+        try {
+            const capped = await grepSearch("MATCH", { path: dir, limit: 100 });
+            assert.ok(
+                capped.includes("Search stopped after 200 match event(s)"),
+                "default total_limit should cap broad searches",
+            );
+
+            const uncapped = await grepSearch("MATCH", { path: dir, limit: 100, totalLimit: 0 });
+            assert.ok(
+                !uncapped.includes("Search stopped after 200 match event(s)"),
+                "explicit totalLimit=0 disables the default cap",
+            );
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it("files/count modes use a wider default total_limit than content mode", async () => {
+        const { grepSearch } = await import("../lib/search.mjs");
+        const dir = makeTempRepo("hex-test-grep-list-cap-", Object.fromEntries(
+            Array.from({ length: 300 }, (_, fileIdx) => [
+                `src/file-${fileIdx + 1}.txt`,
+                "MATCH\n",
+            ]),
+        ));
+        try {
+            const files = await grepSearch("MATCH", { path: dir, output: "files" });
+            assert.ok(!files.includes("OUTPUT_CAPPED:"), "files mode should not hit the old 200-result default");
+            assert.equal(files.trim().split("\n").length, 300, "files mode should list all 300 matching files by default");
+
+            const counts = await grepSearch("MATCH", { path: dir, output: "count" });
+            assert.ok(!counts.includes("OUTPUT_CAPPED:"), "count mode should not hit the old 200-result default");
+            assert.equal(counts.trim().split("\n").length, 300, "count mode should list all 300 matching files by default");
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it("read_file accepts /tmp aliases on Windows for temp files", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const unique = `hex-test-temp-alias-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
+        const tmp = join(tmpdir(), unique);
+        fs.writeFileSync(tmp, "temp alias works\n");
+        try {
+            const alias = process.platform === "win32" ? `/tmp/${unique}` : tmp;
+            const result = readFile(alias);
+            assert.ok(result.includes("temp alias works"), "temp alias path should resolve to the same file");
+        } finally {
+            fs.rmSync(tmp, { force: true });
+        }
+    });
+
     it("read checksum round-trips through verify with canonical report", async () => {
         const { readFile } = await import("../lib/read.mjs");
         const { verifyChecksums } = await import("../lib/verify.mjs");
@@ -1101,6 +1161,7 @@ describe("edit_file replace removed", () => {
                     name: "edit_file",
                     arguments: {
                         path: tmp,
+                        allow_external: true,
                         edits: JSON.stringify([{
                             type: "replace_lines",
                             start: 1,
@@ -1696,6 +1757,7 @@ describe("protocol: edit_file output", () => {
                     name: "edit_file",
                     arguments: {
                         path: tmp,
+                        allow_external: true,
                         edits: JSON.stringify([{
                             replace_lines: {
                                 start_anchor: startAnchor,
@@ -1713,6 +1775,93 @@ describe("protocol: edit_file output", () => {
             });
         } finally {
             if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+        }
+    });
+
+    it("edit_file blocks outside-project edits by default and allows explicit override", async () => {
+        const tmp = join(tmpdir(), `hex-test-mcp-edit-external-${Date.now()}-${Math.random().toString(16).slice(2)}.js`);
+        fs.writeFileSync(tmp, "alpha\nbeta\n");
+        try {
+            await withMcpClient(async (client) => {
+                const readResult = await client.callTool({
+                    name: "read_file",
+                    arguments: { path: tmp, ranges: ["1-2"] },
+                });
+                const readText = readResult.content[0].text;
+                const anchor = readText.match(/([a-z2-7]{2}\.2)\tbeta/)?.[1];
+                assert.ok(anchor, "read_file still works for external temp paths");
+
+                const blocked = await client.callTool({
+                    name: "edit_file",
+                    arguments: {
+                        path: tmp,
+                        edits: JSON.stringify([{ set_line: { anchor, new_text: "BETA" } }]),
+                    },
+                });
+                assert.equal(blocked.isError, true, "external edit should be blocked by default");
+                assert.match(blocked.content[0].text, /PATH_OUTSIDE_PROJECT/);
+                assert.match(blocked.content[0].text, /allow_external=true/);
+
+                const allowed = await client.callTool({
+                    name: "edit_file",
+                    arguments: {
+                        path: tmp,
+                        edits: JSON.stringify([{ set_line: { anchor, new_text: "BETA" } }]),
+                        allow_external: true,
+                    },
+                });
+                assert.notEqual(allowed.isError, true, "explicit override should allow external edit");
+                assert.ok(fs.readFileSync(tmp, "utf8").includes("BETA"), "external edit applies once override is set");
+            });
+        } finally {
+            if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+        }
+    });
+
+    it("write_file and bulk_replace require allow_external for external targets", async () => {
+        const dir = join(tmpdir(), `hex-test-mcp-write-external-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+        const filePath = join(dir, "note.txt");
+        fs.mkdirSync(dir, { recursive: true });
+        try {
+            await withMcpClient(async (client) => {
+                const blockedWrite = await client.callTool({
+                    name: "write_file",
+                    arguments: { path: filePath, content: "alpha\n" },
+                });
+                assert.equal(blockedWrite.isError, true, "external write should be blocked by default");
+                assert.match(blockedWrite.content[0].text, /allow_external=true/);
+
+                const allowedWrite = await client.callTool({
+                    name: "write_file",
+                    arguments: { path: filePath, content: "alpha\n", allow_external: true },
+                });
+                assert.notEqual(allowedWrite.isError, true, "explicit override should allow external write");
+
+                const blockedBulk = await client.callTool({
+                    name: "bulk_replace",
+                    arguments: {
+                        path: dir,
+                        replacements: JSON.stringify([{ old: "alpha", new: "beta" }]),
+                        glob: "*.txt",
+                    },
+                });
+                assert.equal(blockedBulk.isError, true, "external bulk replace should be blocked by default");
+                assert.match(blockedBulk.content[0].text, /allow_external=true/);
+
+                const allowedBulk = await client.callTool({
+                    name: "bulk_replace",
+                    arguments: {
+                        path: dir,
+                        replacements: JSON.stringify([{ old: "alpha", new: "beta" }]),
+                        glob: "*.txt",
+                        allow_external: true,
+                    },
+                });
+                assert.notEqual(allowedBulk.isError, true, "explicit override should allow external bulk replace");
+                assert.equal(fs.readFileSync(filePath, "utf8"), "beta\n");
+            });
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
         }
     });
 

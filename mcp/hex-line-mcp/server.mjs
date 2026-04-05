@@ -28,7 +28,7 @@ import { editFile } from "./lib/edit.mjs";
 import { grepSearch } from "./lib/search.mjs";
 import { fileOutline } from "./lib/outline.mjs";
 import { verifyChecksums } from "./lib/verify.mjs";
-import { validateWritePath } from "./lib/security.mjs";
+import { assertProjectScopedPath, validateWritePath } from "./lib/security.mjs";
 import { inspectPath } from "./lib/inspect-path.mjs";
 import { autoSync } from "./lib/setup.mjs";
 import { fileChanges } from "./lib/changes.mjs";
@@ -118,11 +118,13 @@ server.registerTool("edit_file", {
         restore_indent: flexBool().describe("Auto-fix indentation to match anchor (default: false)"),
         base_revision: z.string().optional().describe("Prior revision from read_file/edit_file. Enables conservative auto-rebase for same-file follow-up edits."),
         conflict_policy: z.enum(["strict", "conservative"]).optional().describe('Conflict handling (default: "conservative"). "conservative" returns structured CONFLICT output with recovery_ranges, retry_edit/retry_edits, suggested_read_call, and retry_plan when available.'),
+        allow_external: flexBool().describe("Allow editing a path outside the current project root. Use only when you intentionally target a temp or external file."),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
 }, async (rawParams) => {
-    const { path: p, edits: json, dry_run, restore_indent, base_revision, conflict_policy } = rawParams ?? {};
+    const { path: p, edits: json, dry_run, restore_indent, base_revision, conflict_policy, allow_external } = rawParams ?? {};
     try {
+        assertProjectScopedPath(p, { allowExternal: !!allow_external });
         let parsed;
         try { parsed = typeof json === "string" ? JSON.parse(json) : json; }
         catch { throw new Error('edits: invalid JSON. Expected: [{"set_line":{"anchor":"xx.N","new_text":"..."}}]'); }
@@ -154,11 +156,13 @@ server.registerTool("write_file", {
     inputSchema: z.object({
         path: z.string().describe("File path"),
         content: z.string().describe("File content"),
+        allow_external: flexBool().describe("Allow writing a path outside the current project root. Use only when you intentionally target a temp or external file."),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, content } = rawParams ?? {};
+    const { path: p, content, allow_external } = rawParams ?? {};
     try {
+        assertProjectScopedPath(p, { allowExternal: !!allow_external });
         const abs = validateWritePath(p);
         mkdirSync(dirname(abs), { recursive: true });
         writeFileSync(abs, content, "utf-8");
@@ -188,7 +192,7 @@ server.registerTool("grep_search", {
         context_before: flexNum().describe("Context lines BEFORE match (-B)"),
         context_after: flexNum().describe("Context lines AFTER match (-A)"),
         limit: flexNum().describe("Max matches per file (default: 100)"),
-        total_limit: flexNum().describe("Total match events across all files; multiline matches count as 1 (0 = unlimited)"),
+        total_limit: flexNum().describe("Total match events across all files; multiline matches count as 1 (default: 200 for content, 1000 for files/count, 0 = unlimited)"),
         plain: flexBool().describe("Omit hash tags, return file:line:content"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -312,11 +316,13 @@ server.registerTool("bulk_replace", {
         dry_run: flexBool().describe("Preview without writing (default: false)"),
         max_files: flexNum().describe("Max files to process (default: 100)"),
         format: z.enum(["compact", "full"]).optional().describe('"compact" (default) = summary only, "full" = include capped diffs'),
+        allow_external: flexBool().describe("Allow a replacement root outside the current project root. Use only when you intentionally target a temp or external directory."),
     }),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
 }, async (rawParams) => {
     try {
         const params = rawParams ?? {};
+        assertProjectScopedPath(params.path, { allowExternal: !!params.allow_external });
         const raw = params.replacements;
         let replacementsInput;
         try { replacementsInput = typeof raw === "string" ? JSON.parse(raw) : raw; }

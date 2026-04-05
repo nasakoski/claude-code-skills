@@ -9,6 +9,8 @@ Hash-verified file editing MCP + token efficiency hook for AI coding agents.
 
 Every line carries an FNV-1a content hash. Every edit must present those hashes back -- proving the agent is editing what it thinks it's editing. No stale context, no silent corruption. Hashing works on normalized logical text; writes preserve the file's existing line endings and trailing-newline shape.
 
+By default, mutating tools stay inside the current project root. If you intentionally need to edit a temp or external path, pass `allow_external: true` on `edit_file`, `write_file`, or `bulk_replace`.
+
 ## Features
 
 ### 9 MCP Tools
@@ -182,6 +184,7 @@ Edit using revision-aware hash-verified anchors. Prefer one batched call per fil
 | `restore_indent` | boolean | no | Auto-fix indentation to match anchor context (default: false) |
 | `base_revision` | string | no | Prior revision from `read_file` / `edit_file` for same-file follow-up edits |
 | `conflict_policy` | enum | no | `conservative` or `strict` (default: `conservative`) |
+| `allow_external` | boolean | no | Allow editing a path outside the current project root |
 
 Edit operations (JSON array):
 
@@ -227,6 +230,7 @@ Create a new file or overwrite an existing one. Creates parent directories autom
 |-----------|------|----------|-------------|
 | `path` | string | yes | File path |
 | `content` | string | yes | File content |
+| `allow_external` | boolean | no | Allow writing a path outside the current project root |
 
 ### grep_search
 
@@ -247,7 +251,7 @@ Search file contents using ripgrep. Three output modes: `content` (canonical `se
 | `context_before` | number | no | Context lines BEFORE match (`-B`) |
 | `context_after` | number | no | Context lines AFTER match (`-A`) |
 | `limit` | number | no | Max matches per file (default: 100) |
-| `total_limit` | number | no | Total match events across all files; multiline matches count as 1 (0 = unlimited) |
+| `total_limit` | number | no | Total match events across all files; multiline matches count as 1 (default: 200 for `content`, 1000 for `files`/`count`, 0 = unlimited) |
 | `plain` | boolean | no | Omit hash tags inside block entries, return `lineNum\|content` |
 
 `content` mode returns canonical `search_hunk` blocks with per-hunk checksums enabling direct `replace_lines` from grep results without intermediate `read_file`.

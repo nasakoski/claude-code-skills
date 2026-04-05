@@ -407,7 +407,7 @@ function handleSessionStart() {
             "    <path name='multi-file'>bulk_replace(path=&quot;&lt;project root&gt;&quot;) for text rename/refactor across files</path>\n" +
             "  </editing>\n" +
             "  <tips>\n" +
-            "    <tip>Auto-fill path from the active file or project root. Do not leave repo scope implicit.</tip>\n" +
+            "    <tip>Auto-fill path from the active file or project root. Read-only tools may inspect explicit temp-file paths outside the repo. Mutating tools stay project-scoped unless you intentionally pass allow_external=true.</tip>\n" +
             "    <tip>Never invent range_checksum. Copy it from fresh read_file or grep_search blocks.</tip>\n" +
             "    <tip>Prefer set_line or insert_after for small local changes and replace_between for larger bounded rewrites.</tip>\n" +
             "    <tip>Carry revision from read_file into base_revision on edit_file.</tip>\n" +

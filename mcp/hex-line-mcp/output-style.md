@@ -35,7 +35,9 @@ Prefer `hex-line` for text files you may inspect or modify. Hash-annotated reads
 
 - Auto-fill `path` instead of leaving scope implicit.
 - For file tools (`read_file`, `edit_file`, `outline`, `changes` on one file), use the target file path.
+- Read-only file tools may target explicit temp-file paths outside the repo when you intentionally inspect a scratch file.
 - For repo-wide tools (`bulk_replace`, directory `inspect_path`, broad `grep_search`), use the resolved project root or intended directory scope.
+- Mutating tools stay inside the current project root by default. Add `allow_external=true` only when you intentionally edit a temp or external path.
 - Treat missing or ambiguous scope as an error to fix, not as a reason to guess across repositories.
 
 ## Edit Discipline
