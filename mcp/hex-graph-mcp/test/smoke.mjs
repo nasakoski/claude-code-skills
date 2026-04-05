@@ -2248,6 +2248,14 @@ describe("WASM dependency contract", () => {
         assert.deepEqual(missing, [],
             `dist/queries/ missing: ${missing.join(", ")} — build.mjs must copy lib/queries/ to dist/queries/`);
     });
+
+    it("dist/server.mjs keeps package metadata lookup inside the published package root", { skip: !fs.existsSync(resolve(__dirname, "../dist/server.mjs")) }, () => {
+        const distServer = fs.readFileSync(resolve(__dirname, "../dist/server.mjs"), "utf8");
+        assert.ok(!distServer.includes('require2("../../package.json")'),
+            "dist/server.mjs contains a broken ../../package.json lookup that escapes the published package root");
+        assert.ok(distServer.includes('require2("../package.json")') || distServer.includes('createRequire(import.meta.url)("../package.json")'),
+            "dist/server.mjs must keep package metadata lookup anchored at the package root");
+    });
 });
 
 // ==================== store persistence after restart ====================

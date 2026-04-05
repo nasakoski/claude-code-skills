@@ -8,7 +8,7 @@ import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { indexProject } from "../lib/indexer.mjs";
 import { exportScip } from "../lib/scip/export.mjs";
 import { importScipOverlay } from "../lib/scip/import.mjs";
-import { buildExternalExportPlan, exportExternalScip } from "../lib/scip/external.mjs";
+import { buildExternalExportPlan, exportExternalScip, exportToolInfo } from "../lib/scip/external.mjs";
 import {
     DocumentSchema,
     IndexSchema,
@@ -286,6 +286,14 @@ function csharpArtifactDocuments() {
 }
 
 describe("SCIP interop", () => {
+    it("reports MCP package metadata from the package root", () => {
+        const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+        assert.deepEqual(exportToolInfo(), {
+            name: "hex-graph-mcp",
+            version: packageJson.version,
+        });
+    });
+
     it("exports a valid binary SCIP artifact for indexed TypeScript projects", async () => {
         const dir = makeTempProject();
         try {

@@ -232,7 +232,7 @@ Inline `quality` metadata is currently surfaced by:
 ### Generated Snapshot
 
 - MCP tools registered in server contract: `14`
-- Semantic suite: `84/84` passing
+- Semantic suite: `86/86` passing
 - Corpora: `1` curated, `1` pinned external
 - Lanes: parser-first `green`, precise overlay `provider_conditional`
 

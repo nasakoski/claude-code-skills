@@ -1,15 +1,14 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { basename, dirname, extname, join, resolve } from "node:path";
-import { createRequire } from "node:module";
 import { fromBinary } from "@bufbuild/protobuf";
 
 import { IndexSchema } from "./vendor/scip_pb.js";
+import { getPackageInfo } from "../package-info.mjs";
 import { normalizePath } from "./project.mjs";
 import { normalizeScipLanguage } from "./languages.mjs";
 
-const require = createRequire(import.meta.url);
-const packageJson = require("../../package.json");
+const packageJson = getPackageInfo();
 
 function runCommand(command, args, { cwd, env } = {}) {
     const extension = extname(command).toLowerCase();
