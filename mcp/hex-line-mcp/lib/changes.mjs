@@ -3,8 +3,41 @@
  */
 
 import { statSync } from "node:fs";
+import { join } from "node:path";
 import { validatePath, normalizePath } from "./security.mjs";
 import { semanticGitDiff } from "@levnikolaevich/hex-common/git/semantic-diff";
+import { getGraphDB, getRelativePath, semanticImpact } from "./graph-enrich.mjs";
+
+function exportedLooking(symbol) {
+    return /^\s*(export|public)\b/.test(symbol.text || "");
+}
+
+function summarizeGraphRisk(db, relFile, file) {
+    if (!db || !relFile || !file.semantic_supported) return [];
+    const lines = [];
+    const seen = new Set();
+    for (const symbol of [...file.added_symbols, ...file.modified_symbols].slice(0, 6)) {
+        const impacts = semanticImpact(db, relFile, symbol.start, symbol.end);
+        for (const impact of impacts) {
+            const riskParts = [];
+            if (impact.counts.publicApi > 0) riskParts.push("public API");
+            if (impact.counts.frameworkEntrypoints > 0) riskParts.push(`${impact.counts.frameworkEntrypoints} framework entrypoint`);
+            if (impact.counts.externalCallers > 0) riskParts.push(`${impact.counts.externalCallers} external callers`);
+            if (impact.counts.downstreamReturnFlow > 0) riskParts.push(`${impact.counts.downstreamReturnFlow} return-flow`);
+            if (impact.counts.downstreamPropertyFlow > 0) riskParts.push(`${impact.counts.downstreamPropertyFlow} property-flow`);
+            if (impact.counts.sinkReach > 0) riskParts.push(`${impact.counts.sinkReach} terminal flow`);
+            if (impact.counts.cloneSiblings > 0) riskParts.push(`${impact.counts.cloneSiblings} clone siblings`);
+            if (impact.counts.sameNameSymbols > 0) riskParts.push(`${impact.counts.sameNameSymbols} same-name siblings`);
+            if (riskParts.length === 0) continue;
+            const key = `${impact.symbol}|${riskParts.join(",")}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            lines.push(`- ${impact.symbol}: ${riskParts.join(", ")}`);
+            if (lines.length >= 6) return lines;
+        }
+    }
+    return lines;
+}
 
 /**
  * Compare file against git ref, returning semantic symbol diff.
@@ -19,6 +52,7 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
 
     // Directory: return git diff --stat (compact file list, no content reads)
     if (statSync(real).isDirectory()) {
+        const db = getGraphDB(join(real, "__hex-line_probe__"));
         const diff = await semanticGitDiff(real, { baseRef: compareAgainst });
         if (diff.summary.changed_file_count === 0) {
             return `No changes in ${filePath} vs ${compareAgainst}`;
@@ -31,12 +65,18 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
             if (file.modified_symbols.length) counts.push(`${file.modified_symbols.length} modified`);
             if (!file.semantic_supported) counts.push("unsupported semantic diff");
             sections.push(`- ${file.path}${file.old_path ? ` (from ${file.old_path})` : ""}: ${counts.join(", ") || "no symbol changes"}`);
+            const riskLines = summarizeGraphRisk(db, file.path.replace(/\\/g, "/"), file);
+            for (const line of riskLines.slice(0, 2)) sections.push(`  ${line}`);
+            for (const symbol of file.removed_symbols.slice(0, 2)) {
+                if (exportedLooking(symbol)) sections.push(`  - removed_api_warning: ${symbol.text}`);
+            }
         }
         sections.push("");
         sections.push("Use changes on a specific file for symbol-level diff.");
         return sections.join("\n");
     }
 
+    const db = getGraphDB(real);
     const diff = await semanticGitDiff(real, { baseRef: compareAgainst });
     const file = diff.changed_files[0];
     if (!file) {
@@ -72,6 +112,14 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
 
     const summary = `${file.added_symbols.length} added, ${file.removed_symbols.length} removed, ${file.modified_symbols.length} modified`;
     parts.push(`\nSummary: ${summary}`);
+    const relFile = getRelativePath(real) || file.path?.replace(/\\/g, "/");
+    const riskLines = summarizeGraphRisk(db, relFile, file);
+    const removedApiWarnings = file.removed_symbols.filter(exportedLooking).slice(0, 4);
+    if (riskLines.length || removedApiWarnings.length) {
+        parts.push("\nSemantic review:");
+        for (const line of riskLines) parts.push(`  ${line}`);
+        for (const symbol of removedApiWarnings) parts.push(`  - removed_api_warning: ${symbol.text}`);
+    }
 
     return parts.join("\n");
 }

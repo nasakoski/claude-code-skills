@@ -11,7 +11,7 @@ Every line carries an FNV-1a content hash. Every edit must present those hashes 
 
 ## Features
 
-### 10 MCP Tools
+### 9 MCP Tools
 
 Core day-to-day tools:
 
@@ -25,20 +25,18 @@ Core day-to-day tools:
 Advanced / occasional:
 
 - `write_file`
-- `directory_tree`
-- `get_file_info`
+- `inspect_path`
 - `changes`
 
 | Tool | Description | Key Feature |
 |------|-------------|-------------|
-| `read_file` | Read file with hash-annotated lines, checksums, and revision | Partial reads via `offset`/`limit` or `ranges`, compact output by default |
+| `read_file` | Read file with hash-annotated lines, checksums, revision, and automatic graph hints when available | Partial reads via `offset`/`limit` or `ranges`, compact output by default |
 | `edit_file` | Revision-aware anchor edits (`set_line`, `replace_lines`, `insert_after`, `replace_between`) | Batched same-file edits + conservative auto-rebase |
 | `write_file` | Create new file or overwrite, auto-creates parent dirs | Path validation, no hash overhead |
 | `grep_search` | Search with ripgrep, 3 output modes, per-group checksums | Plain `files`/`count`, compact edit-ready `content` |
 | `outline` | AST-based structural overview with hash anchors via tree-sitter WASM. Supports JavaScript/TypeScript, Python, C#, PHP, and fence-aware markdown headings | 95% token reduction, direct edit anchors |
 | `verify` | Check if held checksums / revision are still current | Staleness check without full re-read |
-| `directory_tree` | Compact directory tree with root .gitignore support | Skips node_modules/.git, shows file sizes |
-| `get_file_info` | File metadata without reading content | Size, lines, mtime, type, binary detection |
+| `inspect_path` | Unified file-or-directory inspection | File metadata for files, tree or pattern search for directories |
 | `changes` | Compare file against git ref, shows added/removed/modified symbols | AST-level semantic diff |
 | `bulk_replace` | Search-and-replace across multiple files by glob | Compact summary (default) or capped diffs via `format`, dry_run, max_files |
 
@@ -93,11 +91,12 @@ Comparative built-in vs hex-line benchmarks are maintained outside this package.
 
 ### Optional Graph Enrichment
 
-If a project already has `.hex-skills/codegraph/index.db`, `hex-line` can add lightweight graph hints to `read_file`, `outline`, `grep_search`, and `edit_file`.
+If a project already has `.hex-skills/codegraph/index.db`, `hex-line` automatically adds lightweight graph hints to `read_file`, `outline`, `grep_search`, `edit_file`, and `changes`.
 
-- Graph enrichment is optional. If `.hex-skills/codegraph/index.db` is missing, `hex-line` falls back to standard behavior silently.
+- Graph enrichment is optional. If `.hex-skills/codegraph/index.db` is missing, stale, or unreadable, `hex-line` falls back to standard behavior silently.
 - `better-sqlite3` is optional. If it is unavailable, `hex-line` still works without graph hints.
-- `edit_file` reports **Semantic impact** using explainable graph facts: external callers, downstream return/property flow, and clone peers when present.
+- `read_file`, `outline`, and `grep_search` stay compact: they only surface high-signal local facts such as `api`, framework entrypoints, callers, flow, and clone hints.
+- `edit_file` and `changes` surface the deeper review layer: external callers, downstream return/property flow, clone peers, public API risk, framework entrypoint risk, and same-name sibling warnings when present.
 
 `hex-line` does not read `hex-graph` internals directly anymore. The integration uses a small read-only contract exposed by `hex-graph-mcp`:
 
@@ -133,16 +132,15 @@ Use `bulk_replace` for text rename patterns across one or more files. Returns co
 
 ### read_file
 
-Read a file as canonical edit-ready blocks. Each valid range becomes a `read_range` block with absolute span, line entries, and a checksum covering exactly the emitted lines. Invalid ranges become explicit diagnostic blocks. Supports batch reads, multi-range reads, and directory listing.
+Read a file as canonical edit-ready blocks. Each valid range becomes a `read_range` block with absolute span, line entries, and a checksum covering exactly the emitted lines. Invalid ranges become explicit diagnostic blocks. Supports batch reads and multi-range reads. Directories go through `inspect_path`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | yes | File or directory path |
+| `path` | string | yes | File path |
 | `paths` | string[] | no | Array of file paths to read (batch mode) |
 | `offset` | number | no | Start line, 1-indexed (default: 1) |
 | `limit` | number | no | Max lines to return (default: 2000, 0 = all) |
 | `ranges` | array | no | Explicit line ranges, e.g. `[{ "start": 10, "end": 30 }]` |
-| `include_graph` | boolean | no | Opt in to graph annotations when the graph index exists |
 | `plain` | boolean | no | Omit hashes, output `lineNum\|content` instead |
 
 Default output is compact but block-structured:
@@ -262,30 +260,22 @@ changed_ranges: 10-12(replace)
 STALE 10-12 checksum: 10-12:oldc0de0 current=10-12:newc0de0
 ```
 
-### directory_tree
+### inspect_path
 
-Compact directory tree with root .gitignore support (path-based rules, negation, dir-only). Nested .gitignore files are not loaded.
+Inspect a file or directory path without guessing which low-level tool to call first.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | string | yes | Directory path |
+| `path` | string | yes | File or directory path |
 | `pattern` | string | no | Glob filter on names (e.g. `"*-mcp"`, `"*.mjs"`). Returns flat match list instead of tree |
 | `type` | string | no | `"file"`, `"dir"`, or `"all"` (default). Like `find -type f/d` |
 | `max_depth` | number | no | Max recursion depth (default: 3, or 20 in pattern mode) |
 | `gitignore` | boolean | no | Respect root .gitignore patterns (default: true). Nested .gitignore not supported |
-| `format` | string | no | `"compact"` = names only, no sizes, depth 1. `"full"` = default with sizes |
+| `format` | string | no | `"compact"` = shorter path view. `"full"` = include sizes / metadata where available |
 
-Skips `node_modules`, `.git`, `dist`, `build`, `__pycache__`, `.next`, `coverage` by default.
-
-### get_file_info
-
-File metadata without reading content.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `path` | string | yes | File path |
-
-Returns: size, line count, modification time (absolute + relative), file type, binary detection.
+- For regular files it returns compact metadata: size, line count when cheap, modification time, type, and binary flag.
+- For directories it returns a gitignore-aware tree.
+- With `pattern`, it switches to flat match mode and works as the preferred replacement for `find` / recursive `ls`.
 
 ## Hook
 
@@ -324,11 +314,10 @@ Injects a short operational workflow into agent context at session start: no `To
 
 ```
 hex-line-mcp/
-  server.mjs          MCP server (stdio transport, 11 tools)
+  server.mjs          MCP server (stdio transport, 9 tools)
   hook.mjs            Unified hook (PreToolUse + PostToolUse + SessionStart)
   package.json
   lib/
-    hash.mjs          FNV-1a hashing, 2-char tags, range checksums
     read.mjs          File reading with hash annotation
     edit.mjs          Anchor-based edits, diff output
     search.mjs        ripgrep wrapper with hash-annotated results
@@ -336,13 +325,15 @@ hex-line-mcp/
     verify.mjs        Range checksum verification
     info.mjs          File metadata (size, lines, mtime, type)
     tree.mjs          Directory tree with .gitignore support
+    inspect-path.mjs  Unified file/directory inspection
     changes.mjs       Semantic git diff via AST
     bulk-replace.mjs  Multi-file search-and-replace
     setup.mjs         Claude hook installation + output style setup
     format.mjs        Output formatting utilities
-    coerce.mjs        Parameter pass-through (identity)
     security.mjs      Path validation, binary detection, size limits
-    normalize.mjs     Output normalization, deduplication, truncation
+    @levnikolaevich/hex-common/
+      text-protocol/hash.mjs   Shared FNV-1a hashing and checksum protocol
+      output/normalize.mjs     Shared output normalization helpers
 ```
 
 ### Hash Format

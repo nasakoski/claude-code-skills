@@ -2,7 +2,7 @@
 /**
  * hex-line-mcp — MCP server for hash-verified file operations.
  *
- * 10 tools: read_file, edit_file, write_file, grep_search, outline, verify, directory_tree, get_file_info, changes, bulk_replace
+ * 9 tools: inspect_path, read_file, edit_file, write_file, grep_search, outline, verify, changes, bulk_replace
  * FNV-1a 2-char tags + range checksums
  * Security: root policy, path validation, binary/size rejection
  * Transport: stdio
@@ -29,8 +29,7 @@ import { grepSearch } from "./lib/search.mjs";
 import { fileOutline } from "./lib/outline.mjs";
 import { verifyChecksums } from "./lib/verify.mjs";
 import { validateWritePath } from "./lib/security.mjs";
-import { directoryTree } from "./lib/tree.mjs";
-import { fileInfo } from "./lib/info.mjs";
+import { inspectPath } from "./lib/inspect-path.mjs";
 import { autoSync } from "./lib/setup.mjs";
 import { fileChanges } from "./lib/changes.mjs";
 import { bulkReplace } from "./lib/bulk-replace.mjs";
@@ -68,26 +67,25 @@ function parseReadRanges(rawRanges) {
 
 server.registerTool("read_file", {
     title: "Read File",
-    description: "Read file with hash-annotated lines, checksums, and revision metadata. Default: edit-ready output. Use plain:true for non-edit workflows.",
+    description: "Read file with hash-annotated lines, checksums, revision metadata, and automatic graph hints when available. Default: edit-ready output. Use plain:true for non-edit workflows.",
     inputSchema: z.object({
-        path: z.string().optional().describe("File or directory path"),
+        path: z.string().optional().describe("File path"),
         paths: z.array(z.string()).optional().describe("Array of file paths to read (batch mode)"),
         offset: flexNum().describe("Start line (1-indexed, default: 1)"),
         limit: flexNum().describe("Max lines (default: 2000, 0 = all)"),
         ranges: z.union([z.string(), z.array(readRangeSchema)]).optional().describe('Line ranges, e.g. ["10-25", {"start":40,"end":55}]'),
-        include_graph: flexBool().describe("Include graph annotations"),
         plain: flexBool().describe("Omit hashes (lineNum|content)"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
-    const { path: p, paths: multi, offset, limit, ranges: rawRanges, include_graph, plain } = rawParams ?? {};
+    const { path: p, paths: multi, offset, limit, ranges: rawRanges, plain } = rawParams ?? {};
     try {
         const ranges = parseReadRanges(rawRanges);
         if (multi && multi.length > 0 && !p) {
             const results = [];
             for (const fp of multi) {
                 try {
-                    results.push(readFile(fp, { offset, limit, ranges, includeGraph: include_graph, plain }));
+                    results.push(readFile(fp, { offset, limit, ranges, plain }));
                 } catch (e) {
                     results.push(`File: ${fp}\n\nERROR: ${e.message}`);
                 }
@@ -95,7 +93,7 @@ server.registerTool("read_file", {
             return { content: [{ type: "text", text: results.join("\n\n---\n\n") }] };
         }
         if (!p) throw new Error("Either 'path' or 'paths' is required");
-        return { content: [{ type: "text", text: readFile(p, { offset, limit, ranges, includeGraph: include_graph, plain }) }] };
+        return { content: [{ type: "text", text: readFile(p, { offset, limit, ranges, plain }) }] };
     } catch (e) {
         return { content: [{ type: "text", text: e.message }], isError: true };
     }
@@ -256,47 +254,25 @@ server.registerTool("verify", {
 });
 
 
-// ==================== directory_tree ====================
+// ==================== inspect_path ====================
 
-server.registerTool("directory_tree", {
-    title: "Directory Tree",
+server.registerTool("inspect_path", {
+    title: "Inspect Path",
     description:
-        "Gitignore-aware directory tree. Use pattern glob to find files/dirs by name instead of Bash find/ls. " +
-        "Skips node_modules, .git, dist.",
+        "Inspect a file or directory path. Files return compact metadata; directories return a gitignore-aware tree or pattern matches.",
     inputSchema: z.object({
-        path: z.string().describe("Directory path"),
+        path: z.string().describe("File or directory path"),
         pattern: z.string().optional().describe('Glob filter on names (e.g. "*-mcp", "*.mjs"). Returns flat match list instead of tree'),
         type: z.enum(["file", "dir", "all"]).optional().describe('"file", "dir", or "all" (default). Like find -type f/d'),
         max_depth: flexNum().describe("Max recursion depth (default: 3, or 20 in pattern mode)"),
         gitignore: flexBool().describe("Respect root .gitignore patterns (default: true). Nested .gitignore not supported"),
-        format: z.enum(["compact", "full"]).optional().describe('"compact" = names only, no sizes, depth 1. "full" = default with sizes'),
+        format: z.enum(["compact", "full"]).optional().describe('"compact" = shorter path view, "full" = include sizes/metadata where available'),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
 }, async (rawParams) => {
     const { path: p, max_depth, gitignore, format, pattern, type: entryType } = rawParams ?? {};
     try {
-        return { content: [{ type: "text", text: directoryTree(p, { max_depth, gitignore, format, pattern, type: entryType }) }] };
-    } catch (e) {
-        return { content: [{ type: "text", text: e.message }], isError: true };
-    }
-});
-
-
-// ==================== get_file_info ====================
-
-server.registerTool("get_file_info", {
-    title: "File Info",
-    description:
-        "File metadata without reading content: size, line count, mtime, binary detection. " +
-        "Use before read_file on unknown files to decide offset/limit strategy.",
-    inputSchema: z.object({
-        path: z.string().describe("File path"),
-    }),
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
-}, async (rawParams) => {
-    const { path: p } = rawParams ?? {};
-    try {
-        return { content: [{ type: "text", text: fileInfo(p) }] };
+        return { content: [{ type: "text", text: inspectPath(p, { max_depth, gitignore, format, pattern, type: entryType }) }] };
     } catch (e) {
         return { content: [{ type: "text", text: e.message }], isError: true };
     }
@@ -308,7 +284,7 @@ server.registerTool("get_file_info", {
 server.registerTool("changes", {
     title: "Semantic Diff",
     description:
-        "Semantic diff against git ref (default: HEAD). Shows added/removed/modified symbols. Use to review changes before commit.",
+        "Semantic diff against git ref (default: HEAD). Shows added/removed/modified symbols and graph-backed semantic review hints when available.",
     inputSchema: z.object({
         path: z.string().describe("File or directory path"),
         compare_against: z.string().optional().describe('Git ref to compare against (default: "HEAD")'),

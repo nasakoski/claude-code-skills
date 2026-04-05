@@ -82,7 +82,7 @@ Worker summary contract:
 4) **Index codebase graph (if available):** IF `hex-graph` MCP server is available:
    - `index_project(path=codebase_root)` — builds/refreshes code graph for workers
    - Add `graph_indexed: true` to coordinator context for ln-511
-   - Workers use graph tools (find_clones, find_hotspots, etc.) when graph_indexed=true
+   - Workers use graph tools (`audit_workspace`, `analyze_architecture`, `find_references`, `trace_paths`) when graph_indexed=true
 
 **Fast-track mode:** When invoked with `--fast-track` flag (readiness 10/10), run Phase 2 with `--skip-mcp-ref` (metrics + static only, no MCP Ref), skip Phase 3 (ln-512), run Phase 4 with **1 agent minimum** (reduced from 2). Run Phase 5 (criteria), Phase 6 (linters), Phase 7 (ln-513), Phase 8 (ln-514).
 

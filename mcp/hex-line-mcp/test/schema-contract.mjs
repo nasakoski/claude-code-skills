@@ -34,11 +34,13 @@ describe("schema descriptions", () => {
     it("listTools preserves read_file property descriptions under Zod 4", async () => {
         await withMcpClient(async (client) => {
             const result = await client.listTools();
+            assert.equal(result.tools.length, 9, "hex-line exposes the compact 9-tool surface");
+            toolByName(result.tools, "inspect_path");
             const readFile = toolByName(result.tools, "read_file");
             const props = readFile.inputSchema.properties || {};
-            assert.equal(props.path?.description, "File or directory path");
+            assert.equal(props.path?.description, "File path");
             assert.equal(props.offset?.description, "Start line (1-indexed, default: 1)");
-            assert.equal(props.include_graph?.description, "Include graph annotations");
+            assert.equal(props.include_graph, undefined);
         });
     });
 });

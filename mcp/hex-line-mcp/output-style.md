@@ -15,7 +15,7 @@ keep-coding-instructions: true
 | Write | `mcp__hex-line__write_file` | No prior Read needed |
 | Grep | `mcp__hex-line__grep_search` | Edit-ready matches |
 | Edit (text rename) | `mcp__hex-line__bulk_replace` | Multi-file text rename/refactor |
-| Bash `find`/`tree` | `mcp__hex-line__directory_tree` | Pattern search, gitignore-aware |
+| Bash `find`/`tree`/`stat` | `mcp__hex-line__inspect_path` | Path info, tree view, pattern search |
 | Full code read | `mcp__hex-line__outline` then `read_file` with ranges | Structure first, read targeted |
 
 **Bootstrap**: if hex-line calls fail, load schemas: `ToolSearch('+hex-line read edit')`

@@ -567,15 +567,22 @@ export function editFile(filePath, edits, opts = {}) {
             if (impacts.length > 0) {
                 const sections = impacts.map(impact => {
                     const totals = [];
+                    if (impact.counts.publicApi > 0) totals.push("public API");
+                    if (impact.counts.frameworkEntrypoints > 0) totals.push(`${impact.counts.frameworkEntrypoints} framework entrypoint`);
                     if (impact.counts.externalCallers > 0) totals.push(`${impact.counts.externalCallers} external callers`);
                     if (impact.counts.downstreamReturnFlow > 0) totals.push(`${impact.counts.downstreamReturnFlow} downstream return-flow`);
                     if (impact.counts.downstreamPropertyFlow > 0) totals.push(`${impact.counts.downstreamPropertyFlow} property-flow`);
                     if (impact.counts.sinkReach > 0) totals.push(`${impact.counts.sinkReach} terminal flow reach`);
                     if (impact.counts.cloneSiblings > 0) totals.push(`${impact.counts.cloneSiblings} clone siblings`);
+                    if (impact.counts.sameNameSymbols > 0) totals.push(`${impact.counts.sameNameSymbols} same-name siblings`);
                     const headline = totals.length > 0 ? totals.join(", ") : "no downstream graph facts";
-                    const factLines = impact.facts.slice(0, 5).map(fact => {
+                    const factLines = impact.facts.slice(0, 6).map(fact => {
+                        if (fact.fact_kind === "public_api") return "public_api: exported symbol";
+                        const location = fact.target_file && fact.target_line
+                            ? ` (${fact.target_file}:${fact.target_line})`
+                            : "";
                         const target = fact.target_display_name
-                            ? `${fact.target_display_name} (${fact.target_file}:${fact.target_line})`
+                            ? `${fact.target_display_name}${location}`
                             : `${fact.target_file}:${fact.target_line}`;
                         const via = fact.path_kind ? ` via ${fact.path_kind}` : "";
                         return `${fact.fact_kind}: ${target}${via}`;

@@ -56,7 +56,7 @@ Pattern: `"Use [tool] when [situation]. Prefer over [alternative] because [reaso
 | Search result tools | `limit` per file, default 100 | `grep_search` limit param |
 | Hooks (PostToolUse) | `smartTruncate(text, HEAD, TAIL)` | head 15 + tail 15, gap indicator |
 | Hooks (SessionStart) | Fixed injection string | Single `systemMessage`, no file reads |
-| Directory listings | `max_depth`, default 3 | `directory_tree` depth limit |
+| Directory listings | `max_depth`, default 3 | `inspect_path` depth limit |
 
 Always show `--- N lines omitted ---` when truncating.
 
@@ -64,7 +64,7 @@ Always show `--- N lines omitted ---` when truncating.
 
 | Principle | Bad | Good |
 |-----------|-----|------|
-| No `list_all_*` | `list_all_files` returns 10K paths | `directory_tree` with depth limit |
+| No `list_all_*` | `list_all_files` returns 10K paths | `inspect_path` with depth limit |
 | One tool = one decision | `read_and_edit` (two decisions) | Separate `read_file` + `edit_file` |
 | Combine read workflows | Two calls always needed | Description guides: "use outline first" |
 | Separate user decisions | Tool auto-confirms danger | `AskUserQuestion` pattern: block + ask user |

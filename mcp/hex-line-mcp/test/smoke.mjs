@@ -83,7 +83,7 @@ async function withMcpClient(run) {
 
 describe("FNV-1a hash", () => {
     it("deterministic: same content → same hash, whitespace normalized", async () => {
-        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const h1 = fnv1a("const x = 1;");
         const h2 = fnv1a("const x = 1;");
         assert.equal(h1, h2, "Same content same hash");
@@ -99,7 +99,7 @@ describe("FNV-1a hash", () => {
     });
 
     it("rangeChecksum detects single-line change", async () => {
-        const { fnv1a, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const lines1 = ["line one", "line two", "line three"].map(fnv1a);
         const lines2 = ["line one", "LINE TWO", "line three"].map(fnv1a);
         const cs1 = rangeChecksum(lines1, 1, 3);
@@ -116,7 +116,7 @@ describe("FNV-1a hash", () => {
 
 describe("normalize output", () => {
     it("deduplicates identical lines with (xN) counts", async () => {
-        const { deduplicateLines } = await import("../lib/normalize.mjs");
+        const { deduplicateLines } = await import("@levnikolaevich/hex-common/output/normalize");
         const lines = ["ok", "error: timeout", "error: timeout", "error: timeout", "done"];
         const result = deduplicateLines(lines);
         const joined = result.join("\n");
@@ -126,7 +126,7 @@ describe("normalize output", () => {
     });
 
     it("smartTruncate keeps head and tail", async () => {
-        const { smartTruncate } = await import("../lib/normalize.mjs");
+        const { smartTruncate } = await import("@levnikolaevich/hex-common/output/normalize");
         const lines = Array.from({ length: 100 }, (_, i) => `line ${i + 1}`);
         const result = smartTruncate(lines.join("\n"), 5, 3);
         assert.ok(result.includes("line 1"), "First line kept");
@@ -142,7 +142,7 @@ describe("normalize output", () => {
 describe("edit business logic", () => {
     it("NOOP_EDIT when set_line produces identical content", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-noop.js");
         fs.writeFileSync(tmp, "const x = 1;\n");
         try {
@@ -158,7 +158,7 @@ describe("edit business logic", () => {
 
     it("replace_lines preserves boundary content (no strip)", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-boundary.js");
         const content = "function foo() {\n    const x = 1;\n    return x;\n}\n";
         fs.writeFileSync(tmp, content);
@@ -186,7 +186,7 @@ describe("edit business logic", () => {
 
     it("replace_lines accepts wider checksum range than anchor range", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-wider-cs.js");
         const content = "line1\nline2\nline3\nline4\nline5\n";
         fs.writeFileSync(tmp, content);
@@ -214,7 +214,7 @@ describe("edit business logic", () => {
 
     it("replace_lines detects stale content outside anchor range but inside checksum", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-stale-outside.js");
         const content = "line1\nline2\nline3\nline4\nline5\n";
         fs.writeFileSync(tmp, content);
@@ -242,7 +242,7 @@ describe("edit business logic", () => {
 
     it("set_line preserves verbatim indent (no auto-fix)", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-indent.js");
         fs.writeFileSync(tmp, "function foo() {\n    const x = 1;\n}\n");
         try {
@@ -276,7 +276,7 @@ describe("edit business logic", () => {
     it("conservative mode auto-rebases non-overlapping stale replace_lines edits", async () => {
         const { readFile } = await import("../lib/read.mjs");
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-autorebase.js");
         const content = "head1\nhead2\ntargetA\ntargetB\ntail\n";
         fs.writeFileSync(tmp, content);
@@ -316,7 +316,7 @@ describe("edit business logic", () => {
     it("conflict output includes remapped refs when some anchors relocate before conflict", async () => {
         const { readFile } = await import("../lib/read.mjs");
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-conflict-remap.js");
         const content = "head1\nhead2\ntargetA\ntargetB\ntail\n";
         fs.writeFileSync(tmp, content);
@@ -356,7 +356,7 @@ describe("edit business logic", () => {
     it("conservative mode returns CONFLICT for overlapping stale edits", async () => {
         const { readFile } = await import("../lib/read.mjs");
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-conflict.js");
         const content = "head1\nhead2\ntargetA\ntargetB\ntail\n";
         fs.writeFileSync(tmp, content);
@@ -390,7 +390,7 @@ describe("edit business logic", () => {
 
     it("replace_between rewrites a block without reciting old content", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-replace-between.js");
         const content = [
             "function demo() {",
@@ -425,7 +425,7 @@ describe("edit business logic", () => {
 
     it("sanitizes noisy LLM edit payload before apply", async () => {
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const tmp = TMP("hex-test-cleanup.js");
         const content = "const one = 1;\nconst two = 2;\n";
         fs.writeFileSync(tmp, content);
@@ -555,37 +555,40 @@ describe("edit error messages", () => {
     });
 });
 
-// ==================== directory_tree ====================
+// ==================== inspect_path ====================
 
-describe("directory_tree pattern", () => {
-    it("globToRegex escapes dots and brackets", async () => {
-        const { directoryTree } = await import("../lib/tree.mjs");
-        // *.mjs should NOT match "xmjs" (dot must be literal)
-        const result = directoryTree(CWD + "/lib", { pattern: "*.mjs", type: "file" });
+describe("inspect_path", () => {
+    it("supports directory pattern mode", async () => {
+        const { inspectPath } = await import("../lib/inspect-path.mjs");
+        const result = inspectPath(CWD + "/lib", { pattern: "*.mjs", type: "file" });
         assert.ok(result.includes("tree.mjs"));
         assert.ok(!result.includes("xmjs"), "Dot is literal, not regex wildcard");
     });
 
-    it("pattern mode returns flat list, tree mode returns hierarchy", async () => {
-        const { directoryTree } = await import("../lib/tree.mjs");
-        const flat = directoryTree(CWD, { pattern: "lib", type: "dir" });
+    it("returns flat list for pattern mode and hierarchy for directory mode", async () => {
+        const { inspectPath } = await import("../lib/inspect-path.mjs");
+        const flat = inspectPath(CWD, { pattern: "lib", type: "dir" });
         assert.ok(flat.includes("Found"), "Pattern: flat header");
         assert.ok(flat.includes("lib/"), "Pattern: trailing slash for dirs");
 
-        const tree = directoryTree(CWD + "/lib", { max_depth: 1 });
+        const tree = inspectPath(CWD + "/lib", { max_depth: 1 });
         assert.ok(tree.startsWith("Directory:"), "Tree: hierarchy header");
     });
 
-    it("no matches returns descriptive message", async () => {
-        const { directoryTree } = await import("../lib/tree.mjs");
-        const none = directoryTree(CWD, { pattern: "nonexistent-xyz-42" });
+    it("returns descriptive no-match message", async () => {
+        const { inspectPath } = await import("../lib/inspect-path.mjs");
+        const none = inspectPath(CWD, { pattern: "nonexistent-xyz-42" });
         assert.ok(none.includes("No matches"));
     });
-});
+    it("returns file metadata for regular files", async () => {
+        const { inspectPath } = await import("../lib/inspect-path.mjs");
+        const result = inspectPath(CWD + "/package.json");
+        assert.ok(result.includes("Size:"), "file metadata includes size");
+        assert.ok(result.includes("Type:"), "file metadata includes type");
+    });
 
-describe("directory_tree gitignore", () => {
     it("respects path-based .gitignore rules", async () => {
-        const { directoryTree } = await import("../lib/tree.mjs");
+        const { inspectPath } = await import("../lib/inspect-path.mjs");
         const tmp = join(tmpdir(), "hex-test-gitignore");
         fs.mkdirSync(join(tmp, "nested"), { recursive: true });
         fs.writeFileSync(join(tmp, ".gitignore"), "nested/secret.txt\n");
@@ -593,7 +596,7 @@ describe("directory_tree gitignore", () => {
         fs.writeFileSync(join(tmp, "nested", "secret.txt"), "hidden\n");
         fs.writeFileSync(join(tmp, "nested", "other.txt"), "visible\n");
         try {
-            const result = directoryTree(tmp);
+            const result = inspectPath(tmp);
             assert.ok(result.includes("keep.txt"), "non-ignored file visible");
             assert.ok(result.includes("other.txt"), "non-ignored nested file visible");
             assert.ok(!result.includes("secret.txt"), "path-ignored file hidden");
@@ -642,7 +645,7 @@ describe("read_file output", () => {
 
     it("normal file is not capped", async () => {
         const { readFile } = await import("../lib/read.mjs");
-        const result = readFile(CWD + "/lib/hash.mjs");
+        const result = readFile(CWD + "/lib/info.mjs");
         assert.ok(!result.includes("OUTPUT_CAPPED"), "No cap for normal file");
     });
 
@@ -710,7 +713,7 @@ describe("graph enrichment", () => {
         const { readFile } = await import("../lib/read.mjs");
         const { grepSearch } = await import("../lib/search.mjs");
         const { editFile } = await import("../lib/edit.mjs");
-        const { fnv1a, lineTag } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag } = await import("@levnikolaevich/hex-common/text-protocol/hash");
         const { _resetGraphDBCache } = await import("../lib/graph-enrich.mjs");
         const repo = makeTempRepo("hex-line-graph-", {
             "a.mjs": "export function foo() {\n  return 1;\n}\n",
@@ -719,15 +722,17 @@ describe("graph enrichment", () => {
         try {
             await indexGraphRepo(repo);
 
-            const readResult = readFile(join(repo, "a.mjs"), { includeGraph: true });
+            const readResult = readFile(join(repo, "a.mjs"));
             assert.ok(readResult.includes("\nGraph:"), "Graph header present");
             assert.ok(readResult.includes("foo [function"), "Graph header includes symbol summary");
             assert.ok(readResult.includes("1↑"), "Graph header includes caller count");
             assert.ok(readResult.includes("flow 1out"), "Graph header includes flow count");
+            assert.ok(readResult.includes("api"), "Graph header includes exported/public signal");
 
             const grepResult = await grepSearch("export function foo", { path: join(repo, "a.mjs") });
             assert.ok(grepResult.includes("[fn"), "grep match annotated via line facts");
             assert.ok(grepResult.includes("1↑"), "grep match annotation includes caller count");
+            assert.ok(grepResult.includes("[api"), "grep match annotation includes public API marker");
 
             const anchor = `${lineTag(fnv1a("export function foo() {"))}.1`;
             const editResult = editFile(join(repo, "a.mjs"), [
@@ -760,8 +765,8 @@ describe("graph enrichment", () => {
             await indexGraphRepo(repoB);
             _resetGraphDBCache();
 
-            const readA = readFile(join(repoA, "a.mjs"), { includeGraph: true });
-            const readB = readFile(join(repoB, "b.mjs"), { includeGraph: true });
+            const readA = readFile(join(repoA, "a.mjs"));
+            const readB = readFile(join(repoB, "b.mjs"));
 
             assert.ok(readA.includes("alpha [function"), "Repo A uses its own graph");
             assert.ok(!readA.includes("beta [function"), "Repo A does not leak repo B graph");
@@ -919,12 +924,18 @@ describe("grep_search output modes", () => {
 describe("grep_search new params", () => {
     it("literal mode disables regex", async () => {
         const { grepSearch } = await import("../lib/search.mjs");
-        // '.' in regex matches any char; in literal mode matches only '.'
-        const regex = await grepSearch(".", { path: CWD + "/lib/hash.mjs", plain: true });
-        const literal = await grepSearch(".", { path: CWD + "/lib/hash.mjs", plain: true, literal: true });
-        const regexCount = regex.split("\n").filter(l => l.trim()).length;
-        const litCount = literal.split("\n").filter(l => l.trim()).length;
-        assert.ok(regexCount > litCount, `regex (${regexCount}) should match more than literal (${litCount})`);
+        const tmp = join(tmpdir(), "hex-test-literal-mode.txt");
+        fs.writeFileSync(tmp, "alpha\nbeta.gamma\nxyz\n");
+        try {
+            // '.' in regex matches any char; in literal mode matches only '.'
+            const regex = await grepSearch(".", { path: tmp, plain: true });
+            const literal = await grepSearch(".", { path: tmp, plain: true, literal: true });
+            const regexCount = regex.split("\n").filter(l => l.trim()).length;
+            const litCount = literal.split("\n").filter(l => l.trim()).length;
+            assert.ok(regexCount > litCount, `regex (${regexCount}) should match more than literal (${litCount})`);
+        } finally {
+            fs.rmSync(tmp, { force: true });
+        }
     });
 });
 
@@ -1100,7 +1111,7 @@ describe("changes", () => {
     it("returns diff against HEAD for tracked file", async () => {
         const { fileChanges } = await import("../lib/changes.mjs");
         // Use a known tracked file — should return no changes or a diff
-        const result = await fileChanges(CWD + "/lib/hash.mjs", "HEAD");
+        const result = await fileChanges(CWD + "/lib/read.mjs", "HEAD");
         assert.ok(typeof result === "string", "should return string");
         // If file is unchanged vs HEAD, result says "No changes" or shows symbols
         assert.ok(result.length > 0, "should have content");

@@ -70,7 +70,7 @@
 - **GitHub Pages MCP section** — hex-line, hex-ssh, hex-graph MCP servers showcased on site index with dedicated detail pages (`site/mcp/`)
 - **Plugin pages enhanced** — all 6 plugin detail pages now link each skill row to its SKILL.md source on GitHub
 - **GitHub Pages best practices** — new standards doc for site development guidelines
-- **hex-graph layered rewrite** — 15 MCP tools with canonical symbol identities, semantic edges, trace_paths, find_references, find_implementations, find_dataflows; replaces flat get_impact/get_context API
+- **hex-graph layered rewrite** — canonical symbol identities, layered semantic edges, and the current use-case graph analysis surface replaced the old flat impact/context API
 - **Agent review simplified** — debate protocol (challenge/follow-up rounds) replaced with AGREE/REJECT verification + iterative Codex refinement loop (max 5 iterations)
 - **hex-ssh security hardening** — 4 new modules: command-policy, edit-validation, host-verify, shell-escape
 

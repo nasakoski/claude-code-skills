@@ -1,7 +1,7 @@
 ---
 name: ln-512-tech-debt-cleaner
 description: "Auto-fixes low-risk tech debt (unused imports, dead code, commented-out code) with >=90% confidence. Use when audit findings need safe automated cleanup."
-allowed-tools: Read, Grep, Glob, Bash, mcp__hex-graph__find_unused_exports, mcp__hex-graph__find_references, mcp__hex-line__bulk_replace, mcp__hex-line__verify
+allowed-tools: Read, Grep, Glob, Bash, mcp__hex-graph__audit_workspace, mcp__hex-graph__find_references, mcp__hex-line__bulk_replace, mcp__hex-line__verify
 license: MIT
 model: claude-sonnet-4-6
 ---

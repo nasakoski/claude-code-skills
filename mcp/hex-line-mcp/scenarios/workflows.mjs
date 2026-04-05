@@ -15,7 +15,7 @@
 import { copyFileSync, mkdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { tmpdir } from "node:os";
-import { fnv1a, lineTag, rangeChecksum } from "../lib/hash.mjs";
+import { fnv1a, lineTag, rangeChecksum } from "@levnikolaevich/hex-common/text-protocol/hash";
 import { readFile } from "../lib/read.mjs";
 import { verifyChecksums } from "../lib/verify.mjs";
 import { editFile } from "../lib/edit.mjs";

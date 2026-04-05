@@ -33,7 +33,7 @@ Skills collection for Claude Code with config-driven Agile task management (Line
 | Built-in Grep | `hex-line grep_search` | Before editing found code (grep→edit pipeline) |
 | Large code file | `hex-line outline` then `read_file` with range | Unfamiliar files >100 lines |
 | Edit (text rename) | `hex-line bulk_replace` | Multi-file rename/refactor |
-| Bash `find`/`tree` | `hex-line directory_tree` | Gitignore-aware file discovery |
+| Bash `find`/`tree`/`stat` | `hex-line inspect_path` | File metadata, tree view, gitignore-aware discovery |
 | Bash `diff` | `hex-line changes` | Semantic diff with symbol-level detail |
 | Re-read after CONFLICT | `hex-line verify` | Check freshness without rereading |
 

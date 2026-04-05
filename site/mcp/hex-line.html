@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>hex-line-mcp — Claude Code Skills</title>
-  <meta name="description" content="Hash-verified file editing MCP server + token efficiency hook for AI coding agents. 11 tools, hooks, output style.">
+  <meta name="description" content="Hash-verified file editing MCP server + token efficiency hook for AI coding agents. 9 tools, graph-aware hints, hooks, output style.">
   <link rel="icon" type="image/jpeg" href="../favicon.jpg">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -398,10 +398,10 @@
     </div>
   </section>
 
-  <!-- 11 Tools -->
+  <!-- 9 Tools -->
   <section>
     <div class="container">
-      <h2>11 tools</h2>
+      <h2>9 tools</h2>
       <p class="section-desc">Everything an agent needs to read, edit, search, and understand code.</p>
       <div class="table-wrap">
         <table>
@@ -427,31 +427,23 @@
             </tr>
             <tr>
               <td class="tool-name">outline</td>
-              <td class="tool-desc">AST structural overview via tree-sitter (15+ languages). 95% token reduction vs full read</td>
+              <td class="tool-desc">AST structural overview via tree-sitter for JavaScript/TypeScript, Python, C#, PHP, and markdown headings. 95% token reduction vs full read</td>
             </tr>
             <tr>
               <td class="tool-name">verify</td>
               <td class="tool-desc">Check if held checksums are still valid. Single-line response</td>
             </tr>
             <tr>
-              <td class="tool-name">directory_tree</td>
-              <td class="tool-desc">Compact tree with .gitignore support and file sizes</td>
-            </tr>
-            <tr>
-              <td class="tool-name">get_file_info</td>
-              <td class="tool-desc">Size, line count, mtime, type &mdash; without reading content</td>
+              <td class="tool-name">inspect_path</td>
+              <td class="tool-desc">Unified file-or-directory inspection: file metadata for files, tree or pattern search for directories</td>
             </tr>
             <tr>
               <td class="tool-name">changes</td>
-              <td class="tool-desc">Semantic diff against git ref: added/removed/modified symbols</td>
+              <td class="tool-desc">Semantic diff against git ref with graph-backed local review when a code graph is present</td>
             </tr>
             <tr>
               <td class="tool-name">bulk_replace</td>
               <td class="tool-desc">Search-and-replace across files by glob. Dry-run mode</td>
-            </tr>
-            <tr>
-              <td class="tool-name">setup_hooks</td>
-              <td class="tool-desc">Installs Claude hooks and output style; Gemini/Codex use guidance only</td>
             </tr>
           </tbody>
         </table>

@@ -299,6 +299,12 @@ class Store {
                  AND COALESCE(dst.source_access_path_json, '') = COALESCE(src.target_access_path_json, '')
                 GROUP BY src.source_symbol_id
             ),
+            framework_in AS (
+                SELECT target_id AS node_id, COUNT(DISTINCT source_id || '|' || kind || '|' || COALESCE(file, '') || '|' || COALESCE(line, 0)) AS framework_incoming_count
+                FROM edges
+                WHERE layer = 'framework'
+                GROUP BY target_id
+            ),
             clone_counts AS (
                 SELECT a.node_id AS node_id, COUNT(DISTINCT b.node_id) AS clone_sibling_count
                 FROM clone_blocks a
@@ -336,6 +342,7 @@ class Store {
                 COALESCE(flow_out.outgoing_flow_count, 0) AS outgoing_flow_count,
                 COALESCE(through_points.through_flow_count, 0) AS through_flow_count,
                 COALESCE(clone_counts.clone_sibling_count, 0) AS clone_sibling_count,
+                COALESCE(framework_in.framework_incoming_count, 0) AS framework_incoming_count,
                 n.is_exported AS is_exported,
                 n.is_default_export AS is_default_export
             FROM nodes n
@@ -343,6 +350,7 @@ class Store {
             LEFT JOIN flow_out ON flow_out.node_id = n.id
             LEFT JOIN through_points ON through_points.node_id = n.id
             LEFT JOIN clone_counts ON clone_counts.node_id = n.id
+            LEFT JOIN framework_in ON framework_in.node_id = n.id
             WHERE n.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol');
 
             CREATE VIEW hex_line_line_facts AS
@@ -370,6 +378,64 @@ class Store {
                 'graph_symbol' AS origin
             FROM nodes n
             WHERE n.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol')
+
+            UNION ALL
+
+            SELECT
+                n.file AS file,
+                n.line_start AS line_start,
+                n.line_end AS line_end,
+                n.id AS symbol_node_id,
+                CASE
+                    WHEN n.name = '__default_export__' THEN 'default export'
+                    ELSE n.name
+                END AS display_name,
+                n.kind AS kind,
+                'public_api' AS fact_kind,
+                NULL AS related_symbol_id,
+                CASE
+                    WHEN n.is_default_export = 1 THEN 'default export'
+                    ELSE 'exported symbol'
+                END AS related_display_name,
+                NULL AS related_file,
+                NULL AS related_line,
+                NULL AS source_anchor_kind,
+                NULL AS source_anchor_name,
+                NULL AS target_anchor_kind,
+                NULL AS target_anchor_name,
+                NULL AS access_path_json,
+                'exact' AS confidence,
+                'export_index' AS origin
+            FROM nodes n
+            WHERE n.is_exported = 1
+              AND n.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol')
+
+            UNION ALL
+
+            SELECT
+                tgt.file AS file,
+                tgt.line_start AS line_start,
+                tgt.line_end AS line_end,
+                tgt.id AS symbol_node_id,
+                CASE WHEN tgt.name = '__default_export__' THEN 'default export' ELSE tgt.name END AS display_name,
+                tgt.kind AS kind,
+                'framework_entrypoint' AS fact_kind,
+                src.id AS related_symbol_id,
+                e.kind AS related_display_name,
+                src.file AS related_file,
+                src.line_start AS related_line,
+                NULL AS source_anchor_kind,
+                NULL AS source_anchor_name,
+                NULL AS target_anchor_kind,
+                NULL AS target_anchor_name,
+                NULL AS access_path_json,
+                e.confidence AS confidence,
+                e.origin AS origin
+            FROM edges e
+            JOIN nodes src ON src.id = e.source_id
+            JOIN nodes tgt ON tgt.id = e.target_id
+            WHERE e.layer = 'framework'
+              AND tgt.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol')
 
             UNION ALL
 
@@ -563,6 +629,58 @@ class Store {
             UNION ALL
 
             SELECT
+                n.id AS edited_symbol_id,
+                'public_api' AS fact_kind,
+                n.id AS target_symbol_id,
+                CASE
+                    WHEN n.is_default_export = 1 THEN 'default export'
+                    WHEN n.name = '__default_export__' THEN 'default export'
+                    ELSE n.name
+                END AS target_display_name,
+                n.file AS target_file,
+                n.line_start AS target_line,
+                NULL AS intermediate_symbol_id,
+                NULL AS intermediate_display_name,
+                'exported_symbol' AS path_kind,
+                0 AS flow_hops,
+                NULL AS source_anchor_kind,
+                NULL AS source_anchor_name,
+                NULL AS target_anchor_kind,
+                NULL AS target_anchor_name,
+                NULL AS access_path_json,
+                'exact' AS confidence,
+                'export_index' AS origin
+            FROM nodes n
+            WHERE n.is_exported = 1
+
+            UNION ALL
+
+            SELECT DISTINCT
+                tgt.id AS edited_symbol_id,
+                'framework_entrypoint' AS fact_kind,
+                src.id AS target_symbol_id,
+                CASE WHEN src.name = '__default_export__' THEN 'default export' ELSE src.name END AS target_display_name,
+                src.file AS target_file,
+                src.line_start AS target_line,
+                NULL AS intermediate_symbol_id,
+                NULL AS intermediate_display_name,
+                e.kind AS path_kind,
+                1 AS flow_hops,
+                NULL AS source_anchor_kind,
+                NULL AS source_anchor_name,
+                NULL AS target_anchor_kind,
+                NULL AS target_anchor_name,
+                NULL AS access_path_json,
+                e.confidence AS confidence,
+                e.origin AS origin
+            FROM edges e
+            JOIN nodes src ON src.id = e.source_id
+            JOIN nodes tgt ON tgt.id = e.target_id
+            WHERE e.layer = 'framework'
+
+            UNION ALL
+
+            SELECT
                 ff.source_symbol_id AS edited_symbol_id,
                 CASE
                     WHEN ff.target_anchor_kind = 'property' THEN 'property_flow_to_symbol'
@@ -646,7 +764,36 @@ class Store {
                 NULL AS access_path_json,
                 'exact' AS confidence,
                 'clone_index' AS origin
-            FROM hex_line_clone_siblings c;
+            FROM hex_line_clone_siblings c
+
+            UNION ALL
+
+            SELECT
+                src.id AS edited_symbol_id,
+                'same_name_symbol' AS fact_kind,
+                peer.id AS target_symbol_id,
+                CASE WHEN peer.name = '__default_export__' THEN 'default export' ELSE peer.name END AS target_display_name,
+                peer.file AS target_file,
+                peer.line_start AS target_line,
+                NULL AS intermediate_symbol_id,
+                NULL AS intermediate_display_name,
+                'same_name' AS path_kind,
+                1 AS flow_hops,
+                NULL AS source_anchor_kind,
+                NULL AS source_anchor_name,
+                NULL AS target_anchor_kind,
+                NULL AS target_anchor_name,
+                NULL AS access_path_json,
+                'low' AS confidence,
+                'name_index' AS origin
+            FROM nodes src
+            JOIN nodes peer
+              ON LOWER(peer.name) = LOWER(src.name)
+             AND peer.kind = src.kind
+             AND peer.id != src.id
+             AND peer.file != src.file
+            WHERE src.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol')
+              AND peer.kind NOT IN ('import', 'import_stmt', 'module', 'namespace_binding', 'reexport', 'external_module', 'external_symbol');
 
             CREATE VIEW hex_line_edit_impacts AS
             SELECT
@@ -674,7 +821,19 @@ class Store {
                 COUNT(DISTINCT CASE
                     WHEN f.fact_kind = 'clone_sibling'
                     THEN COALESCE(CAST(f.target_symbol_id AS TEXT), '') || '|' || COALESCE(f.path_kind, '')
-                END) AS clone_sibling_count
+                END) AS clone_sibling_count,
+                COUNT(DISTINCT CASE
+                    WHEN f.fact_kind = 'public_api'
+                    THEN COALESCE(CAST(f.target_symbol_id AS TEXT), '')
+                END) AS public_api_count,
+                COUNT(DISTINCT CASE
+                    WHEN f.fact_kind = 'framework_entrypoint'
+                    THEN COALESCE(CAST(f.target_symbol_id AS TEXT), '') || '|' || COALESCE(f.path_kind, '')
+                END) AS framework_entrypoint_count,
+                COUNT(DISTINCT CASE
+                    WHEN f.fact_kind = 'same_name_symbol'
+                    THEN COALESCE(CAST(f.target_symbol_id AS TEXT), '') || '|' || COALESCE(f.target_file, '')
+                END) AS same_name_symbol_count
             FROM hex_line_symbols s
             LEFT JOIN hex_line_edit_impact_facts f
               ON f.edited_symbol_id = s.node_id

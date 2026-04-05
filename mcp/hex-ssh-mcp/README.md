@@ -339,7 +339,7 @@ Returns a single-line confirmation when all valid, or lists changed ranges with 
 
 ## Output Normalization
 
-The `normalize.mjs` module reduces token waste in command output. Applied automatically by `remote-ssh` and used internally by `ssh-search-code`.
+The shared `@levnikolaevich/hex-common/output/normalize` module reduces token waste in command output. It is applied automatically by `remote-ssh` and used internally by `ssh-search-code`.
 
 ### Measurement Note
 
@@ -405,8 +405,17 @@ hex-ssh-mcp/
   lib/
     ssh-client.mjs    SSH connection, host/path validation, key resolution
     transfer.mjs      Local path validation and SFTP upload/download helpers
-    hash.mjs          FNV-1a hashing, 2-char tags, range checksums
-    normalize.mjs     Output normalization, deduplication, truncation
+    config-resolver.mjs SSH config parsing and host resolution
+    command-policy.mjs Remote command safety policy
+
+Shared substrate lives in `@levnikolaevich/hex-common`:
+
+- `runtime/mcp-bootstrap`
+- `runtime/schema`
+- `runtime/results`
+- `runtime/update-check`
+- `text-protocol/hash`
+- `output/normalize`
 ```
 
 ### Hash Format

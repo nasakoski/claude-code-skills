@@ -1,7 +1,7 @@
 ---
 name: ln-614-docs-fact-checker
 description: "Verifies claims in .md files (paths, versions, counts, configs, endpoints) against codebase, cross-checks contradictions. Use when auditing docs accuracy."
-allowed-tools: Read, Grep, Glob, Bash, mcp__hex-line__outline, mcp__hex_graph__index_project, mcp__hex_graph__search_symbols, mcp__hex_graph__find_references
+allowed-tools: Read, Grep, Glob, Bash, mcp__hex-line__outline, mcp__hex_graph__index_project, mcp__hex_graph__find_symbols, mcp__hex_graph__find_references
 license: MIT
 ---
 

@@ -196,7 +196,7 @@ function makeFakeClient(remoteFiles, execLog, options = {}) {
 
 describe("FNV-1a hash (cross-verify with hex-line)", () => {
     it("produces same hashes as hex-line for same content", async () => {
-        const { fnv1a, lineTag, rangeChecksum } = await import("../lib/hash.mjs");
+        const { fnv1a, lineTag, rangeChecksum } = await import("@levnikolaevich/hex-common/text-protocol/hash");
 
         const h1 = fnv1a("const x = 1;");
         const h2 = fnv1a("const x = 1;");
@@ -214,7 +214,7 @@ describe("FNV-1a hash (cross-verify with hex-line)", () => {
 
 describe("normalize output", () => {
     it("deduplicates identical lines with (xN)", async () => {
-        const { deduplicateLines } = await import("../lib/normalize.mjs");
+        const { deduplicateLines } = await import("@levnikolaevich/hex-common/output/normalize");
         const lines = ["ok", "error: timeout", "error: timeout", "error: timeout", "done"];
         const result = deduplicateLines(lines);
         const joined = result.join("\n");
@@ -223,7 +223,7 @@ describe("normalize output", () => {
     });
 
     it("smartTruncate keeps head + tail, omits middle", async () => {
-        const { smartTruncate } = await import("../lib/normalize.mjs");
+        const { smartTruncate } = await import("@levnikolaevich/hex-common/output/normalize");
         const text = Array.from({ length: 100 }, (_, i) => `line ${i + 1}`).join("\n");
         const result = smartTruncate(text, 5, 3);
         assert.ok(result.includes("line 1"), "Head kept");

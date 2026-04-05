@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, unlinkSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { performance } from "node:perf_hooks";
-import { fnv1a, lineTag, rangeChecksum } from "../lib/hash.mjs";
+import { fnv1a, lineTag, rangeChecksum } from "@levnikolaevich/hex-common/text-protocol/hash";
 import { readFile } from "../lib/read.mjs";
 import { directoryTree } from "../lib/tree.mjs";
 import { fileInfo } from "../lib/info.mjs";

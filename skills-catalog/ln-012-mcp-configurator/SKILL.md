@@ -272,7 +272,7 @@ MUST call `mcp__hex-line__setup_hooks(agent="all")` AFTER all Phase 2 registrati
 
 After hex-graph registration + connected status:
 1. `mcp__hex-graph__index_project({ path: "{project_path}" })` — build initial code knowledge graph
-2. `mcp__hex-graph__watch_project({ path: "{project_path}" })` — enable live incremental updates
+2. If graph-backed reads or edits later look stale, rerun `mcp__hex-graph__index_project({ path: "{project_path}" })` — the indexing path is idempotent and refreshes changed files only
 
 Skip if hex-graph not registered or not connected.
 

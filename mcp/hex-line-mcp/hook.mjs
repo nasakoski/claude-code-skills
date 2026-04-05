@@ -50,8 +50,7 @@ const REVERSE_TOOL_HINTS = {
     "mcp__hex-line__edit_file":      "Edit (old_string, new_string, replace_all)",
     "mcp__hex-line__write_file":     "Write (file_path, content)",
     "mcp__hex-line__grep_search":    "Grep (pattern, path)",
-    "mcp__hex-line__directory_tree": "Glob (pattern) or Bash(ls)",
-    "mcp__hex-line__get_file_info":  "Bash(stat/wc)",
+    "mcp__hex-line__inspect_path":   "Path info / tree / Bash(ls,stat)",
     "mcp__hex-line__outline":        "Read with offset/limit",
     "mcp__hex-line__verify":         "Read (re-read file to check freshness)",
     "mcp__hex-line__changes":        "Bash(git diff)",
@@ -66,8 +65,8 @@ const TOOL_HINTS = {
     cat:   "mcp__hex-line__read_file (not cat/head/tail/less/more)",
     head:  "mcp__hex-line__read_file with limit param (not head)",
     tail:  "mcp__hex-line__read_file with offset param (not tail)",
-    ls:    "mcp__hex-line__directory_tree with pattern param (not ls/find/tree). E.g. pattern='*-mcp' type='dir'",
-    stat:  "mcp__hex-line__get_file_info (not stat/wc/file)",
+    ls:    "mcp__hex-line__inspect_path for tree or pattern search (not ls/find/tree). E.g. pattern='*-mcp' type='dir'",
+    stat:  "mcp__hex-line__inspect_path for compact file metadata (not stat/wc/file)",
     grep:  "mcp__hex-line__grep_search (not grep/rg). Params: output, literal, context_before, context_after, multiline",
     sed:   "mcp__hex-line__edit_file for hash edits, or mcp__hex-line__bulk_replace for text rename (not sed -i)",
     diff:  "mcp__hex-line__changes (not diff). Git diff with change symbols",
@@ -348,7 +347,7 @@ function handlePreToolUse(data) {
                 ? `Use mcp__hex-line__outline(path="${filePath}") for structure, then mcp__hex-line__read_file(path="${filePath}") with ranges to read only what you need.`
                 : filePath
                     ? `Use mcp__hex-line__read_file(path="${filePath}") with ranges or offset/limit`
-                    : "Use mcp__hex-line__directory_tree or mcp__hex-line__read_file";
+                    : "Use mcp__hex-line__inspect_path or mcp__hex-line__read_file";
             redirect(outlineHint, "Do not use built-in Read for full reads of large files.\n" + DEFERRED_HINT);
         }
 
