@@ -20,7 +20,7 @@ Load these before execution:
 - `shared/references/coordinator_runtime_contract.md`
 - `shared/references/task_planning_runtime_contract.md`
 - `shared/references/coordinator_summary_contract.md`
-- `shared/references/tools_config_guide.md`
+- `shared/references/environment_state_contract.md`
 - `shared/references/storage_mode_detection.md`
 - `shared/references/problem_solving.md`
 - `shared/references/creation_quality_checklist.md`

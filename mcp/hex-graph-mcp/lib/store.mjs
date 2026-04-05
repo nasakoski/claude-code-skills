@@ -2351,6 +2351,28 @@ function selectorError(code, message, recovery) {
     return { error: { code, message, recovery } };
 }
 
+const QUERY_PATH_RECOVERY = "Run index_project on the project root first; symbol/query tools then accept that root or a file/subdirectory inside it as path";
+
+function selectorWarningsForNode(node) {
+    if (!node) return [];
+    if (node.kind === "import" || node.kind === "import_stmt") {
+        return [
+            "The selector resolved to an import usage, not a project-owned definition. find_references will show usages of that import node, not all downstream uses of the external symbol.",
+        ];
+    }
+    return [];
+}
+
+function resolvedSelectorResult(query, node, reason, confidence = "exact") {
+    return {
+        query,
+        node,
+        reason,
+        confidence,
+        warnings: selectorWarningsForNode(node),
+    };
+}
+
 function normalizeSelector(selector = {}) {
     const { symbol_id, workspace_qualified_name, qualified_name, name, file } = selector;
     const hasId = symbol_id !== undefined && symbol_id !== null;
@@ -2380,7 +2402,7 @@ function resolveSelector(store, selector = {}) {
         if (!node) {
             return selectorError("SYMBOL_NOT_FOUND", `No symbol with id ${normalized.value}`, "Run find_symbols to find a valid symbol_id");
         }
-        return { query: normalized.query, node, reason: "resolved_by_symbol_id", confidence: "exact" };
+        return resolvedSelectorResult(normalized.query, node, "resolved_by_symbol_id");
     }
 
     if (normalized.kind === "qualified_name") {
@@ -2398,7 +2420,7 @@ function resolveSelector(store, selector = {}) {
                 },
             };
         }
-        return { query: normalized.query, node: matches[0], reason: "resolved_by_qualified_name", confidence: "exact" };
+        return resolvedSelectorResult(normalized.query, matches[0], "resolved_by_qualified_name");
     }
 
     if (normalized.kind === "workspace_qualified_name") {
@@ -2416,7 +2438,7 @@ function resolveSelector(store, selector = {}) {
                 },
             };
         }
-        return { query: normalized.query, node: matches[0], reason: "resolved_by_workspace_qualified_name", confidence: "exact" };
+        return resolvedSelectorResult(normalized.query, matches[0], "resolved_by_workspace_qualified_name");
     }
 
     const { name, file } = normalized.value;
@@ -2438,7 +2460,7 @@ function resolveSelector(store, selector = {}) {
         };
     }
     const node = semantic[0] || matches[0];
-    return { query: normalized.query, node, reason: "resolved_by_name_file", confidence: "exact" };
+    return resolvedSelectorResult(normalized.query, node, "resolved_by_name_file");
 }
 
 function resolveOptionalSelector(store, selector = null) {
@@ -2610,7 +2632,7 @@ function moduleMatchesScope(moduleRootPath, scopePath) {
 // --- Exported query functions (for server.mjs tool handlers) ---
 export function findSymbols(query, { kind, limit = 20, path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
 
         let results = store.search(query, { kind, limit });
         if (kind !== "all") {
@@ -2629,7 +2651,7 @@ export function findSymbols(query, { kind, limit = 20, path } = {}) {
 
 export function getSymbol(selector, { min_confidence = null, path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         const resolved = resolveSelector(store, selector);
         if (resolved.error) return resolved;
 
@@ -2693,6 +2715,7 @@ export function getSymbol(selector, { min_confidence = null, path } = {}) {
             },
             confidence: resolved.confidence,
             reason: resolved.reason,
+            warnings: resolved.warnings || [],
             evidence: {
                 incoming_count: incoming.length,
                 outgoing_count: outgoing.length,
@@ -2712,7 +2735,7 @@ export function tracePaths(selector, {
     target = null,
 } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         const resolved = resolveSelector(store, selector);
         if (resolved.error) return resolved;
         const resolvedTarget = resolveOptionalSelector(store, target);
@@ -2817,6 +2840,7 @@ export function tracePaths(selector, {
                 result: paths,
                 confidence: resolved.confidence,
                 reason: targetNode ? "targeted_flow_lookup" : resolved.reason,
+                warnings: resolved.warnings || [],
                 evidence: {
                     traversed_path_count: paths.length,
                     target_found: targetNode ? paths.length > 0 : null,
@@ -2956,6 +2980,7 @@ export function tracePaths(selector, {
             result: paths,
             confidence: resolved.confidence,
             reason: targetNode ? "targeted_path_lookup" : resolved.reason,
+            warnings: resolved.warnings || [],
             evidence: {
                 traversed_path_count: paths.length,
                 target_found: targetNode ? paths.length > 0 : null,
@@ -2967,7 +2992,7 @@ export function tracePaths(selector, {
 
 export function explainResolution(selector, { path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         const normalized = normalizeSelector(selector);
         if (normalized.error) return normalized;
         const resolved = resolveSelector(store, selector);
@@ -3004,6 +3029,7 @@ export function explainResolution(selector, { path } = {}) {
             },
             confidence: resolved.confidence,
             reason: resolved.reason,
+            warnings: resolved.warnings || [],
             evidence: { candidate_count: candidates.length },
             limits_applied: {},
         };
@@ -3012,7 +3038,7 @@ export function explainResolution(selector, { path } = {}) {
 
 export function getReferencesBySelector(selector, { kind, limit = 50, min_confidence = null, path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         const resolved = resolveSelector(store, selector);
         if (resolved.error) return resolved;
 
@@ -3038,6 +3064,7 @@ export function getReferencesBySelector(selector, { kind, limit = 50, min_confid
             },
             confidence: resolved.confidence,
             reason: resolved.reason,
+            warnings: resolved.warnings || [],
             evidence: { total_found: refs.length },
             limits_applied: { limit },
         };
@@ -3046,7 +3073,7 @@ export function getReferencesBySelector(selector, { kind, limit = 50, min_confid
 
 export function findImplementationsBySelector(selector, { limit = 50, path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         const resolved = resolveSelector(store, selector);
         if (resolved.error) return resolved;
 
@@ -3088,6 +3115,7 @@ export function findImplementationsBySelector(selector, { limit = 50, path } = {
             },
             confidence: matches.some(match => match.confidence === "heuristic") ? "heuristic" : resolved.confidence,
             reason: "type_graph_lookup",
+            warnings: resolved.warnings || [],
             evidence: { match_count: matches.length },
             limits_applied: { limit },
         };
@@ -3096,7 +3124,7 @@ export function findImplementationsBySelector(selector, { limit = 50, path } = {
 
 export function findDataflowsBySelector(selector, { depth = DEFAULT_FLOW_MAX_HOPS, limit = DEFAULT_FLOW_LIMIT, path, target = null } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         const options = selector && selector.source ? selector : { source: selector, sink: target };
         const max_hops = selector?.max_hops ?? depth ?? DEFAULT_FLOW_MAX_HOPS;
         const flow_kind = selector?.flow_kind || "value";
@@ -3189,7 +3217,7 @@ export function findDataflowsBySelector(selector, { depth = DEFAULT_FLOW_MAX_HOP
 
 export function getModuleMetricsReport({ scopePath, sort, minCoupling, path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         return {
             query: { scopePath: scopePath || null, sort: sort || "instability", minCoupling: minCoupling || 2 },
             result: store.moduleMetricRows({ scopePath, sort, minCoupling }),
@@ -3203,7 +3231,7 @@ export function getModuleMetricsReport({ scopePath, sort, minCoupling, path } = 
 
 export function getArchitectureReport({ scopePath, limit = 15, path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         const { modules, hotspots, crossEdges, frameworkRows } = store.architectureReportData(scopePath);
         const stats = store.stats();
         return {
@@ -3235,7 +3263,7 @@ export function getArchitectureReport({ scopePath, limit = 15, path } = {}) {
 
 export function getHotspots({ minCallers = 2, minComplexity = 15, limit = 20, scopePath, path } = {}) {
     return withResolvedStore(path, (store) => {
-        if (!store) return selectorError("NOT_INDEXED", "No project indexed", "Run index_project first");
+        if (!store) return selectorError("NOT_INDEXED", "No project indexed", QUERY_PATH_RECOVERY);
         return store.hotspots({ minCallers, minComplexity, limit, scopePath });
     });
 }

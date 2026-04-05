@@ -1177,6 +1177,7 @@ describe("identity query error contracts", () => {
             ];
             for (const result of queries) {
                 assert.equal(result.error?.code, "NOT_INDEXED");
+                assert.match(result.error?.recovery || "", /file\/subdirectory inside it as path/);
             }
         } finally {
             rmSync(tmp, { recursive: true, force: true });
@@ -1205,6 +1206,24 @@ describe("identity query error contracts", () => {
             for (const result of checks) {
                 assert.equal(result.error?.code, "SYMBOL_NOT_FOUND");
             }
+        } finally {
+            try { rmSync(dir, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+
+    it("accepts subdirectory and file paths inside an indexed project", async () => {
+        const dir = makeTempDir();
+        try {
+            mkdirSync(join(dir, "src"), { recursive: true });
+            writeFileSync(join(dir, "src", "util.mjs"), "export function helper() { return 1; }\n");
+            cleanDb(dir);
+            await indexProject(dir);
+
+            const fromSubdir = findSymbols("helper", { path: join(dir, "src"), limit: 10 });
+            assert.ok(fromSubdir.matches.some((match) => match.file === "src/util.mjs"));
+
+            const fromFile = getReferencesBySelector({ name: "helper", file: "src/util.mjs" }, { path: join(dir, "src", "util.mjs") });
+            assert.equal(fromFile.result.symbol.file, "src/util.mjs");
         } finally {
             try { rmSync(dir, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
         }
@@ -2118,6 +2137,36 @@ describe("find_references ambiguity", () => {
             const aOnly = getReferencesBySelector({ name: "helper", file: "a.mjs" }, { path: tmp });
             assert.equal(aOnly.result.symbol.file, "a.mjs");
             assert.equal(aOnly.result.total, 2, "filtered result only includes a.mjs refs");
+
+            store.close();
+        } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+
+    it("warns when a selector resolves to an import usage node", async () => {
+        const tmp = mkdtempSync(join(tmpdir(), "hex-ambrefs-import-"));
+        mkdirSync(join(tmp, ".hex-skills/codegraph"), { recursive: true });
+        writeFileSync(join(tmp, "a.mjs"), 'export function helper() { return 1; }\n');
+        writeFileSync(join(tmp, "b.mjs"), 'import { helper } from "./a.mjs";\nexport function runB() { return helper(); }\n');
+        try {
+            await indexProject(tmp);
+            const store = getStore(tmp);
+
+            const importCandidate = findSymbols("helper", { path: tmp, limit: 10 }).matches.find((match) =>
+                match.kind === "import" && match.file === "b.mjs"
+            );
+            assert.ok(importCandidate, "import candidate is discoverable");
+
+            const importNodeRefs = getReferencesBySelector({
+                name: importCandidate.name,
+                file: importCandidate.file,
+            }, { path: tmp });
+            assert.equal(importNodeRefs.result.symbol.kind, "import");
+            assert.ok(
+                (importNodeRefs.warnings || []).some((warning) => warning.includes("import usage")),
+                "import warning is returned",
+            );
 
             store.close();
         } finally {

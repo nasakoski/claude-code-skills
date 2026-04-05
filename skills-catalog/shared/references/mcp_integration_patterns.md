@@ -56,6 +56,11 @@ Apply them only when the skill actually edits code or makes semantic decisions f
 4. inspect_symbol(workspace_qualified_name=...) -> use symbol context to refine task boundaries and dependency order
 ```
 
+Notes:
+- `find_symbols` expects a symbol name or partial name, not a code fragment or unresolved member call such as `server.tool()`
+- For raw method-call patterns or regex-like code search, use `grep_search`
+- Path-scoped graph queries may use `path=project_root`, `path=subdirectory`, or `path=file` as long as the target stays inside the indexed project
+
 ### Semantic Diff Review
 
 **When:** Reviewing implementation changes before approval or quality merge.  

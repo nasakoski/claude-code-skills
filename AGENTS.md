@@ -42,7 +42,7 @@ Prefer `hex-line` for code/config/script/test files.
 | Skill contract | `cat skills-catalog/shared/references/skill_contract.md` |
 | Architecture patterns (L0-L3) | `cat docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` |
 | Agent delegation runtime | `cat docs/architecture/AGENT_DELEGATION_PLATFORM_GUIDE.md` |
-| Tool configuration | `cat skills-catalog/shared/references/tools_config_guide.md` |
+| Tool configuration | `cat skills-catalog/shared/references/environment_state_contract.md` |
 | Key workflow | `ln-700 -> ln-100 -> ln-200 -> ln-1000` |
 | Skill metadata | `head -20 {ln-NNN}/SKILL.md` |
 | Reference files for a skill | `ls {ln-NNN}/references/` |
@@ -57,7 +57,7 @@ Prefer `hex-line` for code/config/script/test files.
 |-------|------|
 | Skill contract | `skills-catalog/shared/references/skill_contract.md` |
 | Writing guidelines | `docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` |
-| Tool configuration | `skills-catalog/shared/references/tools_config_guide.md` |
+| Environment State | `skills-catalog/shared/references/environment_state_contract.md` |
 | Risk-Based Testing | `skills-catalog/shared/references/risk_based_testing_guide.md` |
 | Questions format | `skills-catalog/shared/references/questions_format.md` |
 | Hook design | `docs/best-practice/HOOK_DESIGN_GUIDE.md` |

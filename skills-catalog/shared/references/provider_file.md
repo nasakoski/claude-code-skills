@@ -1,6 +1,6 @@
 # File Mode Provider Operations
 
-<!-- SCOPE: Full operation pseudocode for File Mode. Loaded only when docs/tools_config.md Provider=file. -->
+<!-- SCOPE: Full operation pseudocode for File Mode. Loaded only when environment_state.json task_management.provider=file. -->
 
 ## Prerequisites
 

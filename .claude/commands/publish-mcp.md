@@ -1,6 +1,6 @@
 ---
 description: "Publish MCP server to npm (hex-line-mcp, hex-ssh-mcp, or hex-graph-mcp). Auto-detects unpublished changes, suggests bump type, syncs server.mjs version."
-allowed-tools: Bash, Glob, AskUserQuestion, mcp__hex-line__read_file, mcp__hex-line__edit_file, mcp__hex-line__grep_search, mcp__hex-line__write_file
+allowed-tools: Bash, Glob, AskUserQuestion, mcp__hex-line__read_file, mcp__hex-line__edit_file, mcp__hex-line__grep_search, mcp__hex-line__write_file, mcp__hex-line__changes, mcp__hex-graph__index_project, mcp__hex-graph__find_symbols, mcp__hex-graph__find_references, mcp__hex-graph__analyze_changes
 ---
 
 # Publish MCP Server
@@ -84,16 +84,33 @@ Display the output to the user.
 
 ### 4. Suggest bump type
 
-Analyze the diff and commit messages:
-- Only existing file modifications, `fix:` commits → suggest **patch**
-- New files, new exports, `feat:` commits → suggest **minor**
-- Removed/renamed public API, `BREAKING CHANGE` or `!:` → suggest **major**
+Analyze the diff, commit messages, AND public API changes:
+
+**Semantic analysis via hex-graph** (run `index_project` once at start):
+
+```
+mcp__hex-graph__analyze_changes(path: "mcp/${PKG}", base_ref: "${LAST_TAG}")
+```
+
+Also discover exported symbols for before/after comparison:
+
+```
+mcp__hex-line__grep_search(pattern: "export", path: "mcp/${PKG}/server.mjs")
+```
+
+| Signal | Bump | How to detect |
+|--------|------|---------------|
+| Removed/renamed public exports | **major** | `find_symbols` on `${LAST_TAG}:server.mjs` vs current — missing symbols |
+| Changed tool parameter signatures | **major** | `analyze_changes` shows modified tool input schemas |
+| New tool registrations or exports | **minor** | `find_symbols` finds symbols absent from last tag |
+| Internal-only changes, `fix:` commits | **patch** | `analyze_changes` shows no public API diff |
+
+Fall back to commit message heuristics (`BREAKING CHANGE`, `feat:`, `fix:`) when graph evidence is inconclusive.
 
 AskUserQuestion with the recommendation marked "(Recommended)":
 - **patch** (X.Y.Z → X.Y.Z+1): bug fixes, tweaks
 - **minor** (X.Y.Z → X.Y+1.0): new features, new tools
 - **major** (X.Y.Z → X+1.0.0): breaking changes
-
 ### 5. Pre-publish checks
 
 ```bash
@@ -102,13 +119,21 @@ cd $PROJECT_ROOT/mcp/hex-common && npm test && cd $PROJECT_ROOT/mcp/${PKG} && np
 
 **Gate:** hex-common tests + package check/lint/test must all pass. If any fails — fix before proceeding.
 
-**README tool count check** (Bash grep OK here — runs on single files, not piped through built-in Grep):
-```bash
-actual=$(grep -c 'registerTool' $PROJECT_ROOT/mcp/${PKG}/server.mjs || echo 0)
-claimed=$(grep -oE '[0-9]+ MCP Tools' $PROJECT_ROOT/mcp/${PKG}/README.md | grep -oE '[0-9]+' || echo "0")
-[ "$actual" != "$claimed" ] && echo "FAIL: README claims $claimed tools, actual $actual — update README" || echo "README tool count OK ($actual)"
+**hex-graph blast radius check** (when `hex-common/` changed):
+
 ```
-If mismatch — update `N MCP Tools` in README.md before proceeding.
+mcp__hex-graph__find_references(symbol: "{changed_export}", path: "mcp/")
+```
+
+For each changed export in `hex-common/`, verify all consuming servers handle the new signature. Report any import that references a removed or renamed export.
+
+**README tool count check** — `grep_search` for tool registrations (hex-graph cannot index method calls like `server.tool()`):
+
+```
+mcp__hex-line__grep_search(pattern: "server\\.tool\\(", path: "mcp/${PKG}/server.mjs")
+```
+
+Count matches and compare against `N MCP Tools` in README.md. If mismatch — update README before proceeding.
 
 **MANDATORY READ:** Load `docs/best-practice/MCP_OUTPUT_CONTRACT_GUIDE.md`
 
@@ -155,12 +180,16 @@ If mismatch — update `N MCP Tools` in README.md before proceeding.
 
 **Suggested spot checks before publish**
 
-Run targeted searches and inspect mismatches:
+Run targeted searches via `hex-line` for edit-ready output if fixes needed:
 
+```
+mcp__hex-line__grep_search(pattern: "next_action|next_actions|status: |reason: ", path: "mcp/${PKG}/")
+mcp__hex-line__grep_search(pattern: "retry_edit|retry_edits|suggested_read_call|retry_plan|summary: |snippet: ", path: "mcp/${PKG}/")
+```
+
+Also run the contract checker:
 ```bash
 node mcp/check-output-contracts.mjs
-rg -n "next_action|next_actions|status: |reason: " $PROJECT_ROOT/mcp/${PKG}/
-rg -n "retry_edit|retry_edits|suggested_read_call|retry_plan|summary: |snippet: " $PROJECT_ROOT/mcp/${PKG}/
 ```
 
 For `hex-line-mcp`, also inspect:
@@ -186,9 +215,10 @@ cd $PROJECT_ROOT/mcp/${PKG} && npm run build
 
 Version is injected at build time via esbuild `define: { __HEX_VERSION__ }`. No manual sync in server.mjs needed.
 
-Verify version in bundle using `mcp__hex-line__grep_search`:
-- pattern: `"${NEW_VERSION}"` (literal), path: `mcp/${PKG}/dist/server.mjs`, limit: 1
-
+Verify version in bundle:
+```
+mcp__hex-line__grep_search(pattern: "${NEW_VERSION}", path: "mcp/${PKG}/dist/server.mjs", literal: true, limit: 1)
+```
 ### 8. Sync version in server.json (MCP Registry metadata)
 
 Update both `version` and `packages[0].version` in `mcp/${PKG}/server.json`:

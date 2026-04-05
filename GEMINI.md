@@ -38,7 +38,7 @@ Prefer `hex-line` for code/config/script/test files.
 | Project overview + full tree | `cat README.md` |
 | Skill count | `ls -d ln-*/SKILL.md \| wc -l` |
 | Architecture patterns (L0-L3) | `cat docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` |
-| Tool configuration (Linear/File Mode) | `cat skills-catalog/shared/references/tools_config_guide.md` |
+| Tool configuration (Linear/File Mode) | `cat skills-catalog/shared/references/environment_state_contract.md` |
 | Key workflow | `ln-700 -> ln-100 -> ln-200 -> ln-1000` (or manually: `ln-400 -> ln-500`) |
 | Skill metadata | `head -20 {ln-NNN}/SKILL.md` (frontmatter + type/category) |
 
@@ -49,7 +49,7 @@ Prefer `hex-line` for code/config/script/test files.
 | Topic | File |
 |-------|------|
 | Writing Guidelines | `docs/architecture/SKILL_ARCHITECTURE_GUIDE.md` section Writing Guidelines |
-| Tool Configuration (Phase 0) | `skills-catalog/shared/references/tools_config_guide.md` |
+| Environment State (Phase 0) | `skills-catalog/shared/references/environment_state_contract.md` |
 | Risk-Based Testing | `skills-catalog/shared/references/risk_based_testing_guide.md` |
 
 ## Maintenance

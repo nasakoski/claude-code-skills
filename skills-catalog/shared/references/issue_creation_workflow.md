@@ -1,10 +1,10 @@
 # Issue Creation Workflow
 
-<!-- SCOPE: Standard workflow for creating Epics, Stories, and Tasks with kanban updates. Supports Linear, File, and GitHub modes per docs/tools_config.md. -->
+<!-- SCOPE: Standard workflow for creating Epics, Stories, and Tasks with kanban updates. Supports Linear, File, and GitHub modes per .hex-skills/environment_state.json → task_management.provider. -->
 
 ## Pre-requisite
 
-Read `docs/tools_config.md` → Task Management → Provider. All operations below branch on provider value.
+Read `.hex-skills/environment_state.json` → `task_management.provider`. All operations below branch on provider value.
 
 ## Epic Creation
 
@@ -107,7 +107,7 @@ ELSE (file):
 | **Sequential creation** | Create one, verify success, then next (no bulk) |
 | **Capture references** | Linear: store URL. File: store file path. GitHub: store issue number/URL |
 | **Update kanban after each** | Keep docs/tasks/kanban_board.md in sync |
-| **Runtime error → fallback** | If Linear/GitHub fails mid-creation, switch to file mode (per tools_config_guide.md) |
+| **Runtime error → fallback** | If Linear/GitHub fails mid-creation, switch to file mode (per environment_state_contract.md) |
 
 ## Kanban Update Trigger
 
@@ -143,12 +143,12 @@ After each successful creation:
 ```
 IF creation fails:
   1. Log error with item details
-  2. IF Linear/GitHub error → update tools_config.md, switch to file mode
+  2. IF Linear/GitHub error → update environment_state.json, switch to file mode
   3. Retry failed item in file mode
   4. Continue with remaining items in file mode
   5. Report partial completion: "{N} in {provider}, {M} in files"
 ```
 
 ---
-**Version:** 3.0.0
+**Version:** 4.0.0
 **Last Updated:** 2026-04-05

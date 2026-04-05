@@ -70,6 +70,8 @@ process.once("SIGTERM", () => {
 
 function graphNextAction(code) {
     switch (code) {
+    case "NOT_INDEXED":
+        return ACTION.INDEX_PROJECT;
     case "GRAPH_DB_BUSY":
         return ACTION.FIX_DB_LOCK;
     case "GRAPH_DB_UNREADABLE":
@@ -88,15 +90,19 @@ function graphNextAction(code) {
 }
 
 function graphError(codeOrError, message, recovery) {
+    const errorCode = typeof codeOrError === "object" && codeOrError ? codeOrError.code : codeOrError;
+    const fallbackRecovery = errorCode === "NOT_INDEXED"
+        ? "Run index_project on the project root first; symbol/query tools then accept that root or a file/subdirectory inside it as path."
+        : "Adjust selector or run find_symbols first";
     const error = typeof codeOrError === "object" && codeOrError
         ? {
             ...codeOrError,
-            recovery: codeOrError.recovery || recovery || "Adjust selector or run find_symbols first",
+            recovery: codeOrError.recovery || recovery || fallbackRecovery,
         }
         : {
             code: codeOrError,
             message,
-            recovery: recovery || "Adjust selector or run find_symbols first",
+            recovery: recovery || fallbackRecovery,
         };
     const payload = pruneEmpty({
         status: STATUS.ERROR,
@@ -499,8 +505,14 @@ server.registerTool("trace_paths", {
         result.summary = pathCount
             ? `Found ${pathCount} path(s) through ${path_kind ?? "calls"} edges.`
             : "No path matched the requested traversal.";
-        result.warnings = pathCount ? [] : ["No path matched the current selectors, direction, and depth."];
-        result.next_actions = ["inspect_symbol"];
+        result.warnings = unique([
+            ...(result.warnings || []),
+            ...(pathCount ? [] : [
+                "No path matched the current selectors, direction, and depth.",
+                "For module overview or broad dependency structure, inspect_symbol and analyze_architecture are usually more reliable than trace_paths from a coarse selector.",
+            ]),
+        ]);
+        result.next_actions = unique(["inspect_symbol", ...(pathCount ? [] : ["adjust_query"])]);
     }
     return wrapResult(withQuality(result, traceQuality(result)), format);
 });
@@ -529,7 +541,10 @@ server.registerTool("find_references", {
         result.summary = result.result.total
             ? `Found ${result.result.total} semantic reference(s).`
             : "No semantic reference matched the requested symbol.";
-        result.warnings = result.result.total ? [] : ["No reference matched the current symbol and filters."];
+        result.warnings = unique([
+            ...(result.warnings || []),
+            ...(result.result.total ? [] : ["No reference matched the current symbol and filters."]),
+        ]);
         result.next_actions = ["inspect_symbol", "trace_paths"];
     }
     return wrapResult(withQuality(result, referencesQuality(result)), format);

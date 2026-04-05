@@ -168,7 +168,13 @@ export async function getPrImpact({
 }) {
     const store = resolveStore(path);
     if (!store) {
-        return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
+        return {
+            error: {
+                code: "NOT_INDEXED",
+                message: "No project indexed",
+                recovery: "Run index_project on the project root first; symbol/query tools then accept that root or a file/subdirectory inside it as path",
+            },
+        };
     }
 
     const diff = await semanticGitDiff(path, { baseRef, headRef });

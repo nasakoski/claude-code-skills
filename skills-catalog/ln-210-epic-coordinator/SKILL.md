@@ -104,7 +104,7 @@ Decision handling:
 
 ### Phase 0: Tools Config
 
-**MANDATORY READ:** Load `shared/references/tools_config_guide.md`, `shared/references/storage_mode_detection.md`, `shared/references/input_resolution_pattern.md`
+**MANDATORY READ:** Load `shared/references/environment_state_contract.md`, `shared/references/storage_mode_detection.md`, `shared/references/input_resolution_pattern.md`
 
 Extract: `task_provider` = Task Management → Provider
 
@@ -577,7 +577,7 @@ Skill type: `planning-coordinator`. Run after all phases complete. Output to cha
 
 ## Reference Files
 
-- **MANDATORY READ:** `shared/references/tools_config_guide.md`
+- **MANDATORY READ:** `shared/references/environment_state_contract.md`
 - **MANDATORY READ:** `shared/references/storage_mode_detection.md`
 - **[MANDATORY] Problem-solving approach:** `shared/references/problem_solving.md`
 - **Orchestrator lifecycle:** `shared/references/orchestrator_pattern.md`

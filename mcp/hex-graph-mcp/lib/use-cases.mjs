@@ -18,6 +18,8 @@ import {
 import { findUnusedExports } from "./unused.mjs";
 import { ACTION, nextActions } from "./output-contract.mjs";
 
+const QUERY_PATH_RECOVERY = "Run index_project on the project root first; symbol/query tools then accept that root or a file/subdirectory inside it as path";
+
 function summarizeCount(count, singular, plural = `${singular}s`) {
     return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -89,6 +91,25 @@ function trimForDetail(items, detailLevel, limit = 10) {
     return detailLevel === "full" ? items : items.slice(0, limit);
 }
 
+function mergeWarnings(...groups) {
+    return [...new Set(groups.flat().filter(Boolean))];
+}
+
+function classifyFindSymbolsQuery(query) {
+    if (typeof query !== "string") return [];
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    const warnings = [];
+    if (/^[\w$]+\.[\w$]+(?:\([^)]*\))?$/.test(trimmed) || /\b[\w$]+\.[\w$]+\s*\(/.test(trimmed)) {
+        warnings.push("find_symbols matches declared symbol names, not unresolved object member call sites such as server.tool() or app.get(). Use grep_search or framework-aware references for those patterns.");
+    }
+    if (/\b(import|export|function|class|const|let|var|return)\b/.test(trimmed) || /[(){};=]/.test(trimmed)) {
+        warnings.push("find_symbols expects a symbol name or partial name, not a code fragment, keyword sequence, or regex-like pattern.");
+    }
+    return warnings;
+}
+
 function buildSymbolSummary(symbol, references, implementations) {
     const parts = [
         `${symbol.kind} \`${symbol.display_name || symbol.name}\``,
@@ -103,6 +124,7 @@ export function runFindSymbolsUseCase(query, { kind, limit = 20, path } = {}) {
     const base = findSymbols(query, { kind, limit, path });
     if (base?.error) return base;
     const candidates = base.matches || [];
+    const queryWarnings = classifyFindSymbolsQuery(query);
     const summary = candidates.length
         ? `Found ${summarizeCount(candidates.length, "candidate symbol")} for "${query}".`
         : `No candidate symbols matched "${query}".`;
@@ -118,10 +140,17 @@ export function runFindSymbolsUseCase(query, { kind, limit = 20, path } = {}) {
                 ]
                 : [],
         },
-        warnings: candidates.length ? [] : ["No semantic symbol matched the requested query."],
-        next_actions: candidates.length
-            ? [ACTION.INSPECT_SYMBOL]
-            : [ACTION.WIDEN_QUERY, ACTION.INDEX_PROJECT],
+        warnings: mergeWarnings(
+            base.warnings || [],
+            candidates.length ? [] : ["No semantic symbol matched the requested query."],
+            queryWarnings,
+        ),
+        next_actions: nextActions([
+            candidates.length ? ACTION.INSPECT_SYMBOL : null,
+            queryWarnings.length ? ACTION.ADJUST_QUERY : null,
+            !candidates.length ? ACTION.WIDEN_QUERY : null,
+            !candidates.length ? ACTION.INDEX_PROJECT : null,
+        ]),
         confidence: base.confidence,
         reason: base.reason,
         evidence: base.evidence,
@@ -189,7 +218,12 @@ export function runInspectSymbolUseCase(selector, {
             },
             framework_roles: frameworkOrigins,
         },
-        warnings: frameworkOrigins.length ? [] : [],
+        warnings: mergeWarnings(
+            symbolResult.warnings || [],
+            resolutionResult.warnings || [],
+            referencesResult.warnings || [],
+            implementationsResult.warnings || [],
+        ),
         next_actions: nextActions([
             referencesResult.result.total ? ACTION.FIND_REFERENCES : null,
             implementationsResult.result.implementations.length ? ACTION.FIND_IMPLEMENTATIONS : null,
@@ -310,7 +344,7 @@ export function runAnalyzeArchitectureUseCase({
 } = {}) {
     return withResolvedStore(path, (store) => {
         if (!store) {
-            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
+            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: QUERY_PATH_RECOVERY } };
         }
         const architecture = getArchitectureReport({ path, scopePath: scope, limit });
         if (architecture?.error) return architecture;
@@ -370,9 +404,14 @@ export function runAnalyzeArchitectureUseCase({
                     rank: risk.rank,
                 })),
             },
-            warnings: cycles.cycles.length
-                ? [`${summarizeCount(cycles.cycles.length, "cycle")} detected across workspace modules.`]
-                : [],
+            warnings: mergeWarnings(
+                cycles.cycles.length
+                    ? [`${summarizeCount(cycles.cycles.length, "cycle")} detected across workspace modules.`]
+                    : [],
+                architecture.result.modules.length === 1
+                    ? ["A single workspace module usually means mono-package grouping by the nearest package boundary. Use symbol-level traces or manual search for finer intra-package structure."]
+                    : [],
+            ),
             next_actions: nextActions([
                 cycles.cycles.length ? ACTION.ANALYZE_CHANGES : null,
                 ACTION.AUDIT_WORKSPACE,
@@ -399,7 +438,7 @@ export function runAuditWorkspaceUseCase({
 } = {}) {
     return withResolvedStore(path, (store) => {
         if (!store) {
-            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
+            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: QUERY_PATH_RECOVERY } };
         }
         const unused = findUnusedExports(store, { scopePath: scope, kind: "all" });
         const visibleUnused = showSuppressed ? unused.unused : unused.unused.filter(item => !item.suppressed);
@@ -470,7 +509,7 @@ export function runAnalyzeEditRegionUseCase({
 } = {}) {
     return withResolvedStore(path, (store) => {
         if (!store) {
-            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
+            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: QUERY_PATH_RECOVERY } };
         }
         const normalizedFile = normalizeProjectFile(path, file);
         if (normalizedFile?.error) return normalizedFile;

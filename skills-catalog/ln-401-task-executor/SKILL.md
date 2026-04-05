@@ -32,7 +32,7 @@ Executes a single implementation (or refactor) task from Todo to To Review using
 
 ## Task Storage Mode
 
-**MANDATORY READ:** Load `shared/references/tools_config_guide.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
+**MANDATORY READ:** Load `shared/references/environment_state_contract.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
 
 Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
@@ -181,7 +181,7 @@ Write `.hex-skills/runtime-artifacts/runs/{run_id}/task-status/{task_id}.json` b
 - [ ] Runtime summary artifact written to the shared task-status location.
 
 ## Reference Files
-- **Tools config:** `shared/references/tools_config_guide.md`
+- **Environment state:** `shared/references/environment_state_contract.md`
 - **Storage mode operations:** `shared/references/storage_mode_detection.md`
 - Guides/manuals/ADRs/research: `docs/guides/`, `docs/manuals/`, `docs/adrs/`, `docs/research/`
 - Kanban format: `docs/tasks/kanban_board.md`

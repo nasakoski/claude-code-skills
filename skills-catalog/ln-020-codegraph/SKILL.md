@@ -2,7 +2,7 @@
 name: ln-020-codegraph
 description: "Builds and queries code knowledge graph for dependency analysis, references, implementations, and architecture overview. Use when starting work on unfamiliar codebase or before refactoring."
 license: MIT
-allowed-tools: mcp__hex-graph__index_project, mcp__hex-graph__find_symbols, mcp__hex-graph__inspect_symbol, mcp__hex-graph__trace_paths, mcp__hex-graph__find_references, mcp__hex-graph__find_implementations, mcp__hex-graph__trace_dataflow, mcp__hex-graph__analyze_changes, mcp__hex-graph__analyze_edit_region, mcp__hex-graph__analyze_architecture, mcp__hex-graph__audit_workspace
+allowed-tools: mcp__hex-graph__index_project, mcp__hex-graph__find_symbols, mcp__hex-graph__inspect_symbol, mcp__hex-graph__trace_paths, mcp__hex-graph__find_references, mcp__hex-graph__find_implementations, mcp__hex-graph__trace_dataflow, mcp__hex-graph__analyze_changes, mcp__hex-graph__analyze_edit_region, mcp__hex-graph__analyze_architecture, mcp__hex-graph__audit_workspace, mcp__hex-line__grep_search, mcp__hex-line__read_file
 ---
 
 > **Paths:** File paths are relative to skills repo root.
@@ -56,6 +56,7 @@ Route based on user intent:
 | "Tell me about X" / "Context of X" | `inspect_symbol` | `{ name: "X", file: "...", path: "{project_path}" }` |
 | "Project structure" / "Architecture" | `analyze_architecture` | `{ path: "{project_path}", scope?: "src/" }` |
 | "Find symbol X" | `find_symbols` | `{ query: "X" }` |
+| "Find `app.get(...)` / `router.use(...)` / `server.registerTool(...)` pattern" | `grep_search` | `{ path: "{project_path}", pattern: "app\\.get\\(|router\\.use\\(|server\\.registerTool\\(" }` |
 | "Find duplicate code / hotspots / unused exports" | `audit_workspace` | `{ path: "{project_path}", scope?: "src/", detail_level: "full" }` |
 | "Circular dependencies / module coupling" | `analyze_architecture` | `{ path: "{project_path}", detail_level: "full" }` |
 | "Implementations / overrides" | `find_implementations` | `{ name: "X", file: "...", path: "{project_path}" }` |
@@ -70,6 +71,10 @@ Route based on user intent:
 - `name` + `file`
 
 **Preferred flow:** use `find_symbols` first, then feed the returned `workspace_qualified_name` into `inspect_symbol`, `trace_paths`, `find_references`, or `find_implementations` for exact follow-up queries.
+
+**Query boundary rule:** `find_symbols` is name-based discovery only. For code fragments like `export function` or unresolved member-call patterns like `app.get(...)`, use `grep_search` instead of treating them as symbols.
+
+**Path rule:** `path` may be the indexed project root or any file/subdirectory inside that indexed project.
 
 **Dataflow anchors:** `trace_dataflow` requires `source.anchor` and optional `sink.anchor`. Use:
 - `param` for function parameters
@@ -87,6 +92,7 @@ Route based on user intent:
    - After `find_symbols` → suggest `inspect_symbol` with `workspace_qualified_name` for the top exact match
    - After `inspect_symbol` → suggest `trace_paths` if refactoring
    - After `trace_paths` → suggest `find_references` or `find_implementations` depending on symbol kind
+   - After empty `trace_paths` from a broad or module-level selector → suggest `inspect_symbol` or `analyze_architecture` instead of assuming there are no dependencies
 
 ## Supported Languages
 

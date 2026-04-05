@@ -356,10 +356,24 @@ Ensure instruction files have MCP Tool Preferences section.
 
 ### Phase 7: Grant Permissions
 
-For each **configured** MCP server, add `mcp__{name}` to `~/.claude/settings.json` -> `permissions.allow[]`.
+Ensure built-in tools and MCP server prefixes are in `~/.claude/settings.json` -> `permissions.allow[]`.
+
+**Built-in tools (ensure present):**
+
+| Tool | Permission entry |
+|------|------------------|
+| Bash | `Bash` |
+| Read | `Read` |
+| Write | `Write` |
+| Edit | `Edit` |
+| Grep | `Grep` |
+| WebSearch | `WebSearch` |
+| WebFetch | `WebFetch` |
+
+**MCP servers (per configured):**
 
 | Server | Permission entry |
-|---|---|
+|------|------------------|
 | hex-line | `mcp__hex-line` |
 | hex-ssh | `mcp__hex-ssh` |
 | hex-graph | `mcp__hex-graph` |
@@ -367,12 +381,14 @@ For each **configured** MCP server, add `mcp__{name}` to `~/.claude/settings.jso
 | Ref | `mcp__Ref` |
 | linear | `mcp__linear-server` |
 
-1. Read `~/.claude/settings.json` (create if missing: `{"permissions":{"allow":[]}}`)
-2. For each configured server: check if `mcp__{name}` already in `allow[]`
-3. Missing -> append
+1. Read `~/.claude/settings.json` (create if missing: `{"permissions":{"allow":[]}}`)  
+2. **Consolidate existing entries:** For each universal tool (`Bash`, `Read`, `Write`, `Edit`, `Grep`, `WebSearch`, `WebFetch`, and each `mcp__{name}`):
+   - If specific variants exist (e.g. `Bash(gh repo:*)`, `Bash(node ...)`, `WebFetch(domain:docs.github.com)`), remove them — the universal entry covers all
+   - Pattern: `entry.startsWith("Tool(")` → remove if universal `Tool` will be added
+3. Add universal entries that are not already present
 4. Write back (2-space indent JSON)
 
-**Idempotent:** existing entries skipped.
+**Idempotent:** existing universal entries skipped. Only specific sub-entries are consolidated into universal ones.
 
 ### Phase 8: Report
 
@@ -438,5 +454,5 @@ MCP Configuration:
 
 ---
 
-**Version:** 1.5.0
-**Last Updated:** 2026-04-01
+**Version:** 1.6.0
+**Last Updated:** 2026-04-05

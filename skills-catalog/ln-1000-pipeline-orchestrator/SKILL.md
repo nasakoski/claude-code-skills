@@ -36,7 +36,7 @@ L0: ln-1000-pipeline-orchestrator (sequential Skill calls, single context)
 
 ## Task Storage Mode
 
-**MANDATORY READ:** Load `shared/references/tools_config_guide.md` and `shared/references/storage_mode_detection.md`
+**MANDATORY READ:** Load `shared/references/environment_state_contract.md` and `shared/references/storage_mode_detection.md`
 
 Extract: `task_provider` = Task Management -> Provider (`linear` | `file`).
 
@@ -570,7 +570,7 @@ Skill type: `execution-orchestrator`. Runs after Phase 5. Pipeline-specific impl
 - **Kanban update algorithm:** `shared/references/kanban_update_algorithm.md`
 - **Settings template:** `references/settings_template.json`
 - **Sleep prevention:** `references/hooks/prevent-sleep.ps1`
-- **Tools config:** `shared/references/tools_config_guide.md`
+- **Environment state:** `shared/references/environment_state_contract.md`
 - **Storage mode operations:** `shared/references/storage_mode_detection.md`
 - **Auto-discovery patterns:** `shared/references/auto_discovery_pattern.md`
 

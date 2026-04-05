@@ -1,12 +1,12 @@
 # Auto-Discovery Fallback Chains
 
-<!-- SCOPE: Standard pattern for loading context with fallback sources. Phase 0 reads tools config, subsequent phases use provider-aware discovery. -->
+<!-- SCOPE: Standard pattern for loading context with fallback sources. Phase 0 reads environment state, subsequent phases use provider-aware discovery. -->
 
-## Phase 0: Tools Config
+## Phase 0: Environment State
 
-**MANDATORY READ:** Load `shared/references/tools_config_guide.md`
+**MANDATORY READ:** Load `shared/references/environment_state_contract.md`
 
-Before any discovery chain, read `docs/tools_config.md` (bootstrap if missing). This determines:
+Before any discovery chain, read `.hex-skills/environment_state.json` (run ln-010 if missing). This determines:
 - `task_provider` → linear, file, or github (affects source priority)
 - `research_provider` → ref, context7, or websearch (affects research chains)
 
@@ -14,7 +14,7 @@ Before any discovery chain, read `docs/tools_config.md` (bootstrap if missing). 
 
 ```
 FOR each required data item:
-  1. Try PRIMARY source (kanban_board.md, tools_config.md)
+  1. Try PRIMARY source (kanban_board.md, environment_state.json)
   2. If missing → Try FALLBACK sources in order (provider-aware)
   3. If all fail → Ask user OR raise ERROR
 ```
@@ -24,7 +24,7 @@ FOR each required data item:
 ### Team ID / Repository
 ```
 1. kanban_board.md → Linear Configuration table → Team ID
-2. tools_config.md → Task Management → Team ID / Repository
+2. environment_state.json → task_management.team_id / task_management.repository
 3. IF provider == "linear": list_teams() → ask user to select
 4. IF provider == "github": gh repo view --json nameWithOwner → auto-detect
 5. FALLBACK: Ask user
@@ -65,7 +65,7 @@ FOR each required data item:
 
 | Priority | Source | Trust Level | Availability |
 |----------|--------|-------------|-------------|
-| 1 | tools_config.md | Highest | Always (bootstrapped if missing) |
+| 1 | environment_state.json | Highest | Always (defaults if missing) |
 | 2 | kanban_board.md | High | User-maintained |
 | 3 | Linear API | High | IF provider == "linear" |
 | 4 | GitHub API (gh CLI) | High | IF provider == "github" |
@@ -80,7 +80,7 @@ FOR each required data item:
 |----------|--------|
 | Primary source missing | Try fallback |
 | All fallbacks fail | Ask user |
-| Linear/GitHub API fails at runtime | Update tools_config, switch to file fallbacks |
+| Linear/GitHub API fails at runtime | Update environment_state.json, switch to file fallbacks |
 | Conflicting sources | Prefer higher priority |
 
 ## Best Practices
@@ -91,5 +91,5 @@ FOR each required data item:
 4. **Cache results** — Store in contextStore for phase reuse
 
 ---
-**Version:** 3.0.0
+**Version:** 4.0.0
 **Last Updated:** 2026-04-05

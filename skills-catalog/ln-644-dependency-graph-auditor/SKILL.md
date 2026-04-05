@@ -1,7 +1,7 @@
 ---
 name: ln-644-dependency-graph-auditor
 description: "Builds dependency graph, detects cycles, validates boundary rules, calculates coupling metrics (Ca/Ce/I). Use when auditing dependency structure."
-allowed-tools: Read, Grep, Glob, Bash, mcp__hex-graph__index_project, mcp__hex-graph__analyze_architecture
+allowed-tools: Read, Grep, Glob, Bash, mcp__hex-graph__index_project, mcp__hex-graph__analyze_architecture, mcp__hex-graph__trace_paths
 license: MIT
 ---
 
@@ -157,7 +157,7 @@ FOR EACH source_file IN Glob(language_glob_pattern, root=scan_root):
 
 ### Phase 3: Detect Cycles (ADP)
 
-**hex-graph acceleration:** For projects with `.hex-skills/codegraph/index.db`, use `analyze_architecture(detail_level="full")` and inspect returned `cycles` for instant cycle detection. Fall back to grep-based DFS when graph is unavailable.
+**hex-graph acceleration:** For projects with `.hex-skills/codegraph/index.db`, use `analyze_architecture(detail_level="full")` and inspect returned `cycles` for instant cycle detection. These cycle and coupling metrics are workspace-module level, so single-package repos may collapse to one module. Fall back to grep-based DFS or symbol/file-level tracing when graph output is too coarse for intra-package analysis.
 
 Per Robert C. Martin (Clean Architecture Ch14): "Allow no cycles in the component dependency graph."
 

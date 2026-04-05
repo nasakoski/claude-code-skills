@@ -61,6 +61,8 @@ Plain `name` on its own belongs in `find_symbols`. Ambiguous semantic selectors 
 
 All symbol/query tools also require `path` as the project anchor. Pass the indexed project root, or a file/subdirectory inside that indexed project. Agents should auto-fill it from the active project; the server does not fall back to another open store or another repository when `path` is missing or ambiguous.
 
+`find_symbols` is name-oriented discovery, not free-form code search. If the input looks like `export function`, `server.tool()`, `app.get(...)`, or another raw code fragment, use `grep_search` or a framework-aware graph query instead.
+
 All public responses now use the same top-level shape:
 
 - `status`
@@ -111,7 +113,7 @@ Errors use a compact top-level shape:
 | `inspect_symbol` | One-stop symbol briefing | `symbol`, `resolution`, `context`, `references_summary`, `implementations_summary`, `framework_roles` |
 | `find_references` | All semantic usages of one symbol | `references`, `total_by_kind`, framework wiring, inline `quality` |
 | `find_implementations` | Override / implementation search | `implementations`, `summary`, `next_actions` |
-| `trace_paths` | Blast radius and dependency paths | `paths`, `summary`, `warnings`, inline `quality` |
+| `trace_paths` | Blast radius and dependency paths from a concrete symbol | `paths`, `summary`, `warnings`, inline `quality` |
 | `trace_dataflow` | Source-to-sink propagation | `flows`, `anchors`, `summary` |
 
 ### Review and Editing
@@ -198,6 +200,7 @@ hex-graph-mcp/
 | Scenario | Tool | Example |
 |----------|------|---------|
 | Find candidate symbols | `find_symbols` | `path: "/project", query: "handleAuth"` |
+| Search raw method-call pattern like `server.tool(...)` | `grep_search` | `path: "/project", pattern: "server\\.tool\\("` |
 | Inspect one exact symbol | `inspect_symbol` | `path: "/project", name: "UserService", file: "src/services/user.ts"` |
 | Find semantic usages of one symbol | `find_references` | `path: "/project", workspace_qualified_name: "...", kind: "all"` |
 | Find implementations / overrides | `find_implementations` | `path: "/project", workspace_qualified_name: "..."` |
@@ -232,7 +235,7 @@ Inline `quality` metadata is currently surfaced by:
 ### Generated Snapshot
 
 - MCP tools registered in server contract: `14`
-- Semantic suite: `86/86` passing
+- Semantic suite: `89/89` passing
 - Corpora: `1` curated, `1` pinned external
 - Lanes: parser-first `green`, precise overlay `provider_conditional`
 
@@ -325,7 +328,7 @@ It is designed for local-to-mid-sized repositories and monorepo slices where det
 <details>
 <summary><b>Does it support monorepos?</b></summary>
 
-Yes. Point `index_project` at the monorepo root or at a package subtree. Use `analyze_architecture` with `scope` filters to focus analysis.
+Yes. Point `index_project` at the monorepo root or at a package subtree. Use `analyze_architecture` with `scope` filters to focus analysis. In JavaScript and TypeScript, workspace module grouping follows the nearest `package.json`, so a single-package repo can appear as one workspace module. Use symbol-level traces or manual search when you need finer intra-package structure.
 
 </details>
 

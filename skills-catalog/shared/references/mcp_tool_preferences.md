@@ -25,6 +25,9 @@ Repo-level MCP policy for code files and semantic codebase analysis.
 
 - Preferred `hex-line` flow: `outline -> read_file -> edit_file(base_revision) -> verify`
 - Preferred `hex-graph` flow: `index_project -> find_symbols/inspect_symbol -> analyze_edit_region or analyze_changes`
+- `find_symbols` is for symbol names or partial names, not code fragments like `export function` and not unresolved member calls like `server.tool()` or `app.get(...)`
+- Path-scoped `hex-graph` query tools accept the indexed project root or any file/subdirectory inside that indexed project
+- Use `grep_search` for raw method-call patterns such as `app.get(...)`, `router.use(...)`, or `server.registerTool(...)`
 - Use `hex-line` for config, scripts, and tests when those files are part of the deliverable
 - Use `hex-line outline` first for large markdown files, then targeted reads by section
 - Carry the latest `revision` into same-file follow-up edits as `base_revision`

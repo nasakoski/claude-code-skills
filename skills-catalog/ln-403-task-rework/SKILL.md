@@ -32,7 +32,7 @@ Use `read_file()` and `edit_file()` as the primary path for code/config/script/t
 
 ## Task Storage Mode
 
-**MANDATORY READ:** Load `shared/references/tools_config_guide.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
+**MANDATORY READ:** Load `shared/references/environment_state_contract.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
 
 Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
@@ -78,7 +78,7 @@ Write `.hex-skills/runtime-artifacts/runs/{run_id}/task-status/{task_id}.json` b
 - [ ] Runtime summary artifact written to the shared task-status location.
 
 ## Reference Files
-- **Tools config:** `shared/references/tools_config_guide.md`
+- **Environment state:** `shared/references/environment_state_contract.md`
 - **Storage mode operations:** `shared/references/storage_mode_detection.md`
 - **[MANDATORY] Problem-solving approach:** `shared/references/problem_solving.md`
 - Kanban format: `docs/tasks/kanban_board.md`

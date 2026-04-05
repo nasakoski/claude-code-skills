@@ -1,15 +1,15 @@
 # Storage Mode Operations
 
-<!-- SCOPE: Compact routing table for all providers. Provider selection comes from docs/tools_config.md (NOT detected here). This file defines WHAT to call at summary level. For full pseudocode, load the provider-specific file. -->
+<!-- SCOPE: Compact routing table for all providers. Provider selection comes from .hex-skills/environment_state.json → task_management.provider (NOT detected here). This file defines WHAT to call at summary level. For full pseudocode, load the provider-specific file. -->
 
 ## Mode Selection
 
-Read `docs/tools_config.md` → Task Management → Provider:
+Read `.hex-skills/environment_state.json` → `task_management.provider`:
 - `linear` → load `shared/references/provider_linear.md`
 - `file` → load `shared/references/provider_file.md`
 - `github` → load `shared/references/provider_github.md`
 
-If tools_config.md missing → bootstrap per `shared/references/tools_config_guide.md`.
+If environment_state.json missing → run `ln-010` or default to `file` mode.
 
 **Progressive disclosure:** After determining the provider, load ONLY the matching `provider_{value}.md` for full operation pseudocode.
 
@@ -54,7 +54,7 @@ If tools_config.md missing → bootstrap per `shared/references/tools_config_gui
 
 All providers fall back to File Mode on error:
 ```
-Primary provider (linear/github) fails → update tools_config.md → switch to file mode
+Primary provider (linear/github) fails → update environment_state.json → switch to file mode
 File mode is always available (no external dependencies)
 ```
 
@@ -64,8 +64,8 @@ File mode is always available (no external dependencies)
 **MANDATORY READ:** Load `shared/references/storage_mode_detection.md`
 ```
 
-After loading, the skill reads `docs/tools_config.md`, determines the provider, and loads only `provider_{value}.md` for full operation details.
+After loading, the skill reads `.hex-skills/environment_state.json`, determines the provider, and loads only `provider_{value}.md` for full operation details.
 
 ---
-**Version:** 3.0.0
+**Version:** 4.0.0
 **Last Updated:** 2026-04-05

@@ -57,6 +57,42 @@ describe("use-case wrappers", () => {
         }
     });
 
+    it("surfaces query-boundary warnings for member-call patterns and mono-package architecture", async () => {
+        const dir = makeTempDir();
+        try {
+            mkdirSync(join(dir, "src"), { recursive: true });
+            writeFileSync(join(dir, "src", "server.ts"), [
+                "export function registerTool(name: string) {",
+                "  return name;",
+                "}",
+                "",
+                "export function boot(server: { tool(name: string): string }) {",
+                "  return server.tool(\"demo\");",
+                "}",
+                "",
+            ].join("\n"), "utf8");
+            await indexProject(dir);
+
+            const candidates = runFindSymbolsUseCase("server.tool()", { path: dir });
+            assert.equal(candidates.result.candidates.length, 0);
+            assert.ok(
+                candidates.warnings.some((warning) => warning.includes("object member call sites")),
+                "member-call warning is returned",
+            );
+            assert.ok(candidates.next_actions.includes("adjust_query"));
+
+            const architecture = runAnalyzeArchitectureUseCase({ path: dir, detailLevel: "compact" });
+            assert.equal(architecture.result.modules.length, 1);
+            assert.ok(
+                architecture.warnings.some((warning) => warning.includes("single workspace module")),
+                "mono-package warning is returned",
+            );
+        } finally {
+            resolveStore(dir)?.close();
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     it("covers edit impact, architecture, and workspace audit use cases", async () => {
         const dir = makeTempDir();
         try {

@@ -35,7 +35,7 @@ Any skill that modifies code checks its git context and creates isolation if nee
 
 ## Fallback (no worktree support)
 
-Read `docs/tools_config.md` → Git → Branch strategy:
+If `git worktree` is not available, fall back to branch mode:
 
 | Operation | worktree (default) | branch (fallback) |
 |-----------|----------|--------|
@@ -52,5 +52,5 @@ Read `docs/tools_config.md` → Git → Branch strategy:
 ```
 
 ---
-**Version:** 2.0.0
-**Last Updated:** 2026-03-08
+**Version:** 3.0.0
+**Last Updated:** 2026-04-05

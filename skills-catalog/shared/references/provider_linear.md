@@ -1,11 +1,11 @@
 # Linear Provider Operations
 
-<!-- SCOPE: Full operation pseudocode for Linear Mode. Loaded only when docs/tools_config.md Provider=linear. -->
+<!-- SCOPE: Full operation pseudocode for Linear Mode. Loaded only when environment_state.json task_management.provider=linear. -->
 
 ## Prerequisites
 
 - Linear MCP server configured and authenticated
-- Team ID known (from `docs/tools_config.md` or `kanban_board.md`)
+- Team ID known (from `environment_state.json` or `kanban_board.md`)
 
 ## Epic Operations
 
@@ -70,7 +70,7 @@
 ```
 IF Linear API fails (401/403/429/500/timeout):
   1. WARN user (ONE TIME per session)
-  2. UPDATE docs/tools_config.md: Provider → file, Status → "unavailable ({error}, {date})"
+  2. UPDATE environment_state.json: task_management.provider → file, task_management.status → "unavailable ({error}, {date})"
   3. EXECUTE via file mode fallback
 ```
 

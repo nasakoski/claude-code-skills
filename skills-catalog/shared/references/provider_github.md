@@ -1,6 +1,6 @@
 # GitHub Issues Provider Operations
 
-<!-- SCOPE: Full operation pseudocode for GitHub Mode. Loaded only when docs/tools_config.md Provider=github. Uses gh CLI + GitHub REST API for sub-issues and Projects v2 for status tracking. -->
+<!-- SCOPE: Full operation pseudocode for GitHub Mode. Loaded only when environment_state.json task_management.provider=github. Uses gh CLI + GitHub REST API for sub-issues and Projects v2 for status tracking. -->
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ IF Provider=github AND first use:
   2. Detect repo: REPO=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
   3. Create GitHub Project (if not exists):
      gh project create --owner {OWNER} --title "Task Board"
-     → Store returned project number in docs/tools_config.md → Project Number
+     → Store returned project number in environment_state.json → task_management.project_number
   4. Add Status field to project:
      gh project field-create {PROJECT_NUM} --owner {OWNER} \
        --name "Status" --data-type SINGLE_SELECT \
@@ -31,7 +31,7 @@ IF Provider=github AND first use:
      gh label create "bug" -R {REPO} --color "FC2929" --force
 ```
 
-## Config in docs/tools_config.md
+## Config in environment_state.json
 
 ```markdown
 ## Task Management
@@ -200,9 +200,9 @@ Issue numbers:     Auto-assigned by GitHub (not controllable)
 IF gh command fails (auth, rate limit, network):
   1. WARN user (ONE TIME per session):
      "⚠️ GitHub CLI unavailable: {error}. Using file mode fallback."
-  2. UPDATE docs/tools_config.md:
-     Provider → file
-     Status → "unavailable ({error}, {date})"
+  2. UPDATE environment_state.json:
+     task_management.provider → file
+     task_management.status → "unavailable ({error}, {date})"
   3. EXECUTE via file mode fallback
   4. Report: "Switched to file mode due to GitHub error"
 ```
