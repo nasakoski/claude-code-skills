@@ -1,6 +1,6 @@
 {
   "name": "@levnikolaevich/hex-graph-mcp",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "mcpName": "io.github.levnikolaevich/hex-graph-mcp",
   "type": "module",
   "description": "Deterministic layered code graph MCP server. Indexes codebases into a SQLite graph via tree-sitter AST, canonical symbol identities, semantic overlays, capability-first quality tooling, and optional SCIP interoperability.",
@@ -30,7 +30,7 @@
     "benchmark:diagnostic": "node benchmark/index.mjs --diagnostics"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   },
   "_dep_notes": {
     "web-tree-sitter": "Tracks the latest stable runtime together with the repo-owned first-party grammar WASM bundle. Keep runtime upgrades coupled to grammar load/parse validation across Windows, macOS, and Linux.",

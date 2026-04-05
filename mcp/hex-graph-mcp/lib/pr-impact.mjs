@@ -1,6 +1,9 @@
 import { semanticGitDiff } from "@levnikolaevich/hex-common/git/semantic-diff";
 import { resolveStore, tracePaths } from "./store.mjs";
 
+export const DEFAULT_PR_IMPACT_MAX_SYMBOLS = 25;
+export const DEFAULT_PR_IMPACT_MAX_PATHS = 10;
+
 const IMPACT_EDGE_KINDS = new Set([
     "calls",
     "ref_read",
@@ -160,8 +163,8 @@ export async function getPrImpact({
     baseRef,
     headRef = null,
     includePaths = false,
-    maxSymbols = 25,
-    maxPaths = 10,
+    maxSymbols = DEFAULT_PR_IMPACT_MAX_SYMBOLS,
+    maxPaths = DEFAULT_PR_IMPACT_MAX_PATHS,
 }) {
     const store = resolveStore(path);
     if (!store) {

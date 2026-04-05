@@ -3,7 +3,7 @@
   "summary": {
     "semantic_suite": {
       "runner": "node --test test/*.mjs",
-      "passed": 83,
+      "passed": 84,
       "failed": 0,
       "status": "pass"
     },

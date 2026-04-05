@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fromBinary } from "@bufbuild/protobuf";
 
-import { resolveStore } from "../store.mjs";
+import { getStore, hasOpenStore } from "../store.mjs";
 import { buildNodeLookup, findOwnerNode, normalizePath } from "./project.mjs";
 import { IndexSchema, SymbolRole, SymbolInformation_Kind } from "./vendor/scip_pb.js";
 import { normalizeScipLanguage, positionEncodingName, supportedImportLanguageForDocument } from "./languages.mjs";
@@ -121,132 +121,136 @@ function supportedDocuments(artifact) {
 
 export async function importScipOverlay({ path: projectPath, artifactPath, replaceExisting = true }) {
     const absoluteProjectPath = resolve(projectPath);
-    const store = resolveStore(absoluteProjectPath);
-    if (!store) {
-        throw new Error("Project is not indexed. Run index_project before import_scip_overlay.");
-    }
+    let store;
+    const shouldCloseStore = !hasOpenStore(absoluteProjectPath, { mode: "write" });
+    try {
+        store = getStore(absoluteProjectPath);
+        if (replaceExisting) {
+            store.clearEdgesByOrigin("scip_import");
+        }
 
-    if (replaceExisting) {
-        store.clearEdgesByOrigin("scip_import");
-    }
+        const absoluteArtifactPath = resolve(absoluteProjectPath, artifactPath);
+        const artifact = fromBinary(IndexSchema, readFileSync(absoluteArtifactPath));
+        const documents = supportedDocuments(artifact);
+        const supported = documents.filter(entry => entry.normalizedLanguage);
+        if (!supported.length) {
+            const rawLanguages = [...new Set((artifact.documents || []).map(document => normalizeScipLanguage(document.language)).filter(Boolean))];
+            throw new Error(`SCIP artifact does not contain supported document languages. Found: ${rawLanguages.join(", ") || "none"}.`);
+        }
+        const lookupCache = new Map();
+        const symbolToNode = new Map();
 
-    const absoluteArtifactPath = resolve(absoluteProjectPath, artifactPath);
-    const artifact = fromBinary(IndexSchema, readFileSync(absoluteArtifactPath));
-    const documents = supportedDocuments(artifact);
-    const supported = documents.filter(entry => entry.normalizedLanguage);
-    if (!supported.length) {
-        const rawLanguages = [...new Set((artifact.documents || []).map(document => normalizeScipLanguage(document.language)).filter(Boolean))];
-        throw new Error(`SCIP artifact does not contain supported document languages. Found: ${rawLanguages.join(", ") || "none"}.`);
-    }
-    const lookupCache = new Map();
-    const symbolToNode = new Map();
-
-    for (const { document } of supported) {
-        const relFile = normalizePath(document.relativePath);
-        const fileNodes = store.nodesByFile(relFile);
-        if (!fileNodes.length) continue;
-        const infos = symbolInfoByDocument(document);
-        for (const occurrence of document.occurrences || []) {
-            if ((occurrence.symbolRoles & SymbolRole.Definition) === 0) continue;
-            const startLine = occurrenceLine(occurrence);
-            const startColumn = occurrenceColumn(occurrence);
-            const nativeNode = findDefinitionNode(store, relFile, startLine, startColumn, occurrence.symbol, infos.get(occurrence.symbol), lookupCache);
-            if (nativeNode) {
-                symbolToNode.set(occurrence.symbol, nativeNode);
+        for (const { document } of supported) {
+            const relFile = normalizePath(document.relativePath);
+            const fileNodes = store.nodesByFile(relFile);
+            if (!fileNodes.length) continue;
+            const infos = symbolInfoByDocument(document);
+            for (const occurrence of document.occurrences || []) {
+                if ((occurrence.symbolRoles & SymbolRole.Definition) === 0) continue;
+                const startLine = occurrenceLine(occurrence);
+                const startColumn = occurrenceColumn(occurrence);
+                const nativeNode = findDefinitionNode(store, relFile, startLine, startColumn, occurrence.symbol, infos.get(occurrence.symbol), lookupCache);
+                if (nativeNode) {
+                    symbolToNode.set(occurrence.symbol, nativeNode);
+                }
             }
         }
-    }
 
-    const seenEdges = new Set();
-    let importedReferenceEdges = 0;
-    let importedRelationshipEdges = 0;
-    let skippedDocuments = 0;
+        const seenEdges = new Set();
+        let importedReferenceEdges = 0;
+        let importedRelationshipEdges = 0;
+        let skippedDocuments = 0;
 
-    for (const { document, normalizedLanguage } of documents) {
-        if (!normalizedLanguage) {
-            skippedDocuments++;
-            continue;
-        }
-        const relFile = normalizePath(document.relativePath);
-        const fileNodes = store.nodesByFile(relFile);
-        if (!fileNodes.length) continue;
-        const infos = symbolInfoByDocument(document);
+        for (const { document, normalizedLanguage } of documents) {
+            if (!normalizedLanguage) {
+                skippedDocuments++;
+                continue;
+            }
+            const relFile = normalizePath(document.relativePath);
+            const fileNodes = store.nodesByFile(relFile);
+            if (!fileNodes.length) continue;
 
-        for (const occurrence of document.occurrences || []) {
-            if ((occurrence.symbolRoles & SymbolRole.Definition) !== 0) continue;
-            const targetNode = symbolToNode.get(occurrence.symbol);
-            if (!targetNode) continue;
-            const line = occurrence.enclosingRange?.length ? occurrenceLine(occurrence, "enclosingRange") : occurrenceLine(occurrence);
-            const column = occurrence.enclosingRange?.length
-                ? occurrenceColumn({ range: occurrence.enclosingRange })
-                : occurrenceColumn(occurrence);
-            const ownerNode = findOwnerNode(store, relFile, line, column, lookupCache);
-            if (!ownerNode || ownerNode.id === targetNode.id) continue;
-            const kind = importedEdgeKind(occurrence);
-            const edgeKey = [ownerNode.id, targetNode.id, kind, relFile, line, column, occurrenceColumn(occurrence)].join("|");
-            if (seenEdges.has(edgeKey)) continue;
-            seenEdges.add(edgeKey);
-            store.insertEdge({
-                source_id: ownerNode.id,
-                target_id: targetNode.id,
-                layer: kind === "imports" ? "module" : "symbol",
-                kind,
-                confidence: "precise",
-                origin: "scip_import",
-                file: relFile,
-                line,
-                evidence_json: importedEdgeEvidence({
-                    artifactPath: absoluteArtifactPath,
-                    occurrence,
-                    symbol: occurrence.symbol,
-                    document,
-                }),
-            });
-            importedReferenceEdges++;
-        }
-
-        for (const info of document.symbols || []) {
-            const sourceNode = symbolToNode.get(info.symbol);
-            if (!sourceNode) continue;
-            for (const relationship of info.relationships || []) {
-                const targetNode = symbolToNode.get(relationship.symbol);
-                if (!targetNode || targetNode.id === sourceNode.id) continue;
-                const kind = relationship.isImplementation
-                    ? (sourceNode.kind === "method" || targetNode.kind === "method" ? "overrides" : "implements")
-                    : null;
-                if (!kind) continue;
-                const edgeKey = [sourceNode.id, targetNode.id, kind, relFile, sourceNode.line_start].join("|");
+            for (const occurrence of document.occurrences || []) {
+                if ((occurrence.symbolRoles & SymbolRole.Definition) !== 0) continue;
+                const targetNode = symbolToNode.get(occurrence.symbol);
+                if (!targetNode) continue;
+                const line = occurrence.enclosingRange?.length ? occurrenceLine(occurrence, "enclosingRange") : occurrenceLine(occurrence);
+                const column = occurrence.enclosingRange?.length
+                    ? occurrenceColumn({ range: occurrence.enclosingRange })
+                    : occurrenceColumn(occurrence);
+                const ownerNode = findOwnerNode(store, relFile, line, column, lookupCache);
+                if (!ownerNode || ownerNode.id === targetNode.id) continue;
+                const kind = importedEdgeKind(occurrence);
+                const edgeKey = [ownerNode.id, targetNode.id, kind, relFile, line, column, occurrenceColumn(occurrence)].join("|");
                 if (seenEdges.has(edgeKey)) continue;
                 seenEdges.add(edgeKey);
                 store.insertEdge({
-                    source_id: sourceNode.id,
+                    source_id: ownerNode.id,
                     target_id: targetNode.id,
-                    layer: "type",
+                    layer: kind === "imports" ? "module" : "symbol",
                     kind,
                     confidence: "precise",
                     origin: "scip_import",
                     file: relFile,
-                    line: sourceNode.line_start,
+                    line,
                     evidence_json: importedEdgeEvidence({
                         artifactPath: absoluteArtifactPath,
-                        occurrence: null,
-                        symbol: info.symbol,
-                        relationshipKind: kind,
+                        occurrence,
+                        symbol: occurrence.symbol,
                         document,
                     }),
                 });
-                importedRelationshipEdges++;
+                importedReferenceEdges++;
+            }
+
+            for (const info of document.symbols || []) {
+                const sourceNode = symbolToNode.get(info.symbol);
+                if (!sourceNode) continue;
+                for (const relationship of info.relationships || []) {
+                    const targetNode = symbolToNode.get(relationship.symbol);
+                    if (!targetNode || targetNode.id === sourceNode.id) continue;
+                    const kind = relationship.isImplementation
+                        ? (sourceNode.kind === "method" || targetNode.kind === "method" ? "overrides" : "implements")
+                        : null;
+                    if (!kind) continue;
+                    const edgeKey = [sourceNode.id, targetNode.id, kind, relFile, sourceNode.line_start].join("|");
+                    if (seenEdges.has(edgeKey)) continue;
+                    seenEdges.add(edgeKey);
+                    store.insertEdge({
+                        source_id: sourceNode.id,
+                        target_id: targetNode.id,
+                        layer: "type",
+                        kind,
+                        confidence: "precise",
+                        origin: "scip_import",
+                        file: relFile,
+                        line: sourceNode.line_start,
+                        evidence_json: importedEdgeEvidence({
+                            artifactPath: absoluteArtifactPath,
+                            occurrence: null,
+                            symbol: info.symbol,
+                            relationshipKind: kind,
+                            document,
+                        }),
+                    });
+                    importedRelationshipEdges++;
+                }
             }
         }
-    }
 
-    return {
-        artifact_path: absoluteArtifactPath,
-        artifact_languages: [...new Set(supported.map(entry => entry.normalizedLanguage))],
-        mapped_symbol_count: symbolToNode.size,
-        imported_reference_edges: importedReferenceEdges,
-        imported_relationship_edges: importedRelationshipEdges,
-        skipped_documents: skippedDocuments,
-        replace_existing: replaceExisting,
-    };
+        return {
+            artifact_path: absoluteArtifactPath,
+            artifact_languages: [...new Set(supported.map(entry => entry.normalizedLanguage))],
+            mapped_symbol_count: symbolToNode.size,
+            imported_reference_edges: importedReferenceEdges,
+            imported_relationship_edges: importedRelationshipEdges,
+            skipped_documents: skippedDocuments,
+            replace_existing: replaceExisting,
+        };
+    } finally {
+        if (store && shouldCloseStore) {
+            try { store.checkpoint(); } catch { /* best-effort WAL flush */ }
+            store.close();
+        }
+    }
 }

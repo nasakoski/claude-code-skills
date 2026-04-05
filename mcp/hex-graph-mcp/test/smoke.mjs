@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 import { countTestCases } from "../scripts/quality-support.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -13,7 +14,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { indexProject, reindexFile } from "../lib/indexer.mjs";
-import { getStore, resolveStore, findSymbols, getReferencesBySelector, getSymbol, tracePaths, explainResolution, findImplementationsBySelector, findDataflowsBySelector, getModuleMetricsReport, getArchitectureReport } from "../lib/store.mjs";
+import { QUERY_STORE_IDLE_MS, closeAllStores, getStore, hasOpenStore, resolveStore, findSymbols, getReferencesBySelector, getSymbol, tracePaths, explainResolution, findImplementationsBySelector, findDataflowsBySelector, getModuleMetricsReport, getArchitectureReport } from "../lib/store.mjs";
 import { findClones } from "../lib/clones.mjs";
 import { findCycles } from "../lib/cycles.mjs";
 import { findUnusedExports } from "../lib/unused.mjs";
@@ -860,6 +861,7 @@ describe("barrel re-export", () => {
 
         try {
             await indexProject(tmp);
+            assert.equal(hasOpenStore(tmp, { mode: "write" }), false, "indexProject should release writer store after indexing");
             const store = getStore(tmp);
 
             // barrel should have a reexport node
@@ -2261,6 +2263,8 @@ describe("store persistence after restart", () => {
             store.close(); // simulates restart — removes from _stores
             const reopened = resolveStore(tmp);
             assert.ok(reopened, "resolveStore should auto-open from disk, not return null");
+            assert.equal(hasOpenStore(tmp, { mode: "write" }), false, "query reopen must not create a writer store");
+            assert.equal(hasOpenStore(tmp, { mode: "query" }), true, "query reopen should use a query store");
             assert.ok(reopened.allFilePaths().length > 0, "reopened store has data");
             reopened.close();
         } finally {
@@ -2279,6 +2283,22 @@ describe("store persistence after restart", () => {
             assert.ok(found, "resolveStore should match parent project for subdirectory");
             found.close();
         } finally {
+            try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+
+    it("resolveStore query stores idle-close automatically", async () => {
+        const tmp = makeTempDir();
+        try {
+            writeFileSync(join(tmp, "idle.mjs"), "export const idle = 1;\n");
+            await indexProject(tmp);
+            const store = resolveStore(tmp);
+            assert.ok(store, "query store should open from persisted DB");
+            assert.equal(hasOpenStore(tmp, { mode: "query" }), true, "query store should be tracked while active");
+            await delay(QUERY_STORE_IDLE_MS + 150);
+            assert.equal(hasOpenStore(tmp, { mode: "query" }), false, "query store should auto-close after idle timeout");
+        } finally {
+            closeAllStores();
             try { rmSync(tmp, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
         }
     });

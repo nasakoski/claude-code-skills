@@ -11,8 +11,10 @@ import { createServerRuntime } from "@levnikolaevich/hex-common/runtime/mcp-boot
 import { flexBool, flexNum } from "@levnikolaevich/hex-common/runtime/schema";
 import { checkForUpdates } from "@levnikolaevich/hex-common/runtime/update-check";
 import { tracePaths, getReferencesBySelector, findImplementationsBySelector } from "./lib/store.mjs";
+import { closeAllStores } from "./lib/store.mjs";
 import { CONFIDENCE_VALUES } from "./lib/confidence.mjs";
 import { DEFAULT_FLOW_LIMIT, DEFAULT_FLOW_MAX_HOPS, FLOW_ANCHOR_KINDS } from "./lib/flow.mjs";
+import { DEFAULT_PR_IMPACT_MAX_PATHS, DEFAULT_PR_IMPACT_MAX_SYMBOLS } from "./lib/pr-impact.mjs";
 import { buildInlineQuality, collectFrameworksFromOrigins } from "./lib/quality.mjs";
 import { installGraphProviders } from "./lib/providers/index.mjs";
 import { exportScip } from "./lib/scip/export.mjs";
@@ -48,10 +50,30 @@ const { server, StdioServerTransport } = await createServerRuntime({
     version,
 });
 
+let shutdownCleanupRan = false;
+function runShutdownCleanup() {
+    if (shutdownCleanupRan) return;
+    shutdownCleanupRan = true;
+    try { closeAllStores(); } catch { /* best-effort shutdown */ }
+}
+
+process.once("beforeExit", runShutdownCleanup);
+process.once("exit", runShutdownCleanup);
+process.once("SIGINT", () => {
+    runShutdownCleanup();
+    process.exit(130);
+});
+process.once("SIGTERM", () => {
+    runShutdownCleanup();
+    process.exit(143);
+});
+
 function graphNextAction(code) {
     switch (code) {
     case "GRAPH_DB_BUSY":
         return ACTION.FIX_DB_LOCK;
+    case "GRAPH_DB_UNREADABLE":
+        return ACTION.FIX_DB_ACCESS;
     case "PATH_NOT_FOUND":
     case "FILE_OUTSIDE_PROJECT":
         return ACTION.FIX_PATH;
@@ -264,8 +286,11 @@ server.registerTool("index_project", {
         });
     } catch (e) {
         const message = e?.message || String(e);
-        if (e?.code === "EBUSY" || e?.code === "EPERM" || /busy or locked/i.test(message)) {
-            return graphError("GRAPH_DB_BUSY", message, "Close other processes using the graph DB or remove stale SQLite lock files, then rerun index_project");
+        if (e?.code === "GRAPH_DB_UNREADABLE") {
+            return graphError("GRAPH_DB_UNREADABLE", message, "Inspect the same-project graph DB files, ensure they are readable, then rerun index_project");
+        }
+        if (e?.code === "GRAPH_DB_BUSY" || e?.code === "EBUSY" || e?.code === "EPERM" || /busy or locked/i.test(message)) {
+            return graphError("GRAPH_DB_BUSY", message, "Close the same-project graph DB in other hex-graph/editor sessions, wait for idle-close, then rerun index_project");
         }
         return graphError("PATH_NOT_FOUND", e.message, "Check path exists and is accessible");
     }
@@ -570,8 +595,8 @@ server.registerTool("analyze_changes", {
         base_ref: z.string().describe("Git baseline ref used to compute the changed-symbol set"),
         head_ref: z.string().optional().describe("Optional git head ref. If omitted, the current checkout/worktree is compared to `base_ref`."),
         include_paths: z.boolean().default(false).describe("Include reverse mixed graph paths for the returned symbols. Default is false to keep the snapshot compact."),
-        max_symbols: flexNum().describe("Maximum changed symbols to return after risk ranking (default: 25)"),
-        max_paths: flexNum().describe("Maximum supporting paths per symbol when `include_paths` is true (default: 10)"),
+        max_symbols: flexNum().describe(`Maximum changed symbols to return after risk ranking (default: ${DEFAULT_PR_IMPACT_MAX_SYMBOLS})`),
+        max_paths: flexNum().describe(`Maximum supporting paths per symbol when \`include_paths\` is true (default: ${DEFAULT_PR_IMPACT_MAX_PATHS})`),
         format: z.enum(["json", "text"]).default("json"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -583,8 +608,8 @@ server.registerTool("analyze_changes", {
             baseRef: base_ref,
             headRef: head_ref || null,
             includePaths: include_paths,
-            maxSymbols: max_symbols ?? 25,
-            maxPaths: max_paths ?? 10,
+            maxSymbols: max_symbols ?? DEFAULT_PR_IMPACT_MAX_SYMBOLS,
+            maxPaths: max_paths ?? DEFAULT_PR_IMPACT_MAX_PATHS,
         });
         if (result?.error) {
             return graphError(result.error);

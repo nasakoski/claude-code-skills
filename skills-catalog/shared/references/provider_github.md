@@ -209,8 +209,38 @@ IF gh command fails (auth, rate limit, network):
 
 ## API Version Note
 
-Sub-issues API requires `X-GitHub-Api-Version: 2026-03-10` or later. The `gh api` command handles versioning automatically when using the default configuration.
+Sub-issues REST API requires header `X-GitHub-Api-Version: 2026-03-10` or later. Without it, requests default to `2022-11-28` and sub-issue endpoints return 404.
+
+The `gh api` command sends the latest version by default. If using `gh api` with explicit `-H` flags, add:
+```
+-H "X-GitHub-Api-Version: 2026-03-10"
+```
+
+## Sub-Issues Limits
+
+| Limit | Value |
+|-------|-------|
+| Max sub-issues per parent | 100 |
+| Max nesting depth | 8 levels |
+| Cross-repo sub-issues | Yes (same owner required) |
+
+## Sub-Issues API Gotchas
+
+| Gotcha | Detail |
+|--------|--------|
+| `sub_issue_id` is NOT issue `number` | Must resolve via `gh api /repos/{O}/{R}/issues/{num} --jq '.id'` first |
+| DELETE uses singular path | `DELETE /issues/{N}/sub_issue` (NOT `/sub_issues`) |
+| Reprioritize endpoint | `PATCH /issues/{N}/sub_issues/priority` with `sub_issue_id` + `after_id` or `before_id` |
+| `gh` CLI has no native sub-issue support | cli/cli#10298 still open — must use `gh api` |
+
+## Projects v2 Notes
+
+- Status is a built-in SINGLE_SELECT field with defaults: Todo, In Progress, Done
+- Custom values (Backlog, To Review, etc.) must be added via `field-create` or project UI
+- Max 50 options per single-select field
+- Built-in automations: "Item closed" auto-sets Done, "PR merged" auto-sets Done
+- Up to 19 `gh project` CLI subcommands available (see GitHub CLI manual)
 
 ---
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Last Updated:** 2026-04-05

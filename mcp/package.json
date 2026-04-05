@@ -1,6 +1,9 @@
 {
   "name": "mcp-workspace",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "workspaces": [
     "hex-common",
     "hex-line-mcp",

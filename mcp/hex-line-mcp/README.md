@@ -64,6 +64,8 @@ claude mcp add -s user hex-line -- hex-line-mcp
 
 ripgrep is bundled via `@vscode/ripgrep` — no manual install needed for `grep_search`.
 
+Requires Node.js >= 20.19.0.
+
 ### Hooks
 
 Hooks and output style are auto-synced on every MCP server startup. The server compares installed files with bundled versions and updates only when content differs. First run after `npm i -g` triggers full install automatically.

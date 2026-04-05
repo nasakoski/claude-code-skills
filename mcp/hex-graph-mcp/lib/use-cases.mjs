@@ -2,7 +2,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 
 import { findClones } from "./clones.mjs";
 import { findCycles } from "./cycles.mjs";
-import { getPrImpact } from "./pr-impact.mjs";
+import { DEFAULT_PR_IMPACT_MAX_PATHS, DEFAULT_PR_IMPACT_MAX_SYMBOLS, getPrImpact } from "./pr-impact.mjs";
 import {
     explainResolution,
     findDataflowsBySelector,
@@ -13,7 +13,7 @@ import {
     getModuleMetricsReport,
     getReferencesBySelector,
     getSymbol,
-    resolveStore,
+    withResolvedStore,
 } from "./store.mjs";
 import { findUnusedExports } from "./unused.mjs";
 import { ACTION, nextActions } from "./output-contract.mjs";
@@ -241,8 +241,8 @@ export async function runAnalyzeChangesUseCase({
     baseRef,
     headRef = null,
     includePaths = false,
-    maxSymbols = 25,
-    maxPaths = 10,
+    maxSymbols = DEFAULT_PR_IMPACT_MAX_SYMBOLS,
+    maxPaths = DEFAULT_PR_IMPACT_MAX_PATHS,
 }) {
     const base = await getPrImpact({
         path,
@@ -308,83 +308,84 @@ export function runAnalyzeArchitectureUseCase({
     limit = 15,
     detailLevel = "compact",
 } = {}) {
-    const store = resolveStore(path);
-    if (!store) {
-        return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
-    }
-    const architecture = getArchitectureReport({ path, scopePath: scope, limit });
-    if (architecture?.error) return architecture;
-    const cycles = findCycles(store, { scopePath: scope });
-    const metrics = getModuleMetricsReport({ path, scopePath: scope, minCoupling: 2, sort: "instability" });
-    if (metrics?.error) return metrics;
-    const compactCycles = trimForDetail(cycles.cycles || [], detailLevel, limit);
-    const compactCoupling = trimForDetail(metrics.result || [], detailLevel, limit);
-    const compactEdges = trimForDetail(architecture.result.cross_module_edges || [], detailLevel, limit);
-    const compactHotspots = trimForDetail(architecture.result.hotspots || [], detailLevel, limit);
-    const compactFramework = trimForDetail(architecture.result.framework || [], detailLevel, limit);
-    const compactModules = trimForDetail(architecture.result.modules || [], detailLevel, limit).map((module) => ({
-        module_key: module.module_key,
-        module_name: module.module_name,
-        package_key: module.package_key || null,
-        exported_symbols: module.exported_symbols,
-        imported_modules: module.imported_modules,
-        instability: module.instability,
-    }));
-    return {
-        query: {
-            path,
-            scope,
-            limit,
-            detail_level: detailLevel,
-        },
-        summary: [
-            `${summarizeCount(architecture.result.modules.length, "module")}`,
-            `${summarizeCount(cycles.cycles.length, "cycle")}`,
-            `${summarizeCount(compactHotspots.length, "top risk")}`,
-        ].join(", "),
-        result: {
-            workspace_summary: architecture.result.stats,
-            modules: compactModules,
-            module_boundaries: compactEdges.map((edge) => ({
-                from_module: edge.from_module,
-                to_module: edge.to_module,
-                edge_kind: edge.edge_kind,
-                count: edge.count,
-            })),
-            cycles: compactCycles,
-            coupling: compactCoupling.map((row) => ({
-                module_key: row.module_key,
-                instability: row.instability,
-                efferent_coupling: row.ce,
-                afferent_coupling: row.ca,
-            })),
-            framework_surfaces: compactFramework.map((entry) => ({
-                symbol: entry.symbol,
-                origin: entry.origin,
-                file: entry.file,
-            })),
-            top_risks: compactHotspots.map((risk) => ({
-                file: risk.file,
-                symbol: risk.symbol,
-                reason: risk.reason,
-                rank: risk.rank,
-            })),
-        },
-        warnings: cycles.cycles.length
-            ? [`${summarizeCount(cycles.cycles.length, "cycle")} detected across workspace modules.`]
-            : [],
-        next_actions: nextActions([
-            cycles.cycles.length ? ACTION.ANALYZE_CHANGES : null,
-            ACTION.AUDIT_WORKSPACE,
-        ]),
-        confidence: architecture.confidence,
-        reason: "architecture_review",
-        evidence: {
-            cycle_count: cycles.cycles.length,
-            coupling_rows: metrics.result.length,
-        },
-        limits_applied: { limit, detail_level: detailLevel },
-    };
+    return withResolvedStore(path, (store) => {
+        if (!store) {
+            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
+        }
+        const architecture = getArchitectureReport({ path, scopePath: scope, limit });
+        if (architecture?.error) return architecture;
+        const cycles = findCycles(store, { scopePath: scope });
+        const metrics = getModuleMetricsReport({ path, scopePath: scope, minCoupling: 2, sort: "instability" });
+        if (metrics?.error) return metrics;
+        const compactCycles = trimForDetail(cycles.cycles || [], detailLevel, limit);
+        const compactCoupling = trimForDetail(metrics.result || [], detailLevel, limit);
+        const compactEdges = trimForDetail(architecture.result.cross_module_edges || [], detailLevel, limit);
+        const compactHotspots = trimForDetail(architecture.result.hotspots || [], detailLevel, limit);
+        const compactFramework = trimForDetail(architecture.result.framework || [], detailLevel, limit);
+        const compactModules = trimForDetail(architecture.result.modules || [], detailLevel, limit).map((module) => ({
+            module_key: module.module_key,
+            module_name: module.module_name,
+            package_key: module.package_key || null,
+            exported_symbols: module.exported_symbols,
+            imported_modules: module.imported_modules,
+            instability: module.instability,
+        }));
+        return {
+            query: {
+                path,
+                scope,
+                limit,
+                detail_level: detailLevel,
+            },
+            summary: [
+                `${summarizeCount(architecture.result.modules.length, "module")}`,
+                `${summarizeCount(cycles.cycles.length, "cycle")}`,
+                `${summarizeCount(compactHotspots.length, "top risk")}`,
+            ].join(", "),
+            result: {
+                workspace_summary: architecture.result.stats,
+                modules: compactModules,
+                module_boundaries: compactEdges.map((edge) => ({
+                    from_module: edge.from_module,
+                    to_module: edge.to_module,
+                    edge_kind: edge.edge_kind,
+                    count: edge.count,
+                })),
+                cycles: compactCycles,
+                coupling: compactCoupling.map((row) => ({
+                    module_key: row.module_key,
+                    instability: row.instability,
+                    efferent_coupling: row.ce,
+                    afferent_coupling: row.ca,
+                })),
+                framework_surfaces: compactFramework.map((entry) => ({
+                    symbol: entry.symbol,
+                    origin: entry.origin,
+                    file: entry.file,
+                })),
+                top_risks: compactHotspots.map((risk) => ({
+                    file: risk.file,
+                    symbol: risk.symbol,
+                    reason: risk.reason,
+                    rank: risk.rank,
+                })),
+            },
+            warnings: cycles.cycles.length
+                ? [`${summarizeCount(cycles.cycles.length, "cycle")} detected across workspace modules.`]
+                : [],
+            next_actions: nextActions([
+                cycles.cycles.length ? ACTION.ANALYZE_CHANGES : null,
+                ACTION.AUDIT_WORKSPACE,
+            ]),
+            confidence: architecture.confidence,
+            reason: "architecture_review",
+            evidence: {
+                cycle_count: cycles.cycles.length,
+                coupling_rows: metrics.result.length,
+            },
+            limits_applied: { limit, detail_level: detailLevel },
+        };
+    });
 }
 
 export function runAuditWorkspaceUseCase({
@@ -396,67 +397,68 @@ export function runAuditWorkspaceUseCase({
     cloneThreshold = 0.80,
     cloneMinStmts = null,
 } = {}) {
-    const store = resolveStore(path);
-    if (!store) {
-        return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
-    }
-    const unused = findUnusedExports(store, { scopePath: scope, kind: "all" });
-    const visibleUnused = showSuppressed ? unused.unused : unused.unused.filter(item => !item.suppressed);
-    const hotspots = getHotspots({ path, scopePath: scope, minCallers: 2, minComplexity: 15, limit: 20 });
-    const clones = findClones(store, {
-        type: cloneType,
-        threshold: cloneThreshold,
-        minStmts: cloneMinStmts,
-        kind: "all",
-        scope,
-        crossFile: true,
-        format: "json",
-        suppress: true,
-    });
-    return {
-        query: {
-            path,
+    return withResolvedStore(path, (store) => {
+        if (!store) {
+            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
+        }
+        const unused = findUnusedExports(store, { scopePath: scope, kind: "all" });
+        const visibleUnused = showSuppressed ? unused.unused : unused.unused.filter(item => !item.suppressed);
+        const hotspots = getHotspots({ path, scopePath: scope, minCallers: 2, minComplexity: 15, limit: 20 });
+        const clones = findClones(store, {
+            type: cloneType,
+            threshold: cloneThreshold,
+            minStmts: cloneMinStmts,
+            kind: "all",
             scope,
-            detail_level: detailLevel,
-            show_suppressed: showSuppressed,
-            clone_type: cloneType,
-        },
-        summary: [
-            `${summarizeCount(visibleUnused.length, "unused export")}`,
-            `${summarizeCount(hotspots.length, "hotspot")}`,
-            `${summarizeCount(clones.summary?.total_groups || 0, "clone group")}`,
-        ].join(", "),
-        result: {
-            unused_exports: trimForDetail(visibleUnused, detailLevel, 15),
-            uncertain_unused_exports: trimForDetail(unused.uncertain || [], detailLevel, 10),
-            hotspots: trimForDetail(hotspots, detailLevel, 15),
-            clones: trimForDetail(clones.groups || [], detailLevel, 10),
-            risk_summary: {
-                unused_exports: visibleUnused.length,
-                uncertain_unused_exports: unused.uncertain.length,
-                hotspots: hotspots.length,
-                clone_groups: clones.summary?.total_groups || 0,
+            crossFile: true,
+            format: "json",
+            suppress: true,
+        });
+        return {
+            query: {
+                path,
+                scope,
+                detail_level: detailLevel,
+                show_suppressed: showSuppressed,
+                clone_type: cloneType,
             },
-            suppressed_items: showSuppressed ? unused.unused.filter(item => item.suppressed) : [],
-        },
-        warnings: nextActions([
-            visibleUnused.length ? `${summarizeCount(visibleUnused.length, "unused export")} should be reviewed before public API cleanup.` : null,
-            clones.summary?.total_groups ? `${summarizeCount(clones.summary.total_groups, "clone group")} may indicate duplicate logic.` : null,
-        ]),
-        next_actions: nextActions([
-            visibleUnused.length ? ACTION.FIND_REFERENCES : null,
-            hotspots.length ? ACTION.INSPECT_SYMBOL : null,
-            clones.summary?.total_groups ? ACTION.ANALYZE_EDIT_REGION : null,
-        ]),
-        confidence: "heuristic",
-        reason: "workspace_maintenance_audit",
-        evidence: {
-            total_exported: unused.total_exported,
-            hotspot_count: hotspots.length,
-            clone_group_count: clones.summary?.total_groups || 0,
-        },
-        limits_applied: { detail_level: detailLevel },
-    };
+            summary: [
+                `${summarizeCount(visibleUnused.length, "unused export")}`,
+                `${summarizeCount(hotspots.length, "hotspot")}`,
+                `${summarizeCount(clones.summary?.total_groups || 0, "clone group")}`,
+            ].join(", "),
+            result: {
+                unused_exports: trimForDetail(visibleUnused, detailLevel, 15),
+                uncertain_unused_exports: trimForDetail(unused.uncertain || [], detailLevel, 10),
+                hotspots: trimForDetail(hotspots, detailLevel, 15),
+                clones: trimForDetail(clones.groups || [], detailLevel, 10),
+                risk_summary: {
+                    unused_exports: visibleUnused.length,
+                    uncertain_unused_exports: unused.uncertain.length,
+                    hotspots: hotspots.length,
+                    clone_groups: clones.summary?.total_groups || 0,
+                },
+                suppressed_items: showSuppressed ? unused.unused.filter(item => item.suppressed) : [],
+            },
+            warnings: nextActions([
+                visibleUnused.length ? `${summarizeCount(visibleUnused.length, "unused export")} should be reviewed before public API cleanup.` : null,
+                clones.summary?.total_groups ? `${summarizeCount(clones.summary.total_groups, "clone group")} may indicate duplicate logic.` : null,
+            ]),
+            next_actions: nextActions([
+                visibleUnused.length ? ACTION.FIND_REFERENCES : null,
+                hotspots.length ? ACTION.INSPECT_SYMBOL : null,
+                clones.summary?.total_groups ? ACTION.ANALYZE_EDIT_REGION : null,
+            ]),
+            confidence: "heuristic",
+            reason: "workspace_maintenance_audit",
+            evidence: {
+                total_exported: unused.total_exported,
+                hotspot_count: hotspots.length,
+                clone_group_count: clones.summary?.total_groups || 0,
+            },
+            limits_applied: { detail_level: detailLevel },
+        };
+    });
 }
 
 export function runAnalyzeEditRegionUseCase({
@@ -466,12 +468,12 @@ export function runAnalyzeEditRegionUseCase({
     lineEnd,
     detailLevel = "compact",
 } = {}) {
-    const store = resolveStore(path);
-    if (!store) {
-        return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
-    }
-    const normalizedFile = normalizeProjectFile(path, file);
-    if (normalizedFile?.error) return normalizedFile;
+    return withResolvedStore(path, (store) => {
+        if (!store) {
+            return { error: { code: "NOT_INDEXED", message: "No project indexed", recovery: "Run index_project first" } };
+        }
+        const normalizedFile = normalizeProjectFile(path, file);
+        if (normalizedFile?.error) return normalizedFile;
 
     const editedRows = store.db.prepare(
         `SELECT
@@ -646,7 +648,7 @@ export function runAnalyzeEditRegionUseCase({
             : "low";
     const editedLanguages = [...new Set(editedSymbols.map(symbol => symbol.symbol.language).filter(Boolean))];
 
-    return {
+        return {
         query: {
             path,
             file: normalizedFile,
@@ -705,5 +707,6 @@ export function runAnalyzeEditRegionUseCase({
             downstream_flow_count: aggregateFlows.length,
         },
         limits_applied: { detail_level: detailLevel },
-    };
+        };
+    });
 }

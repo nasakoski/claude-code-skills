@@ -18,6 +18,7 @@ export const ACTION = {
     REVIEW_DELETED_API: "review_deleted_api",
     REVIEW_DUPLICATES: "review_duplicates",
     FIX_DB_LOCK: "fix_db_lock",
+    FIX_DB_ACCESS: "fix_db_access",
     FIX_PATH: "fix_path",
     CHECK_PROVIDER_SETUP: "check_provider_setup",
     CHECK_SCIP_INPUTS: "check_scip_inputs",

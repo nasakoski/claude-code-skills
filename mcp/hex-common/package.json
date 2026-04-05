@@ -20,6 +20,9 @@
     "src/",
     "artifacts/"
   ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "test": "node scripts/verify-tree-sitter-artifacts.mjs && node --test test/*.mjs"
   },

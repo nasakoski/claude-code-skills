@@ -39,7 +39,7 @@ npm i -g @levnikolaevich/hex-ssh-mcp
 claude mcp add -s user hex-ssh -e ALLOWED_HOSTS=server1,server2 -- hex-ssh-mcp
 ```
 
-Requires Node.js >= 18.0.0.
+Requires Node.js >= 20.19.0.
 
 ## Supported Remote Targets
 

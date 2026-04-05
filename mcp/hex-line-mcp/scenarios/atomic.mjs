@@ -24,6 +24,8 @@ import {
     runN,
 } from "../lib/scenario-helpers.mjs";
 
+const BULK_REPLACE_SCENARIO_FILE_COUNT = 5;
+
 /**
  * Run TEST 1-14 atomic benchmarks (hex-line only).
  *
@@ -224,7 +226,7 @@ export async function runAtomic(config) {
         const bulkTmpDir = resolve(tmpdir(), `hex-line-bulkdir-${ts}`);
         const { mkdirSync } = await import("node:fs");
         mkdirSync(bulkTmpDir, { recursive: true });
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < BULK_REPLACE_SCENARIO_FILE_COUNT; i++) {
             writeFileSync(resolve(bulkTmpDir, `file${i}.js`), tmpContent, "utf-8");
         }
 
@@ -239,7 +241,12 @@ export async function runAtomic(config) {
         const { rmSync } = await import("node:fs");
         try { rmSync(bulkTmpDir, { recursive: true }); } catch {}
 
-        results.push({ num: 10, scenario: "bulk_replace dry_run (5 files)", chars, latency });
+        results.push({
+            num: 10,
+            scenario: `bulk_replace dry_run (${BULK_REPLACE_SCENARIO_FILE_COUNT} files)`,
+            chars,
+            latency,
+        });
     }
 
     // ===================================================================

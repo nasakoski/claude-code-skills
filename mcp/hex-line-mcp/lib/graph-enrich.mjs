@@ -40,6 +40,8 @@ const FACT_PRIORITY = new Map([
 
 const _dbs = new Map();
 let _driverUnavailable = false;
+// Safety cap for parent-directory traversal while resolving the nearest project boundary.
+const MAX_PROJECT_ROOT_ASCENT = 25;
 const PROJECT_BOUNDARY_MARKERS = [
     "package.json",
     "pyproject.toml",
@@ -369,7 +371,7 @@ export function getRelativePath(filePath) {
 
 function findProjectRoot(filePath) {
     let dir = dirname(filePath);
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < MAX_PROJECT_ROOT_ASCENT; i++) {
         if (existsSync(join(dir, ".hex-skills/codegraph", "index.db"))) return dir;
         if (PROJECT_BOUNDARY_MARKERS.some((marker) => existsSync(join(dir, marker)))) return dir;
         const parent = dirname(dir);

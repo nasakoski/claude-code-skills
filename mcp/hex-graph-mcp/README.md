@@ -173,6 +173,9 @@ hex-graph-mcp/
 ### Storage
 
 - **SQLite** via `better-sqlite3`
+- **Query lifecycle** uses readonly query stores that auto-close after a short idle window
+- **Write lifecycle** opens writable stores only for `index_project`, reindex, and SCIP import work, then checkpoints and closes them
+- **Lock behavior** on Windows is therefore normally caused by another live `hex-graph-mcp` / editor session for the same project, not by cross-project reuse
 - **Nodes** for symbols, module pseudo-nodes, and synthetic framework entrypoints
 - **Edges** as the semantic source of truth across syntax, symbol, module, type, flow, precise, and framework layers
 - **FTS5** for symbol discovery
@@ -229,7 +232,7 @@ Inline `quality` metadata is currently surfaced by:
 ### Generated Snapshot
 
 - MCP tools registered in server contract: `14`
-- Semantic suite: `83/83` passing
+- Semantic suite: `84/84` passing
 - Corpora: `1` curated, `1` pinned external
 - Lanes: parser-first `green`, precise overlay `provider_conditional`
 
@@ -308,7 +311,7 @@ Atomic query comparisons and index-cost output still live under `benchmark/`, bu
 | `picomatch` | Scope/glob matching |
 | `zod` | Input schema validation |
 
-Requires Node.js >= 20.0.0.
+Requires Node.js >= 20.19.0.
 
 ## FAQ
 
