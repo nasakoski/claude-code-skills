@@ -250,7 +250,11 @@ Print table with columns: Server | Dependency | Status | Action.
 For `hex-graph`, also report the detected language(s) that drove the provider/exporter checks.
 ### Phase 3: Hooks & Output Style [CRITICAL]
 
-MUST call `mcp__hex-line__setup_hooks(agent="all")` AFTER all Phase 2 registrations complete (not just hex-line). This ensures the latest hook.mjs and output-style.md from the updated package are installed.
+Do NOT call `setup_hooks`. `hex-line` now auto-syncs hooks and output style on MCP server startup.
+
+After all Phase 2 registrations complete:
+1. Trigger one harmless `hex-line` call to start the server, for example `mcp__hex-line__inspect_path({ path: "{project_path}" })`
+2. Verify the startup sync results below
 
 **Hooks** (in `~/.claude/settings.json`):
 1. `PreToolUse` hook — redirects built-in Read/Edit/Write/Grep to hex-line equivalents
@@ -262,11 +266,13 @@ MUST call `mcp__hex-line__setup_hooks(agent="all")` AFTER all Phase 2 registrati
 5. Copies `output-style.md` to `~/.claude/output-styles/hex-line.md`
 6. Sets `outputStyle: "hex-line"` if no style is active (preserves existing style)
 
-**Verification:** Response must contain `Hooks configured for`. If `SKIPPED`, `UNKNOWN_AGENT`, `Error`, or `failed` — STOP.
+**Verification:** Confirm all of the following after the first `hex-line` tool call:
+- `~/.claude/settings.json` contains the 3 `hex-line` hook entries with current command path
+- `disableAllHooks: false`
+- `~/.claude/output-styles/hex-line.md` exists and matches package content
+- `outputStyle: "hex-line"` is set only when no other style was already active
 
-**Note:** `setup_hooks(agent="all")` also syncs MCP server entries and hook paths for Gemini. Codex is reported as "not supported" (expected). After this call, ln-013 should verify Gemini state rather than blindly overwriting.
-
-**Note:** `setup_hooks(agent="all")` is idempotent. Calling it again during later verification is safe and keeps hooks current.
+**Note:** autosync is idempotent. Any later `hex-line` startup re-checks installed hook and style content and updates only when they drift.
 
 ### Phase 4: Graph Indexing
 
@@ -369,7 +375,7 @@ MCP Configuration:
 
 ## Critical Rules
 
-1. **Write only via sanctioned paths.** Register servers via `claude mcp add`. Write to `~/.claude/settings.json` ONLY for hooks (via `setup_hooks`), permissions (`permissions.allow[]`), and `outputStyle`
+1. **Write only via sanctioned paths.** Register servers via `claude mcp add`. Write to `~/.claude/settings.json` ONLY for permissions (`permissions.allow[]`) or when explicit hook/style verification requires correction after autosync fails
 2. **Verify after add.** Always run `claude mcp list` after registration to confirm connection
 3. **Ask before optional servers.** Linear requires explicit user consent
 4. **npx -y for all hex MCP.** Never `npm i -g` — npx provides process isolation and avoids EBUSY on Windows. On Windows, wrap with `cmd /c npx` (see Phase 2 OS prefix table)
@@ -384,14 +390,14 @@ MCP Configuration:
 
 | DON'T | DO |
 |-------|-----|
-| Write arbitrary fields to `~/.claude.json` | Use `claude mcp add` for servers, `setup_hooks` for hooks |
+| Write arbitrary fields to `~/.claude.json` | Use `claude mcp add` for servers; rely on `hex-line` startup autosync for hooks/style |
 | Skip verification after add | Always check `claude mcp list` after mutations |
 | Auto-add optional servers | Ask user for Linear and other optional servers |
 | Leave deprecated servers | Remove hashline-edit, pencil, etc. |
 | Calculate token budget | Not this worker's responsibility |
 | Run `claude mcp list` in every phase | Run once in Phase 1, reuse in Phase 2, verify once after mutations |
 | Assume connected = up to date | Check `npm view` version vs newest cached npx package version |
-| Call `setup_hooks` before all packages re-registered | Call `setup_hooks(agent="all")` AFTER all Phase 2 registrations complete |
+| Assume hooks/style are ready right after registration | Trigger one harmless `hex-line` tool call, then verify autosync results |
 | Run `claude mcp add` without MSYS_NO_PATHCONV on Windows bash | Always `MSYS_NO_PATHCONV=1 claude mcp add ...` or verify+fix args after |
 | Skip provider verification for hex-graph | Detect project language(s) first, then verify only relevant graph-specific providers and SCIP exporters |
 | Auto-install project/framework/runtime packages | Limit this phase to MCP-relevant graph providers and SCIP exporters, and ask user before install |
@@ -404,7 +410,7 @@ MCP Configuration:
 - [ ] Missing servers registered and verified connected (Phase 2)
 - [ ] Outdated servers re-registered with latest version (Phase 2)
 - [ ] Graph-specific dependencies verified: ripgrep available, detected hex-graph providers and SCIP exporters reported (Phase 2b)
-- [ ] Hooks installed (PreToolUse, PostToolUse, SessionStart) and `disableAllHooks: false` (Phase 3)
+- [ ] Hooks auto-synced after first `hex-line` startup (PreToolUse, PostToolUse, SessionStart) and `disableAllHooks: false` (Phase 3)
 - [ ] Output style installed (Phase 3)
 - [ ] Permissions granted for all configured servers (Phase 7)
 - [ ] Project allowed-tools migrated (Phase 5)

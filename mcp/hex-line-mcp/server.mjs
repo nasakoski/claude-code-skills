@@ -104,7 +104,7 @@ server.registerTool("read_file", {
 
 server.registerTool("edit_file", {
     title: "Edit File",
-    description: "Apply hash-verified partial edits to one file. Batch multiple edits in one call. Carry base_revision from prior read/edit for auto-rebase on concurrent changes.",
+    description: "Apply hash-verified partial edits to one file. Batch multiple edits in one call. Carry base_revision from prior read/edit for auto-rebase on concurrent changes. Conservative conflicts return retry_edit/retry_edits, suggested_read_call, and retry_plan when available.",
     inputSchema: z.object({
         path: z.string().describe("File to edit"),
         edits: z.union([z.string(), z.array(z.any())]).describe(
@@ -117,7 +117,7 @@ server.registerTool("edit_file", {
         dry_run: flexBool().describe("Preview changes without writing"),
         restore_indent: flexBool().describe("Auto-fix indentation to match anchor (default: false)"),
         base_revision: z.string().optional().describe("Prior revision from read_file/edit_file. Enables conservative auto-rebase for same-file follow-up edits."),
-        conflict_policy: z.enum(["strict", "conservative"]).optional().describe('Conflict handling (default: "conservative"). "conservative" returns structured CONFLICT output for stale edits instead of forcing reread.'),
+        conflict_policy: z.enum(["strict", "conservative"]).optional().describe('Conflict handling (default: "conservative"). "conservative" returns structured CONFLICT output with recovery_ranges, retry_edit/retry_edits, suggested_read_call, and retry_plan when available.'),
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
 }, async (rawParams) => {
@@ -234,7 +234,7 @@ server.registerTool("outline", {
 
 server.registerTool("verify", {
     title: "Verify Checksums",
-    description: "Check if held checksums are still valid without rereading. Use after edit_file returns CONFLICT to decide: VALID (retry), STALE (reread ranges), INVALID (reread file).",
+    description: "Check if held checksums are still valid without rereading. Returns canonical status, next_action, and suggested_read_call when rereading specific ranges is the right recovery.",
     inputSchema: z.object({
         path: z.string().describe("File path"),
         checksums: z.array(z.string()).describe('Checksum strings, e.g. ["1-50:f7e2a1b0", "51-100:abcd1234"]'),
@@ -284,7 +284,7 @@ server.registerTool("inspect_path", {
 server.registerTool("changes", {
     title: "Semantic Diff",
     description:
-        "Semantic diff against git ref (default: HEAD). Shows added/removed/modified symbols and graph-backed semantic review hints when available.",
+        "Semantic diff against git ref (default: HEAD). Returns canonical status, summary, next_action, changed symbols, and graph-backed risk hints when available.",
     inputSchema: z.object({
         path: z.string().describe("File or directory path"),
         compare_against: z.string().optional().describe('Git ref to compare against (default: "HEAD")'),
@@ -304,11 +304,11 @@ server.registerTool("changes", {
 
 server.registerTool("bulk_replace", {
     title: "Bulk Replace",
-    description: "Search-and-replace text across multiple files. Use for renames, refactors. Compact or full diff output.",
+    description: "Search-and-replace text across multiple files inside an explicit root path. Use for renames and refactors when the project scope is known.",
     inputSchema: z.object({
         replacements: z.union([z.string(), replacementPairsSchema]).describe('JSON array of {old, new} pairs: [{"old":"foo","new":"bar"}]'),
         glob: z.string().optional().describe('File glob (default: "**/*.{md,mjs,json,yml,ts,js}")'),
-        path: z.string().optional().describe("Root directory (default: cwd)"),
+        path: z.string().describe("Root directory for the replacement scope"),
         dry_run: flexBool().describe("Preview without writing (default: false)"),
         max_files: flexNum().describe("Max files to process (default: 100)"),
         format: z.enum(["compact", "full"]).optional().describe('"compact" (default) = summary only, "full" = include capped diffs'),
@@ -323,7 +323,7 @@ server.registerTool("bulk_replace", {
         catch { throw new Error('replacements: invalid JSON. Expected: [{"old":"text","new":"replacement"}]'); }
         const replacements = replacementPairsSchema.parse(replacementsInput);
         const result = bulkReplace(
-            params.path || process.cwd(),
+            params.path,
             params.glob || "**/*.{md,mjs,json,yml,ts,js}",
             replacements,
             { dryRun: params.dry_run || false, maxFiles: params.max_files || 100, format: params.format }

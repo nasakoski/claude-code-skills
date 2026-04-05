@@ -2,6 +2,8 @@
 
 > **SCOPE:** Rules for designing MCP tools consumed by AI agents. Naming, errors, output bounds, descriptions. Based on [Tw93/MCP best practices](https://tw93.fun/2025-04-28/mcp.html) and hex-line-mcp experience.
 
+For repo-wide output vocabulary and public response shapes, also read [MCP_OUTPUT_CONTRACT_GUIDE.md](./MCP_OUTPUT_CONTRACT_GUIDE.md).
+
 ## 1. Tool Naming
 
 MCP prepends `mcp__<server>__` automatically. Name the tool itself without the server prefix.
@@ -11,7 +13,7 @@ MCP prepends `mcp__<server>__` automatically. Name the tool itself without the s
 | Verb + noun | `read_file` | `mcp__hex-line__read_file` | Clear action |
 | No redundant prefix | ~~`hex_line_read`~~ | Double prefix | Server name already in path |
 | Underscore case | `grep_search` | MCP convention | No camelCase |
-| Group by system | `setup_hooks` | Shared prefix | Agents can allow `mcp__hex-line__*` |
+| Group by system | `read_file` | Shared family | Agents can allow `mcp__hex-line__*` |
 
 ## 2. Response Format — support `format: "compact"|"full"` for verbose tools
 

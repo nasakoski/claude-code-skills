@@ -1,6 +1,6 @@
 # Issue Creation Workflow
 
-<!-- SCOPE: Standard workflow for creating Epics, Stories, and Tasks with kanban updates. Supports both Linear Mode and File Mode per docs/tools_config.md. -->
+<!-- SCOPE: Standard workflow for creating Epics, Stories, and Tasks with kanban updates. Supports Linear, File, and GitHub modes per docs/tools_config.md. -->
 
 ## Pre-requisite
 
@@ -17,6 +17,15 @@ IF provider == "linear":
     state: "planned"
   })
   → Capture returned project ID/URL
+
+ELSE IF provider == "github":
+  gh issue create -R {REPO} \
+    --title "Epic {N}: {Title}" \
+    --body "{epicDocument}" \
+    --label "epic"
+  → Capture returned issue number/URL
+  → Add to project: gh project item-add {PROJECT_NUM} --owner {OWNER} --url {URL}
+  → Set status to Backlog (see provider_github.md "Add to Project" helper)
 
 ELSE (file):
   dir = "docs/tasks/epics/epic-{N}-{slug}/"
@@ -39,6 +48,19 @@ IF provider == "linear":
   })
   → Capture returned issue ID/URL
 
+ELSE IF provider == "github":
+  1. Create issue:
+     gh issue create -R {REPO} \
+       --title "US{NNN}: {Title}" \
+       --body "{storyDocument}" \
+       --label "user-story"
+     → Capture returned issue number
+  2. Link as sub-issue of Epic:
+     SUB_ID=$(gh api /repos/{O}/{R}/issues/{story_num} --jq '.id')
+     gh api /repos/{O}/{R}/issues/{epic_num}/sub_issues \
+       -X POST -F sub_issue_id="$SUB_ID"
+  3. Add to project + set status Backlog
+
 ELSE (file):
   dir = "docs/tasks/epics/epic-{epicN}-{epicSlug}/stories/us{NNN}-{slug}/"
   mkdir -p {dir}/tasks
@@ -59,6 +81,19 @@ IF provider == "linear":
     state: "Backlog"
   })
 
+ELSE IF provider == "github":
+  1. Create issue:
+     gh issue create -R {REPO} \
+       --title "T{NNN}: {Title}" \
+       --body "{taskDocument}" \
+       --label "task" --label "{type}"
+     → Capture returned issue number
+  2. Link as sub-issue of Story:
+     SUB_ID=$(gh api /repos/{O}/{R}/issues/{task_num} --jq '.id')
+     gh api /repos/{O}/{R}/issues/{story_num}/sub_issues \
+       -X POST -F sub_issue_id="$SUB_ID"
+  3. Add to project + set status Backlog
+
 ELSE (file):
   Write("docs/tasks/.../tasks/T{NNN}-{slug}.md", taskDocument)
   → taskDocument includes: **Status:** Backlog, **Story:** US{NNN}, **Labels:** {type}
@@ -68,18 +103,18 @@ ELSE (file):
 
 | Rule | Why |
 |------|-----|
-| **Always set initial status** | Linear: `state: "Backlog"` (defaults differ!). File: `**Status:** Backlog` |
+| **Always set initial status** | Linear: `state: "Backlog"`. File: `**Status:** Backlog`. GitHub: Projects v2 status Backlog |
 | **Sequential creation** | Create one, verify success, then next (no bulk) |
-| **Capture references** | Linear: store URL. File: store file path |
+| **Capture references** | Linear: store URL. File: store file path. GitHub: store issue number/URL |
 | **Update kanban after each** | Keep docs/tasks/kanban_board.md in sync |
-| **Runtime error → fallback** | If Linear fails mid-creation, switch to file mode (per tools_config_guide.md) |
+| **Runtime error → fallback** | If Linear/GitHub fails mid-creation, switch to file mode (per tools_config_guide.md) |
 
 ## Kanban Update Trigger
 
 After each successful creation:
 ```
 1. Update Next Number counter in kanban_board.md
-2. Add item to appropriate section (Linear URL or file path as link)
+2. Add item to appropriate section (Linear URL, file path, or GitHub URL as link)
 3. Use correct indentation (see kanban_update_algorithm.md)
 ```
 
@@ -95,7 +130,9 @@ After each successful creation:
 
 | Label | Used For |
 |-------|----------|
+| `epic` | Epics (GitHub only — top-level grouping) |
 | `user-story` | Stories (required for queries) |
+| `task` | Tasks (GitHub only — distinguishes from stories) |
 | `implementation` | Implementation tasks |
 | `tests` | Test tasks |
 | `refactoring` | Refactoring tasks |
@@ -106,12 +143,12 @@ After each successful creation:
 ```
 IF creation fails:
   1. Log error with item details
-  2. IF Linear error → update tools_config.md, switch to file mode
+  2. IF Linear/GitHub error → update tools_config.md, switch to file mode
   3. Retry failed item in file mode
   4. Continue with remaining items in file mode
-  5. Report partial completion: "{N} in Linear, {M} in files"
+  5. Report partial completion: "{N} in {provider}, {M} in files"
 ```
 
 ---
-**Version:** 2.0.0
-**Last Updated:** 2026-03-04
+**Version:** 3.0.0
+**Last Updated:** 2026-04-05

@@ -45,6 +45,7 @@ const connProps = {
     user: z.string().optional().describe("SSH username (optional if set in ~/.ssh/config)"),
     privateKeyPath: z.string().optional().describe("Path to SSH private key (optional)"),
     port: flexNum().describe("SSH port (default: 22)"),
+    remotePlatform: z.enum(["auto", "posix", "windows"]).optional().describe('Remote path platform. Use "windows" for paths like C:\\\\repo\\\\file.txt. Default: auto'),
 };
 
 function connSchema(extraShape) {
@@ -90,6 +91,16 @@ function errResult(msg) {
  */
 function sshError(code, message, recovery) {
     return { content: [{ type: "text", text: `${code}: ${message}\nRecovery: ${recovery}` }], isError: true };
+}
+
+function requirePosixRemotePath(args, filePath, label = "filePath") {
+    const { platform } = validateRemotePath(filePath, args.remotePlatform);
+    if (platform !== "posix") {
+        throw new Error(
+            `UNSUPPORTED_REMOTE_PLATFORM: ${label}=${filePath} resolved as ${platform}. ` +
+            "This tool uses POSIX shell commands on the remote host. Use remotePlatform=\"posix\" or use ssh-upload/ssh-download for Windows SFTP transfers."
+        );
+    }
 }
 
 /**
@@ -175,7 +186,7 @@ server.registerTool("ssh-read-lines", {
         }
 
         assertSafeArg("filePath", args.filePath);
-        validateRemotePath(args.filePath);
+        requirePosixRemotePath(args, args.filePath);
 
         const startLine = args.startLine || 1;
         const maxLines = args.maxLines || 200;
@@ -281,7 +292,7 @@ server.registerTool("ssh-edit-block", {
         if (validationError) return errResult(validationError);
 
         assertSafeArg("filePath", args.filePath);
-        validateRemotePath(args.filePath);
+        requirePosixRemotePath(args, args.filePath);
 
         // If checksum provided, verify file hasn't changed
         if (args.checksum) {
@@ -460,7 +471,7 @@ server.registerTool("ssh-search-code", {
         assertSafeArg("path", args.path);
         assertSafeArg("pattern", args.pattern);
         if (args.filePattern) assertSafeArg("filePattern", args.filePattern);
-        validateRemotePath(args.path);
+        requirePosixRemotePath(args, args.path, "path");
 
         const maxResults = args.maxResults || 50;
         const contextLines = args.contextLines || 0;
@@ -541,7 +552,7 @@ server.registerTool("ssh-write-chunk", {
         }
 
         assertSafeArg("filePath", args.filePath);
-        validateRemotePath(args.filePath);
+        requirePosixRemotePath(args, args.filePath);
 
         const mode = args.mode || "rewrite";
         const b64 = Buffer.from(args.content, "utf-8").toString("base64");
@@ -604,6 +615,7 @@ server.registerTool("ssh-upload", {
             overwrite: args.overwrite,
             verify: args.verify,
             permissions: args.permissions,
+            remotePlatform: args.remotePlatform,
         });
         return okResult(
             formatTransferSummary(
@@ -652,6 +664,7 @@ server.registerTool("ssh-download", {
             localPath: args.localPath,
             overwrite: args.overwrite,
             verify: args.verify,
+            remotePlatform: args.remotePlatform,
         });
         return okResult(
             formatTransferSummary(
@@ -694,7 +707,7 @@ server.registerTool("ssh-verify", {
         }
 
         assertSafeArg("filePath", args.filePath);
-        validateRemotePath(args.filePath);
+        requirePosixRemotePath(args, args.filePath);
 
         const checksums = JSON.parse(args.checksums);
         if (!Array.isArray(checksums) || checksums.length === 0) {

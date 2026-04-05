@@ -16,6 +16,7 @@ import {
     resolveStore,
 } from "./store.mjs";
 import { findUnusedExports } from "./unused.mjs";
+import { ACTION, nextActions } from "./output-contract.mjs";
 
 function summarizeCount(count, singular, plural = `${singular}s`) {
     return `${count} ${count === 1 ? singular : plural}`;
@@ -98,10 +99,6 @@ function buildSymbolSummary(symbol, references, implementations) {
     return parts.join(", ");
 }
 
-function nextActions(actions) {
-    return [...new Set(actions.filter(Boolean))];
-}
-
 export function runFindSymbolsUseCase(query, { kind, limit = 20, path } = {}) {
     const base = findSymbols(query, { kind, limit, path });
     if (base?.error) return base;
@@ -123,8 +120,8 @@ export function runFindSymbolsUseCase(query, { kind, limit = 20, path } = {}) {
         },
         warnings: candidates.length ? [] : ["No semantic symbol matched the requested query."],
         next_actions: candidates.length
-            ? ["Use inspect_symbol with the selected canonical identity."]
-            : ["Broaden the query or index a larger project scope."],
+            ? [ACTION.INSPECT_SYMBOL]
+            : [ACTION.WIDEN_QUERY, ACTION.INDEX_PROJECT],
         confidence: base.confidence,
         reason: base.reason,
         evidence: base.evidence,
@@ -194,9 +191,9 @@ export function runInspectSymbolUseCase(selector, {
         },
         warnings: frameworkOrigins.length ? [] : [],
         next_actions: nextActions([
-            referencesResult.result.total ? "Use find_references for the full usage list." : null,
-            implementationsResult.result.implementations.length ? "Use find_implementations for the full override/implementation set." : null,
-            "Use trace_paths to inspect blast radius around this symbol.",
+            referencesResult.result.total ? ACTION.FIND_REFERENCES : null,
+            implementationsResult.result.implementations.length ? ACTION.FIND_IMPLEMENTATIONS : null,
+            ACTION.TRACE_PATHS,
         ]),
         confidence: symbolResult.confidence,
         reason: symbolResult.reason,
@@ -230,7 +227,7 @@ export function runTraceDataflowUseCase(selector, { path, limit, depth } = {}) {
         },
         warnings: flows.length ? [] : ["No deterministic flow fact matched the requested anchors."],
         next_actions: nextActions([
-            flows.length ? "Use trace_paths with path_kind=flow or mixed to inspect adjacent graph evidence." : null,
+            flows.length ? ACTION.TRACE_PATHS : null,
         ]),
         confidence: base.confidence,
         reason: base.reason,
@@ -267,10 +264,27 @@ export async function runAnalyzeChangesUseCase({
         ].join(", "),
         result: {
             diff_summary: summary,
-            changed_files: base.result.diff.changed_files,
-            changed_symbols: base.result.symbols,
-            high_risk_items: highRiskItems,
-            deleted_api_warnings: base.result.deleted_symbols,
+            changed_files: (base.result.diff.changed_files || []).map((file) => ({
+                file: file.file,
+                status: file.status,
+            })),
+            changed_symbols: (base.result.symbols || []).map((symbol) => ({
+                symbol: symbol.symbol,
+                risk_level: symbol.risk_level,
+                impact_summary: symbol.impact_summary,
+                file: symbol.file,
+            })),
+            high_risk_items: highRiskItems.map((symbol) => ({
+                symbol: symbol.symbol,
+                risk_level: symbol.risk_level,
+                impact_summary: symbol.impact_summary,
+                file: symbol.file,
+            })),
+            deleted_api_warnings: (base.result.deleted_symbols || []).map((symbol) => ({
+                symbol: symbol.symbol,
+                file: symbol.file,
+                kind: symbol.kind,
+            })),
             unresolved_symbols: base.result.unresolved_symbols,
             supporting_paths_included: includePaths,
         },
@@ -278,8 +292,8 @@ export async function runAnalyzeChangesUseCase({
             ? [`${summarizeCount(base.result.unresolved_symbols.length, "changed symbol")} could not be mapped back to the current index.`]
             : [],
         next_actions: nextActions([
-            highRiskItems.length ? "Use trace_paths on the highest-risk changed symbols for deeper blast-radius review." : null,
-            base.result.deleted_symbols.length ? "Review deleted API warnings before merging." : null,
+            highRiskItems.length ? ACTION.TRACE_PATHS : null,
+            base.result.deleted_symbols.length ? ACTION.REVIEW_DELETED_API : null,
         ]),
         confidence: base.confidence,
         reason: base.reason,
@@ -308,6 +322,14 @@ export function runAnalyzeArchitectureUseCase({
     const compactEdges = trimForDetail(architecture.result.cross_module_edges || [], detailLevel, limit);
     const compactHotspots = trimForDetail(architecture.result.hotspots || [], detailLevel, limit);
     const compactFramework = trimForDetail(architecture.result.framework || [], detailLevel, limit);
+    const compactModules = trimForDetail(architecture.result.modules || [], detailLevel, limit).map((module) => ({
+        module_key: module.module_key,
+        module_name: module.module_name,
+        package_key: module.package_key || null,
+        exported_symbols: module.exported_symbols,
+        imported_modules: module.imported_modules,
+        instability: module.instability,
+    }));
     return {
         query: {
             path,
@@ -322,19 +344,38 @@ export function runAnalyzeArchitectureUseCase({
         ].join(", "),
         result: {
             workspace_summary: architecture.result.stats,
-            modules: trimForDetail(architecture.result.modules, detailLevel, limit),
-            module_boundaries: compactEdges,
+            modules: compactModules,
+            module_boundaries: compactEdges.map((edge) => ({
+                from_module: edge.from_module,
+                to_module: edge.to_module,
+                edge_kind: edge.edge_kind,
+                count: edge.count,
+            })),
             cycles: compactCycles,
-            coupling: compactCoupling,
-            framework_surfaces: compactFramework,
-            top_risks: compactHotspots,
+            coupling: compactCoupling.map((row) => ({
+                module_key: row.module_key,
+                instability: row.instability,
+                efferent_coupling: row.ce,
+                afferent_coupling: row.ca,
+            })),
+            framework_surfaces: compactFramework.map((entry) => ({
+                symbol: entry.symbol,
+                origin: entry.origin,
+                file: entry.file,
+            })),
+            top_risks: compactHotspots.map((risk) => ({
+                file: risk.file,
+                symbol: risk.symbol,
+                reason: risk.reason,
+                rank: risk.rank,
+            })),
         },
         warnings: cycles.cycles.length
             ? [`${summarizeCount(cycles.cycles.length, "cycle")} detected across workspace modules.`]
             : [],
         next_actions: nextActions([
-            cycles.cycles.length ? "Use analyze_changes on risky diffs before editing cycle-heavy modules." : null,
-            "Use audit_workspace to inspect unused exports, hotspots, and duplicate code.",
+            cycles.cycles.length ? ACTION.ANALYZE_CHANGES : null,
+            ACTION.AUDIT_WORKSPACE,
         ]),
         confidence: architecture.confidence,
         reason: "architecture_review",
@@ -403,9 +444,9 @@ export function runAuditWorkspaceUseCase({
             clones.summary?.total_groups ? `${summarizeCount(clones.summary.total_groups, "clone group")} may indicate duplicate logic.` : null,
         ]),
         next_actions: nextActions([
-            visibleUnused.length ? "Use find_references before deleting exports that look unused." : null,
-            hotspots.length ? "Use inspect_symbol or trace_paths on the top hotspots." : null,
-            clones.summary?.total_groups ? "Use analyze_edit_region before introducing new similar methods in clone-heavy areas." : null,
+            visibleUnused.length ? ACTION.FIND_REFERENCES : null,
+            hotspots.length ? ACTION.INSPECT_SYMBOL : null,
+            clones.summary?.total_groups ? ACTION.ANALYZE_EDIT_REGION : null,
         ]),
         confidence: "heuristic",
         reason: "workspace_maintenance_audit",
@@ -474,7 +515,7 @@ export function runAnalyzeEditRegionUseCase({
                 framework_entrypoint_risk: { level: "low", symbols: [] },
             },
             warnings: ["The selected lines do not intersect a symbol definition in the current graph index."],
-            next_actions: ["Broaden the line range or run index_project after recent edits."],
+            next_actions: [ACTION.WIDEN_RANGE, ACTION.INDEX_PROJECT],
             confidence: "exact",
             reason: "edit_region_no_symbols",
             evidence: {},
@@ -652,9 +693,9 @@ export function runAnalyzeEditRegionUseCase({
             frameworkSymbols.length ? `${summarizeCount(frameworkSymbols.length, "edited symbol")} participates in framework wiring.` : null,
         ]),
         next_actions: nextActions([
-            aggregateExternalCallers.length ? "Use find_references on the edited symbols before changing their public contract." : null,
-            aggregateFlows.length ? "Use trace_dataflow for the edited symbols when return/property flow matters." : null,
-            duplicateLevel !== "low" ? "Search existing same-name symbols or clone siblings before adding a duplicate method." : null,
+            aggregateExternalCallers.length ? ACTION.FIND_REFERENCES : null,
+            aggregateFlows.length ? ACTION.TRACE_DATAFLOW : null,
+            duplicateLevel !== "low" ? ACTION.REVIEW_DUPLICATES : null,
         ]),
         confidence: "exact",
         reason: "edit_region_semantic_impact",

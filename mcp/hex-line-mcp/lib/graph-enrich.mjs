@@ -40,6 +40,17 @@ const FACT_PRIORITY = new Map([
 
 const _dbs = new Map();
 let _driverUnavailable = false;
+const PROJECT_BOUNDARY_MARKERS = [
+    "package.json",
+    "pyproject.toml",
+    "go.mod",
+    "Cargo.toml",
+    "composer.json",
+    "Gemfile",
+    "deno.json",
+    "deno.jsonc",
+    ".git",
+];
 
 export function getGraphDB(filePath) {
     if (_driverUnavailable) return null;
@@ -358,15 +369,9 @@ export function getRelativePath(filePath) {
 
 function findProjectRoot(filePath) {
     let dir = dirname(filePath);
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 25; i++) {
         if (existsSync(join(dir, ".hex-skills/codegraph", "index.db"))) return dir;
-        const parent = dirname(dir);
-        if (parent === dir) break;
-        dir = parent;
-    }
-    dir = dirname(filePath);
-    for (let i = 0; i < 10; i++) {
-        if (existsSync(join(dir, ".git"))) return dir;
+        if (PROJECT_BOUNDARY_MARKERS.some((marker) => existsSync(join(dir, marker)))) return dir;
         const parent = dirname(dir);
         if (parent === dir) break;
         dir = parent;

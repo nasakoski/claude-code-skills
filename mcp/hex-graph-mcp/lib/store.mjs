@@ -9,7 +9,7 @@
 
 import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { existsSync, unlinkSync, mkdirSync } from "node:fs";
 import { confidenceAtLeast, dedupeStrongest } from "./confidence.mjs";
 import { normalizeProviderRun } from "./precise/provider-status.mjs";
@@ -85,6 +85,31 @@ export function getStore(projectPath) {
     const store = new Store(projectPath);
     _stores.set(projectPath, store);
     return store;
+}
+
+function hasCurrentSchema(dbPath) {
+    try {
+        const probe = new Database(dbPath, { readonly: true });
+        const ver = probe.pragma("user_version", { simple: true });
+        probe.close();
+        return ver === SCHEMA_VERSION;
+    } catch {
+        return false;
+    }
+}
+
+function resolvePersistedProjectRoot(path) {
+    let current = resolve(path);
+
+    while (true) {
+        const dbPath = join(current, CODEGRAPH_DIR, "index.db");
+        if (existsSync(dbPath)) {
+            return hasCurrentSchema(dbPath) ? current : null;
+        }
+        const parent = dirname(current);
+        if (parent === current) return null;
+        current = parent;
+    }
 }
 
 // --- Store class ---
@@ -2072,21 +2097,13 @@ export function resolveStore(path) {
         for (const [key, s] of _stores) {
             if (abs.startsWith(key + "/") || abs.startsWith(key + "\\")) return s;
         }
-        // 3. Auto-open persisted DB from disk (readonly probe first)
-        const dbPath = join(abs, CODEGRAPH_DIR, "index.db");
-        if (existsSync(dbPath)) {
-            try {
-                const probe = new Database(dbPath, { readonly: true });
-                const ver = probe.pragma("user_version", { simple: true });
-                probe.close();
-                if (ver === SCHEMA_VERSION) {
-                    return getStore(abs);
-                }
-            } catch { /* corrupt DB — return null, don't delete */ }
-        }
+        // 3. Auto-open persisted DB from disk for the exact path or its nearest parent project.
+        const persistedRoot = resolvePersistedProjectRoot(abs);
+        if (persistedRoot) return getStore(persistedRoot);
+        // 4. Path-scoped lookups must never fall back to an unrelated in-memory store.
+        return null;
     }
-    // 4. Fallback: first available store (for tools that omit path)
-    return _stores.values().next().value ?? null;
+    return null;
 }
 
 function moduleRelativeFilePath(filePath, moduleRootPath) {

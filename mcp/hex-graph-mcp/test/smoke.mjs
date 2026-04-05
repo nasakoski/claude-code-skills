@@ -2296,12 +2296,7 @@ describe("store persistence after restart", () => {
             db.pragma("user_version = 99999");
             db.close();
             const result = resolveStore(tmp);
-            // Result is either null (no other stores) or a fallback store for a DIFFERENT project
-            // Key check: stale DB must NOT be opened as store for tmp
-            if (result) {
-                assert.notEqual(result.projectPath, resolve(tmp),
-                    "stale DB should not be opened — resolveStore returned store for this path");
-            }
+            assert.equal(result, null, "stale DB should not resolve to any store for a path-scoped lookup");
             // DB should NOT be deleted
             assert.ok(existsSync(join(tmp, ".hex-skills/codegraph", "index.db")), "stale DB must not be deleted");
         } finally {
@@ -2309,11 +2304,42 @@ describe("store persistence after restart", () => {
         }
     });
 
+    it("resolveStore never falls back to another in-memory workspace when a path is provided", async () => {
+        const indexed = makeTempDir();
+        const missing = makeTempDir();
+        try {
+            writeFileSync(join(indexed, "main.mjs"), "export function hello() { return 1; }\n");
+            await indexProject(indexed);
+            const primary = getStore(indexed);
+            assert.equal(primary.projectPath, resolve(indexed), "indexed workspace is open in memory");
+
+            rmSync(missing, { recursive: true, force: true });
+            const resolvedMissing = resolveStore(missing);
+            assert.equal(resolvedMissing, null, "path-scoped lookup must not return an unrelated in-memory store");
+        } finally {
+            const store = resolveStore(indexed);
+            store?.close();
+            try { rmSync(indexed, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
+    });
+
     it("resolveStore returns null for non-existent project", () => {
         const fake = join(tmpdir(), "hex-graph-nonexistent-" + Date.now());
         const result = resolveStore(fake);
-        // Should return null or fallback store, but NOT crash
-        assert.ok(result === null || result !== undefined, "should not crash on missing path");
+        assert.equal(result, null, "path-scoped lookup should not fall back to an unrelated store");
+    });
+
+    it("resolveStore without path returns null instead of an arbitrary open store", async () => {
+        const indexed = makeTempDir();
+        try {
+            writeFileSync(join(indexed, "main.mjs"), "export const value = 1;\n");
+            await indexProject(indexed);
+            assert.ok(resolveStore(indexed), "indexed project should still resolve by path");
+            assert.equal(resolveStore(), null, "no-path lookup must not select an arbitrary store");
+        } finally {
+            resolveStore(indexed)?.close();
+            try { rmSync(indexed, { recursive: true, force: true }); } catch { /* Windows WAL lock */ }
+        }
     });
 });
 

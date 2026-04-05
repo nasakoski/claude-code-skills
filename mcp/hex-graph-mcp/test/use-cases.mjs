@@ -41,6 +41,7 @@ describe("use-case wrappers", () => {
 
             const candidates = runFindSymbolsUseCase("stable", { path: dir });
             assert.ok(candidates.result.candidates.length >= 1);
+            assert.deepEqual(candidates.next_actions, ["inspect_symbol"]);
 
             const symbol = candidates.result.candidates.find((candidate) => candidate.kind === "function")
                 || candidates.result.candidates[0];
@@ -48,6 +49,8 @@ describe("use-case wrappers", () => {
             assert.equal(inspect.result.symbol.name, "stable");
             assert.ok(inspect.result.references_summary.total >= 1);
             assert.ok(inspect.summary.includes("reference"));
+            assert.ok(inspect.next_actions.includes("find_references"));
+            assert.ok(inspect.next_actions.includes("trace_paths"));
         } finally {
             resolveStore(dir)?.close();
             rmSync(dir, { recursive: true, force: true });
@@ -105,15 +108,19 @@ describe("use-case wrappers", () => {
             });
             assert.ok(editRegion.result.edited_symbols.length >= 1);
             assert.ok(editRegion.result.impact_summary.external_callers >= 1);
+            assert.ok(editRegion.next_actions.includes("find_references"));
+            assert.ok(editRegion.next_actions.includes("trace_dataflow"));
 
             const architecture = runAnalyzeArchitectureUseCase({ path: dir, detailLevel: "compact" });
             assert.ok(architecture.result.modules.length >= 1, "modules are reported");
             assert.ok(Array.isArray(architecture.result.module_boundaries), "module boundaries section is present");
             assert.ok(architecture.summary.includes("module"));
+            assert.ok(architecture.next_actions.includes("audit_workspace"));
 
             const audit = runAuditWorkspaceUseCase({ path: dir, detailLevel: "compact" });
             assert.ok(audit.result.clones.length >= 1, "clone group is reported");
             assert.ok(audit.summary.includes("clone group"));
+            assert.ok(audit.next_actions.includes("analyze_edit_region"));
         } finally {
             resolveStore(dir)?.close();
             rmSync(dir, { recursive: true, force: true });

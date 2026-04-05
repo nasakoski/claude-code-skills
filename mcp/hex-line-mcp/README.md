@@ -38,16 +38,16 @@ Advanced / occasional:
 | `verify` | Check if held checksums / revision are still current | Staleness check without full re-read |
 | `inspect_path` | Unified file-or-directory inspection | File metadata for files, tree or pattern search for directories |
 | `changes` | Compare file against git ref, shows added/removed/modified symbols | AST-level semantic diff |
-| `bulk_replace` | Search-and-replace across multiple files by glob | Compact summary (default) or capped diffs via `format`, dry_run, max_files |
+| `bulk_replace` | Search-and-replace across multiple files inside an explicit root path | Compact summary (default) or capped diffs via `format`, dry_run, max_files |
 
-### Hooks (PreToolUse + PostToolUse)
+### Hooks (SessionStart + PreToolUse + PostToolUse)
 
 | Event | Trigger | Action |
 |-------|---------|--------|
-| **PreToolUse** | Read/Edit/Write/Grep on text files | Size-aware redirect: cheap small operations may pass, expensive ones are redirected |
+| **PreToolUse** | Read/Edit/Write/Grep on text files | Redirect-first policy for text files; built-in tools stay reserved for binary/media and `.claude/settings*.json` exceptions |
 | **PreToolUse** | Bash with dangerous commands | Blocks `rm -rf /`, `git push --force`, etc. Agent must confirm with user |
 | **PostToolUse** | Bash with 50+ lines output | RTK: deduplicates, truncates, shows filtered summary to Claude as feedback |
-| **SessionStart** | Session begins | Injects a short no-discovery workflow for hex-line tools |
+| **SessionStart** | Session begins | Injects a short bootstrap hint; defers to the active output style when `hex-line` style is enabled |
 
 
 ### Bash Redirects
@@ -69,6 +69,8 @@ ripgrep is bundled via `@vscode/ripgrep` — no manual install needed for `grep_
 Hooks and output style are auto-synced on every MCP server startup. The server compares installed files with bundled versions and updates only when content differs. First run after `npm i -g` triggers full install automatically.
 
 Hooks are written to global `~/.claude/settings.json` with absolute path to `hook.mjs`. Output style is installed to `~/.claude/output-styles/hex-line.md` and activated if no other style is set. To activate manually: `/config` > Output style > hex-line.
+
+No extra manual setup is required after install. The startup sync uses the current Node runtime and a stable hook path under `~/.claude/hex-line`, so the hook command survives spaces in the home directory on Windows, macOS, and Linux.
 
 ## Validation
 
@@ -94,6 +96,8 @@ Comparative built-in vs hex-line benchmarks are maintained outside this package.
 If a project already has `.hex-skills/codegraph/index.db`, `hex-line` automatically adds lightweight graph hints to `read_file`, `outline`, `grep_search`, `edit_file`, and `changes`.
 
 - Graph enrichment is optional. If `.hex-skills/codegraph/index.db` is missing, stale, or unreadable, `hex-line` falls back to standard behavior silently.
+- Graph enrichment is project-deterministic. `hex-line` only uses the graph database that belongs to the resolved current project scope.
+- Nested projects do not inherit graph hints from a parent repo index once a nested project boundary is detected.
 - `better-sqlite3` is optional. If it is unavailable, `hex-line` still works without graph hints.
 - `read_file`, `outline`, and `grep_search` stay compact: they only surface high-signal local facts such as `api`, framework entrypoints, callers, flow, and clone hints.
 - `edit_file` and `changes` surface the deeper review layer: external callers, downstream return/property flow, clone peers, public API risk, framework entrypoint risk, and same-name sibling warnings when present.
@@ -128,7 +132,7 @@ Use `replace_between` inside `edit_file` when you know stable start/end anchors 
 
 ### Literal rename / refactor
 
-Use `bulk_replace` for text rename patterns across one or more files. Returns compact summary by default; pass `format: "full"` for capped diffs. Do not use it as a substitute for structured block rewrites.
+Use `bulk_replace` for text rename patterns across one or more files inside a known project root or directory scope. Pass `path` explicitly. In normal agent workflows that scope should be auto-filled from the current project root, not typed manually. Returns compact summary by default; pass `format: "full"` for capped diffs. Do not use it as a substitute for structured block rewrites.
 
 ### read_file
 
@@ -183,14 +187,29 @@ Edit operations (JSON array):
 ]
 ```
 
+Discipline:
+
+- Never invent `range_checksum`. Copy it from `read_file` or `grep_search(output:"content")`.
+- First mutation in a file: prefer `grep_search` for narrow targets, or `outline -> read_file(ranges)` for structural edits.
+- Prefer 1-2 hunks on the first pass. Once `edit_file` returns a fresh `revision`, continue from that state.
+
 Result footer includes:
 
 - `status: OK | AUTO_REBASED | CONFLICT`
+- `reason: ...` as the canonical machine-readable cause for the current status
 - `revision: ...`
 - `file: ...`
 - `changed_ranges: ...` when relevant
+- `recovery_ranges: ...` with the narrowest recommended `read_file` ranges for retry
+- `next_action: ...` as the canonical immediate choice: `apply_retry_edit`, `apply_retry_batch`, or `reread_then_retry`
 - `remapped_refs: ...` when stale anchors were uniquely relocated
-- `retry_checksum: ...` on local conflicts
+- `retry_checksum: ...` on local conflicts, narrowed to the exact target range when possible
+- `retry_edit: ...` when the server can synthesize a ready-to-retry edit skeleton from current local state
+- `retry_edits: ...` on conservative batch conflicts when every conflicted edit can be retried directly
+- `suggested_read_call: ...` when rereading is the safest next step
+- `retry_plan: ...` with a compact machine-readable next-call plan
+- `summary: ...` and `snippet: ...` instead of long prose blocks
+- `edit_conflicts: N` on conservative multi-edit preflight conflicts
 
 ### write_file
 
@@ -239,7 +258,7 @@ Not for `.json`, `.yaml`, `.txt` -- use `read_file` directly for those.
 
 ### verify
 
-Check if range checksums from prior read/search blocks are still valid, optionally relative to a prior `base_revision`. Returns a deterministic verification report with `status`, `summary`, and one line per checksum entry.
+Check if range checksums from prior read/search blocks are still valid, optionally relative to a prior `base_revision`. Returns a deterministic verification report with canonical `status`, `summary`, `next_action`, and compact entry lines.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -251,13 +270,16 @@ Example output:
 
 ```text
 status: STALE
+reason: checksums_stale
 revision: rev-17-deadbeef
 file: 1-120:abc123ef
 summary: valid=0 stale=1 invalid=0
+next_action: reread_ranges
 base_revision: rev-16-feedcafe
 changed_ranges: 10-12(replace)
+suggested_read_call: {"tool":"mcp__hex-line__read_file","arguments":{"path":"/repo/file.ts","ranges":["10-12"]}}
 
-STALE 10-12 checksum: 10-12:oldc0de0 current=10-12:newc0de0
+entry: 1/1 | status: STALE | span: 10-12 | checksum: 10-12:oldc0de0 | current_checksum: 10-12:newc0de0 | next_action: reread_range | summary: content changed since checksum capture
 ```
 
 ### inspect_path
@@ -279,15 +301,15 @@ Inspect a file or directory path without guessing which low-level tool to call f
 
 ## Hook
 
-The unified hook (`hook.mjs`) handles four events:
+The unified hook (`hook.mjs`) handles three Claude hook events:
 
 ### PreToolUse: Tool Redirect
 
-Blocks built-in `Read`, `Edit`, `Write`, `Grep` on text files and redirects to hex-line equivalents. Binary files (images, PDFs, notebooks, archives, executables, fonts, media) are excluded.
+Applies redirect-first steering to built-in `Read`, `Edit`, `Write`, and `Grep` on text files. Binary/media files (images, PDFs, notebooks, archives, executables, fonts, media) stay on built-in tools. `.claude/settings.json` and `.claude/settings.local.json` at project root or home are also allowed on built-in tools.
 
 ### PreToolUse: Bash Redirect + Dangerous Blocker
 
-Intercepts simple Bash commands (`cat`, `head`, `tail`, `ls`, `find`, `grep`, `sed -i`, etc.) and redirects to hex-line tools. Blocks dangerous commands (`rm -rf /`, `git push --force`, `git reset --hard`, `DROP TABLE`, `chmod 777`, `mkfs`, `dd`).
+Intercepts simple Bash commands (`cat`, `head`, `tail`, `tree`, `find`, `stat`, `wc -l`, `grep`, `rg`, `sed -i`, etc.) and redirects covered cases to hex-line tools. `ls`/`dir` are redirected only for recursive listing. Dangerous commands (`rm -rf /`, `git push --force`, `git reset --hard`, `DROP TABLE`, `chmod 777`, `mkfs`, `dd`) are blocked.
 
 ### PostToolUse: RTK Output Filter
 
@@ -298,7 +320,11 @@ Triggers on `Bash` tool output exceeding 50 lines. Pipeline:
 3. **Deduplicate** -- collapses identical normalized lines with `(xN)` counts
 4. **Truncate** -- keeps first 15 + last 15 lines, omits the middle
 
-Configuration constants in `hook.mjs`:
+### SessionStart: Bootstrap Hint
+
+Injects a compact startup reminder. If the `hex-line` output style is active, the hook emits only a minimal bootstrap hint plus `ToolSearch('+hex-line read edit')` fallback. Otherwise it injects the short preferred read/edit workflow directly, including the scope rule: use file paths for file tools and the current project root for repo-wide tools such as `bulk_replace`.
+
+Hook policy constants in `lib/hook-policy.mjs`:
 
 | Constant | Default | Purpose |
 |----------|---------|--------|
@@ -308,7 +334,7 @@ Configuration constants in `hook.mjs`:
 
 ### SessionStart: Tool Preferences
 
-Injects a short operational workflow into agent context at session start: no `ToolSearch`, prefer `outline -> read_file -> edit_file -> verify`, and use targeted reads over full-file reads.
+Injects a short operational workflow into agent context at session start. If schemas are not loaded yet, it includes the `ToolSearch('+hex-line read edit')` fallback. Primary flow stays `outline -> read_file -> edit_file -> verify`, with targeted reads over full-file reads.
 
 ## Architecture
 
@@ -318,6 +344,8 @@ hex-line-mcp/
   hook.mjs            Unified hook (PreToolUse + PostToolUse + SessionStart)
   package.json
   lib/
+    hook-policy.mjs   Shared hook policy: redirects, thresholds, danger patterns
+    setup.mjs         Startup autosync for hook + output style
     read.mjs          File reading with hash annotation
     edit.mjs          Anchor-based edits, diff output
     search.mjs        ripgrep wrapper with hash-annotated results
@@ -397,7 +425,7 @@ The PostToolUse hook normalizes Bash output (replaces UUIDs, timestamps, IPs wit
 <details>
 <summary><b>Can I disable the built-in tool blocking?</b></summary>
 
-Yes. Remove the PreToolUse hook from `.claude/settings.local.json`. The MCP tools will still work, but agents will be free to use built-in Read/Edit/Write/Grep alongside hex-line tools.
+Yes. To downgrade redirects to advice, set `.hex-skills/environment_state.json` to `{ "hooks": { "mode": "advisory" } }`. To remove the hook entirely, delete the `hex-line` hook entries from `~/.claude/settings.json`. To disable the MCP server for one project, add `hex-line` to `~/.claude.json -> projects.{cwd}.disabledMcpServers`.
 
 </details>
 

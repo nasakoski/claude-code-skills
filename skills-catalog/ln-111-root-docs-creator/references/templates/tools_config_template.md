@@ -31,6 +31,8 @@
 | **Provider** | {{TASK_PROVIDER}} |
 | **Status** | {{TASK_STATUS}} |
 | **Team ID** | {{TEAM_ID}} |
+| **Repository** | {{REPOSITORY}} |
+| **Project Number** | {{PROJECT_NUMBER}} |
 | **Fallback** | file (`docs/tasks/epics/`) |
 
 ## Research
@@ -71,4 +73,4 @@ Follow `shared/references/mcp_tool_preferences.md` for file-editing tool selecti
 - [ ] Fallback chains are still valid
 - [ ] External agent status detection remains accurate
 
-**Last Updated:** {{DATE}}
+**Last Updated:** 2026-04-05

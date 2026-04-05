@@ -337,7 +337,7 @@
 
       <div class="scenario">
         <div class="scenario-title"><span class="scenario-icon">&#129300;</span> Understand an unfamiliar codebase</div>
-        <p>A new team member asks &ldquo;what does UserService do?&rdquo; An agent with grep reads the class definition, then searches for callers, then reads those files, then searches for their callers. Four separate tool calls, 38,611 characters of context. An agent with hex-graph calls <code>inspect_symbol(name="UserService", file="src/services/user.ts")</code> &mdash; one request returns the canonical symbol briefing: definition, incoming edges, outgoing edges, workspace ownership, and confidence summary.</p>
+        <p>A new team member asks &ldquo;what does UserService do?&rdquo; An agent with grep reads the class definition, then searches for callers, then reads those files, then searches for their callers. Four separate tool calls, 38,611 characters of context. An agent with hex-graph calls <code>inspect_symbol(path="/project", name="UserService", file="src/services/user.ts")</code> &mdash; one request returns the canonical symbol briefing: definition, incoming edges, outgoing edges, workspace ownership, and confidence summary.</p>
         <div class="scenario-result">38,611 &rarr; 1,274 ch. <strong>97% savings.</strong> 4 tool calls &rarr; 1.</div>
       </div>
 
@@ -349,7 +349,7 @@
 
       <div class="scenario">
         <div class="scenario-title"><span class="scenario-icon">&#128269;</span> Find all entry points</div>
-        <p>&ldquo;Who ultimately calls <code>validateInput</code>?&rdquo; The agent needs to trace callers 3 levels deep. With grep: read the file, find callers, read those files, find their callers, read again &mdash; 12,716 characters across 4 tool calls. With hex-graph: <code>trace_paths(workspace_qualified_name="...", path_kind="calls", direction="reverse", depth=3)</code> &mdash; one call returns the full call chain, served from the graph.</p>
+        <p>&ldquo;Who ultimately calls <code>validateInput</code>?&rdquo; The agent needs to trace callers 3 levels deep. With grep: read the file, find callers, read those files, find their callers, read again &mdash; 12,716 characters across 4 tool calls. With hex-graph: <code>trace_paths(path="/project", workspace_qualified_name="...", path_kind="calls", direction="reverse", depth=3)</code> &mdash; one call returns the full call chain, served from the graph.</p>
         <div class="scenario-result">12,716 &rarr; 477 ch. <strong>96% savings.</strong> 4 tool calls &rarr; 1.</div>
       </div>
 
@@ -371,7 +371,7 @@
   <section>
     <div class="container">
       <h2>14 tools</h2>
-      <p class="section-desc">Query, analyze, and maintain the knowledge graph.</p>
+      <p class="section-desc">Query, analyze, and maintain the knowledge graph. Symbol/query tools stay project-scoped by requiring <code>path</code>; agents should auto-fill that from the active project.</p>
       <div class="table-wrap">
         <table>
           <thead>

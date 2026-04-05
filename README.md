@@ -113,8 +113,10 @@ Bundled MCP servers extend agent capabilities — hash-verified editing, code in
 | **[hex-graph-mcp](mcp/hex-graph-mcp/)** | Indexes codebases into a deterministic SQLite graph with framework-aware overlays, capability-first quality tooling, optional SCIP interop, and architecture/reference analysis. | 14 | [README](mcp/hex-graph-mcp/README.md) · [npm](https://www.npmjs.com/package/@levnikolaevich/hex-graph-mcp) |
 | **[hex-ssh-mcp](mcp/hex-ssh-mcp/)** | Hash-verified remote file editing and SFTP transfer over SSH. Normalized output for minimal token usage. | 8 | [README](mcp/hex-ssh-mcp/README.md) · [npm](https://www.npmjs.com/package/@levnikolaevich/hex-ssh-mcp) |
 
+Deterministic scope rule: `hex-line` and `hex-graph` keep `path` as the project anchor. In normal use the agent fills it automatically from the active file or project root, so users usually do not need to type it manually. `hex-ssh` runs on Windows/macOS/Linux hosts; remote shell tools stay POSIX-oriented, while SFTP transfers support platform-aware remote paths.
+
 <!-- GENERATED:HEX_GRAPH_MCP_STATUS:START -->
-`hex-graph-mcp` quality snapshot: `81/81` tests passing, `1` curated corpus, `1` pinned external corpora, parser-first `green`.
+`hex-graph-mcp` quality snapshot: `83/83` tests passing, `1` curated corpus, `1` pinned external corpora, parser-first `green`.
 <!-- GENERATED:HEX_GRAPH_MCP_STATUS:END -->
 
 ### External servers
@@ -152,17 +154,16 @@ claude mcp add -s user --transport http linear-server https://mcp.linear.app/mcp
 
 ### Agent steering
 
-MCP servers are installed but Claude won't prefer them over built-ins by default. hex-line-mcp includes tools that teach the agent to use MCP:
+MCP servers can be installed correctly and still lose to built-ins in practice. `hex-line-mcp` keeps Claude aligned through one output style and three Claude hook events:
 
 | Mechanism | How it works |
 |-----------|-------------|
 | **[Output style](mcp/hex-line-mcp/output-style.md)** | Injected into system prompt — maps built-in tools to MCP equivalents (`Read` → `hex-line read_file`, `Edit` → `hex-line edit_file`) |
-| **PostToolUse hook** | When Claude uses a built-in, the hook reminds it to use the MCP tool next time |
-| **secret-scanner hook** | Blocks `git commit` if secrets detected |
-| **story-validator hook** | Validates Story context before `ln-400` execution |
-| **code-quality hook** | Reports DRY/KISS/YAGNI violations after Edit/Write |
+| **SessionStart hook** | Injects a compact bootstrap hint and defers to the active `hex-line` output style when present |
+| **PreToolUse hook** | Advises small `Read`/`Edit`, redirects heavier `Read`/`Edit` plus `Write`/`Grep`, selectively redirects simple Bash, blocks dangerous commands |
+| **PostToolUse hook** | Filters only verbose Bash output (50+ lines), keeping first 15 + last 15 lines after normalization and dedupe |
 
-Run `hex-line setup_hooks` to install all hooks + output style.
+Hooks and output style auto-sync on `hex-line-mcp` startup. First run after install performs the initial sync automatically.
 
 ---
 

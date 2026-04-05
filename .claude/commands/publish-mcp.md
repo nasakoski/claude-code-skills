@@ -110,6 +110,67 @@ claimed=$(grep -oE '[0-9]+ MCP Tools' $PROJECT_ROOT/mcp/${PKG}/README.md | grep 
 ```
 If mismatch — update `N MCP Tools` in README.md before proceeding.
 
+**MANDATORY READ:** Load `docs/best-practice/MCP_OUTPUT_CONTRACT_GUIDE.md`
+
+**Output contract + vocabulary gates**
+
+- Public outputs MUST keep canonical field ordering where applicable: `status` -> `reason` -> identity/query fields -> `next_action` / `next_actions` -> `summary` -> recovery helpers -> details.
+- Public `reason` values MUST be stable `snake_case`, not prose sentences.
+- Public `next_action` / `next_actions` MUST use canonical labels, not English advice sentences.
+- Do not introduce a new `status`, `reason`, or `next_action` label if an existing one already covers the same decision.
+- `hex-graph` success payloads MUST keep top-level `status: "OK"`; error payloads MUST keep the compact error envelope: `status`, `code`, `summary`, `next_action`, `recovery`.
+- `hex-line` text contracts MUST stay canonical and compact: prefer `summary` / `snippet` / `retry_edit` / `retry_edits` / `suggested_read_call` / `retry_plan` over long prose guidance blocks.
+
+**Docs and server-description sync gates**
+
+- `README.md`, package site/page content if touched, and `server.mjs` tool descriptions must agree on:
+  - tool count
+  - primary use cases
+  - current output contract fields
+  - status/reason/next_action vocabulary
+- `server.mjs` descriptions must describe **when to use** the tool and mention current recovery contract where relevant.
+- If a release changes public output wording or recovery fields, update README examples in the same release.
+
+**hex-line-specific release gates**
+
+- Hook behavior, `output-style.md`, README, and `hook.mjs` must agree on:
+  - whether built-in `Read` / `Edit` / `Write` / `Grep` are redirected or merely advised
+  - what Bash commands are redirected
+  - PostToolUse truncation thresholds and head/tail counts
+  - SessionStart bootstrap behavior
+- `edit_file` conflict output must still expose the current compact recovery contract:
+  - `status`
+  - `reason`
+  - `next_action`
+  - `summary`
+  - `snippet`
+  - recovery helpers such as `retry_edit`, `retry_edits`, `suggested_read_call`, `retry_plan`, `retry_checksum`, `recovery_ranges`
+- `verify` and `changes` must preserve canonical `status` / `reason` / `next_action` outputs; do not publish if they drift back to narrative/prose-first responses.
+
+**hex-graph-specific release gates**
+
+- Use-case wrappers and server-level overrides must keep the same action vocabulary; no mixed sentence-style `next_actions`.
+- `compact` / default outputs should prune empty sections instead of shipping null-heavy payloads.
+- Query success results must preserve the top-level pattern: `status`, `query`, `summary`, `reason`, `result`, optional `quality`, optional `warnings`, optional `next_actions`.
+
+**Suggested spot checks before publish**
+
+Run targeted searches and inspect mismatches:
+
+```bash
+node mcp/check-output-contracts.mjs
+rg -n "next_action|next_actions|status: |reason: " $PROJECT_ROOT/mcp/${PKG}/
+rg -n "retry_edit|retry_edits|suggested_read_call|retry_plan|summary: |snippet: " $PROJECT_ROOT/mcp/${PKG}/
+```
+
+For `hex-line-mcp`, also inspect:
+
+```bash
+rg -n "HOOK_OUTPUT_POLICY|LINE_THRESHOLD|HEAD_LINES|TAIL_LINES|SessionStart|PreToolUse|PostToolUse" $PROJECT_ROOT/mcp/hex-line-mcp/hook.mjs $PROJECT_ROOT/mcp/hex-line-mcp/lib/hook-policy.mjs $PROJECT_ROOT/mcp/hex-line-mcp/README.md $PROJECT_ROOT/mcp/hex-line-mcp/output-style.md
+```
+
+If these checks reveal drift, fix it before version bumping.
+
 ### 6. Bump version
 
 ```bash
@@ -128,7 +189,7 @@ Version is injected at build time via esbuild `define: { __HEX_VERSION__ }`. No 
 Verify version in bundle using `mcp__hex-line__grep_search`:
 - pattern: `"${NEW_VERSION}"` (literal), path: `mcp/${PKG}/dist/server.mjs`, limit: 1
 
-### 7b. Sync version in server.json (MCP Registry metadata)
+### 8. Sync version in server.json (MCP Registry metadata)
 
 Update both `version` and `packages[0].version` in `mcp/${PKG}/server.json`:
 ```bash
@@ -140,7 +201,7 @@ Verify:
 jq '.version, .packages[0].version' $PROJECT_ROOT/mcp/${PKG}/server.json
 ```
 
-### 8. Commit + tag + push
+### 9. Commit + tag + push
 
 **CRITICAL:** Commit ALL repo changes (`git add -A`), not just the package directory. Other pending changes (skills, commands, docs) ride along with the release commit. Never scope `git add` to a subdirectory.
 
@@ -151,7 +212,7 @@ git tag ${TAG_PREFIX}${NEW_VERSION}
 git push origin master --tags
 ```
 
-### 9. Verify publish
+### 10. Verify publish
 
 Wait ~30s, then:
 ```bash
@@ -159,13 +220,13 @@ gh run list --limit 1
 npm view ${PKG_NAME} version
 ```
 
-### 10. Report
+### 11. Report
 
 Display: package name, old → new version, npm URL (`https://www.npmjs.com/package/${PKG_NAME}`), GitHub Actions run status.
 
 ---
 
-### 11. Meta-Analysis
+### 12. Meta-Analysis
 
 **MANDATORY READ:** Load `shared/references/meta_analysis_protocol.md`
 

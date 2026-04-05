@@ -1,7 +1,7 @@
 ---
 name: ln-511-code-quality-checker
 description: "Checks DRY/KISS/YAGNI/architecture compliance with quantitative Code Quality Score. Use when implementation tasks are Done and need quality scoring."
-allowed-tools: Read, Grep, Glob, Bash, WebFetch, mcp__Ref, mcp__context7, mcp__hex-graph__audit_workspace, mcp__hex-graph__analyze_architecture
+allowed-tools: Read, Grep, Glob, Bash, WebFetch, mcp__Ref, mcp__context7, mcp__hex-line__outline, mcp__hex-graph__audit_workspace, mcp__hex-graph__analyze_architecture
 license: MIT
 ---
 
@@ -22,6 +22,8 @@ Analyzes Done implementation tasks with quantitative Code Quality Score based on
 
 **Resolution:** Story Resolution Chain.
 **Status filter:** In Progress, To Review
+
+**MANDATORY READ:** Load `shared/references/mcp_tool_preferences.md` and `shared/references/mcp_integration_patterns.md` - use `hex-graph` as the primary path for clone, architecture, and semantic quality evidence when the project is indexed. Fall back to Grep/Read only when graph is unavailable or unsupported.
 
 ## Purpose & Scope
 - Load Story and Done implementation tasks (exclude test tasks)
@@ -168,6 +170,7 @@ Formula: `Code Quality Score = 100 - metric_penalties - issue_penalties`
 
 7) **Analyze code for static issues (assign prefixes):**
    **MANDATORY READ:** `shared/references/clean_code_checklist.md`, `shared/references/destructive_operation_safety.md`
+   - For large code files, use `outline(path)` before targeted reads.
    - SEC-: hardcoded creds, unvalidated input, SQL injection, race conditions
    - SEC-DESTR-: unguarded destructive operations — use code-level guards table from destructive_operation_safety.md (loaded above). Check all 5 guard categories (DB, FS, MIG, ENV, FORCE).
    - MNT-: DRY violations (MNT-DRY-: duplicate logic), dead code (MNT-DC-: per checklist), complex conditionals, poor naming

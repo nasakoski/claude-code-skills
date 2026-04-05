@@ -1,7 +1,7 @@
 ---
 name: ln-403-task-rework
 description: "Fixes tasks in To Rework by applying reviewer feedback, then returns to To Review. Use when task was rejected during review."
-allowed-tools: Read, Grep, Glob, Bash, mcp__hex-line__outline, mcp__hex-line__verify, mcp__hex-line__changes
+allowed-tools: Read, Grep, Glob, Bash, mcp__hex-line__outline, mcp__hex-line__read_file, mcp__hex-line__edit_file, mcp__hex-line__write_file, mcp__hex-line__verify, mcp__hex-line__changes, mcp__hex-line__inspect_path
 license: MIT
 ---
 
@@ -20,6 +20,8 @@ Executes rework for a single task marked To Rework and hands it back for review.
 
 **Hex-line acceleration (if available):** Use `outline(path)` before reading large code files. After edits: `edit_file(base_revision=rev)` → `verify(checksums)`. Use `changes()` to show what was fixed.
 ## Inputs
+
+Use `read_file()` and `edit_file()` as the primary path for code/config/script/test files during rework. Built-in Read/Edit are fallback only when hex-line is unavailable.
 
 | Input | Required | Source | Description |
 |-------|----------|--------|-------------|

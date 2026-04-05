@@ -1,7 +1,7 @@
 ---
 name: ln-404-test-executor
 description: "Executes test tasks (label 'tests') through Todo to To Review with risk-based limits. Use for test task execution. Not for implementation tasks."
-allowed-tools: Read, Grep, Glob, Bash, mcp__hex-line__outline, mcp__hex-line__inspect_path
+allowed-tools: Read, Grep, Glob, Bash, mcp__hex-line__outline, mcp__hex-line__read_file, mcp__hex-line__edit_file, mcp__hex-line__write_file, mcp__hex-line__verify, mcp__hex-line__changes, mcp__hex-line__inspect_path
 license: MIT
 ---
 
@@ -20,6 +20,8 @@ Runs a single Story final test task (label "tests") through implementation/execu
 - Update Linear/kanban for this task only: Todo -> In Progress -> To Review.
 
 **Hex-line acceleration (if available):** Use `outline(path)` before reading test targets. Use `inspect_path(path="tests/")` to understand test structure.
+Use `read_file()` and `edit_file()` as the primary path for test/code/config files. Use `verify()` and `changes()` before handoff. Built-in Read/Edit are fallback only when hex-line is unavailable.
+
 ## Inputs
 
 | Input | Required | Source | Description |

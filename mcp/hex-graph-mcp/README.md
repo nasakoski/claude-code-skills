@@ -59,14 +59,42 @@ All symbol-oriented tools use canonical selectors. Pass exactly one of:
 
 Plain `name` on its own belongs in `find_symbols`. Ambiguous semantic selectors return `AMBIGUOUS_SYMBOL` instead of silently choosing the first match.
 
+All symbol/query tools also require `path` as the project anchor. Pass the indexed project root, or a file/subdirectory inside that indexed project. Agents should auto-fill it from the active project; the server does not fall back to another open store or another repository when `path` is missing or ambiguous.
+
 All public responses now use the same top-level shape:
 
+- `status`
 - `query`
 - `summary`
+- `reason`
 - `result`
 - `quality` when language/framework support matters
 - `warnings`
 - `next_actions`
+
+`next_action` / `next_actions` use short canonical labels, not English sentences. Typical values:
+
+- `inspect_symbol`
+- `find_references`
+- `find_implementations`
+- `trace_paths`
+- `trace_dataflow`
+- `analyze_changes`
+- `audit_workspace`
+- `analyze_edit_region`
+- `index_project`
+- `widen_query`
+- `widen_range`
+- `review_deleted_api`
+- `review_duplicates`
+
+Errors use a compact top-level shape:
+
+- `status: "ERROR"`
+- `code`
+- `summary`
+- `next_action`
+- `recovery`
 
 ### Setup
 
@@ -166,10 +194,12 @@ hex-graph-mcp/
 
 | Scenario | Tool | Example |
 |----------|------|---------|
-| Find candidate symbols | `find_symbols` | `query: "handleAuth"` |
-| Inspect one exact symbol | `inspect_symbol` | `name: "UserService", file: "src/services/user.ts"` |
-| Trace callers, callees, and framework edges | `trace_paths` | `workspace_qualified_name: "...", path_kind: "mixed"` |
-| Follow source-to-sink propagation | `trace_dataflow` | `source: { symbol: ..., anchor: ... }` |
+| Find candidate symbols | `find_symbols` | `path: "/project", query: "handleAuth"` |
+| Inspect one exact symbol | `inspect_symbol` | `path: "/project", name: "UserService", file: "src/services/user.ts"` |
+| Find semantic usages of one symbol | `find_references` | `path: "/project", workspace_qualified_name: "...", kind: "all"` |
+| Find implementations / overrides | `find_implementations` | `path: "/project", workspace_qualified_name: "..."` |
+| Trace callers, callees, and framework edges | `trace_paths` | `path: "/project", workspace_qualified_name: "...", path_kind: "mixed"` |
+| Follow source-to-sink propagation | `trace_dataflow` | `path: "/project", source: { symbol: ..., anchor: ... }` |
 | Review a PR or worktree diff | `analyze_changes` | `base_ref: "origin/main"` |
 | Evaluate a planned edit in one file range | `analyze_edit_region` | `file: "src/auth.ts", line_start: 40, line_end: 78` |
 | Inspect architecture and coupling | `analyze_architecture` | First high-level call after `index_project` |
@@ -199,7 +229,7 @@ Inline `quality` metadata is currently surfaced by:
 ### Generated Snapshot
 
 - MCP tools registered in server contract: `14`
-- Semantic suite: `81/81` passing
+- Semantic suite: `83/83` passing
 - Corpora: `1` curated, `1` pinned external
 - Lanes: parser-first `green`, precise overlay `provider_conditional`
 

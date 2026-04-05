@@ -347,7 +347,7 @@ describe("edit business logic", () => {
 
             assert.ok(result.includes("status: CONFLICT"), "Conflict status returned");
             assert.ok(result.includes("remapped_refs:"), "Conflict shows relocated refs");
-            assert.ok(result.includes(`${startTag}.3 -> ${startTag}.4`), "Relocated start anchor reported");
+            assert.ok(result.includes(`${startTag}.3->${startTag}.4`), "Relocated start anchor reported");
         } finally {
             fs.unlinkSync(tmp);
         }
@@ -383,6 +383,101 @@ describe("edit business logic", () => {
 
             assert.ok(result.includes("status: CONFLICT"), "Conflict status returned");
             assert.ok(/reason: (overlap|stale_anchor)/.test(result), "Structured conflict reason returned");
+            assert.ok(result.includes("recovery_ranges: 3-3"), "Conflict reports recovery range");
+            assert.ok(result.includes("next_action: apply_retry_edit"), "Conflict reports canonical next action");
+            assert.ok(result.includes("retry_edit:"), "Conflict reports retry edit skeleton");
+            assert.ok(result.includes("summary:"), "Conflict reports compact summary");
+            assert.ok(result.includes("snippet: "), "Conflict reports compact snippet header");
+            assert.ok(result.includes('retry_plan: {"steps":[{"tool":"mcp__hex-line__edit_file"'), "Conflict reports direct retry plan");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("conservative mode reports all stale replace_lines conflicts in one batch", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const { editFile } = await import("../lib/edit.mjs");
+        const tmp = TMP("hex-test-batch-conflicts.js");
+        fs.writeFileSync(tmp, "one\ntwo\nthree\nfour\nfive\n");
+        try {
+            const read = readFile(tmp, { ranges: ["1-5"] });
+            const anchors = [...read.matchAll(/([a-z2-7]{2}\.(?:2|4))\t(two|four)/g)].map((m) => m[1]);
+            const checksums = [...read.matchAll(/checksum: (\d+-\d+:[0-9a-f]{8})/g)].map((m) => m[1]);
+            assert.equal(anchors.length, 2, "Read returns both target anchors");
+            assert.equal(checksums.length, 1, "Read returns one broad checksum");
+
+            fs.writeFileSync(tmp, "ONE\ntwo\nthree\nfour\nFIVE\n");
+
+            const result = editFile(tmp, [
+                {
+                    replace_lines: {
+                        start_anchor: anchors[0],
+                        end_anchor: anchors[0],
+                        new_text: "two updated",
+                        range_checksum: checksums[0],
+                    }
+                },
+                {
+                    replace_lines: {
+                        start_anchor: anchors[1],
+                        end_anchor: anchors[1],
+                        new_text: "four updated",
+                        range_checksum: checksums[0],
+                    }
+                },
+            ], { conflictPolicy: "conservative" });
+
+            assert.ok(result.includes("status: CONFLICT"), "Conflict status returned");
+            assert.ok(result.includes("reason: batch_conflict"), "Batch conflict reason returned");
+            assert.ok(result.includes("edit_conflicts: 2"), "Conflict count returned");
+            assert.ok(result.includes("next_action: apply_retry_batch"), "Batch conflict reports canonical next action");
+            assert.ok(result.includes("edit: 1/2"), "First conflict section returned");
+            assert.ok(result.includes("edit: 2/2"), "Second conflict section returned");
+            assert.ok((result.match(/recovery_ranges: 2-2/g) || []).length >= 1, "First edit reports narrow recovery range");
+            assert.ok((result.match(/recovery_ranges: 4-4/g) || []).length >= 1, "Second edit reports narrow recovery range");
+            assert.ok((result.match(/retry_checksum:/g) || []).length >= 2, "Each stale replace_lines conflict reports retry checksum");
+            assert.ok((result.match(/retry_edit:/g) || []).length >= 2, "Each stale replace_lines conflict reports retry edit skeleton");
+            assert.ok((result.match(/summary:/g) || []).length >= 2, "Each stale replace_lines conflict reports compact summary");
+            assert.ok(result.includes('retry_edits: [{"replace_lines"'), "Batch conflict reports ready retry edits");
+            assert.ok(result.includes('retry_plan: {"steps":[{"tool":"mcp__hex-line__edit_file"'), "Batch conflict reports direct batch retry plan");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("batch conflicts fall back to suggested reread when not every edit can be retried directly", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const { editFile } = await import("../lib/edit.mjs");
+        const { fnv1a, lineTag } = await import("@levnikolaevich/hex-common/text-protocol/hash");
+        const tmp = TMP("hex-test-reread-plan.js");
+        fs.writeFileSync(tmp, "alpha\nbeta\ngamma\ndelta\n");
+        try {
+            const read = readFile(tmp, { ranges: ["1-4"] });
+            const baseRevision = read.match(/revision: (\S+)/)?.[1];
+            assert.ok(baseRevision, "Read returns revision");
+
+            const lines = "alpha\nbeta\ngamma\ndelta\n".split("\n");
+            const alphaTag = lineTag(fnv1a(lines[0]));
+            const gammaTag = lineTag(fnv1a(lines[2]));
+
+            editFile(tmp, [
+                { set_line: { anchor: `${alphaTag}.1`, new_text: "alpha changed" } },
+                { set_line: { anchor: `${gammaTag}.3`, new_text: "gamma changed" } },
+            ]);
+
+            const alphaChangedTag = lineTag(fnv1a("alpha changed"));
+            const gammaChangedTag = lineTag(fnv1a("gamma changed"));
+            const result = editFile(tmp, [
+                { set_line: { anchor: `${alphaChangedTag}.1`, new_text: "alpha next" } },
+                { set_line: { anchor: `${gammaChangedTag}.3`, new_text: "gamma next" } },
+            ], { baseRevision, conflictPolicy: "conservative" });
+
+            assert.ok(result.includes("status: CONFLICT"), "Conflict status returned");
+            assert.ok(result.includes("reason: batch_conflict"), "Batch conflict reason returned");
+            assert.ok(result.includes("next_action: reread_then_retry"), "Batch conflict reports reread-first next action");
+            assert.ok(result.includes('suggested_read_call: {"tool":"mcp__hex-line__read_file"'), "Batch conflict suggests reread call");
+            assert.ok(result.includes('retry_plan: {"steps":[{"tool":"mcp__hex-line__read_file"'), "Batch conflict falls back to reread-first plan");
+            assert.ok(!result.includes("retry_edits:"), "No retry_edits reported for incomplete retryable batch");
         } finally {
             fs.unlinkSync(tmp);
         }
@@ -780,6 +875,30 @@ describe("graph enrichment", () => {
             fs.rmSync(repoB, { recursive: true, force: true });
         }
     });
+
+    it("does not bind a nested package to a parent repo graph index", { skip: !HAS_GRAPH_SQLITE }, async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const { getGraphDB, _resetGraphDBCache } = await import("../lib/graph-enrich.mjs");
+        const repo = makeTempRepo("hex-line-graph-nested-", {
+            "src/outer.mjs": "export function outer() {\n  return 1;\n}\n",
+            "packages/app/package.json": "{\n  \"name\": \"app\"\n}\n",
+            "packages/app/src/inner.mjs": "export function inner() {\n  return 2;\n}\n",
+        });
+        const innerFile = join(repo, "packages/app/src/inner.mjs");
+        try {
+            await indexGraphRepo(repo);
+            _resetGraphDBCache();
+
+            assert.equal(getGraphDB(innerFile), null, "Nested package without its own graph DB must not reuse parent graph");
+            const readResult = readFile(innerFile);
+            assert.ok(!readResult.includes("\nGraph:"), "Nested package read should not emit parent graph header");
+            assert.ok(readResult.includes("inner"), "File content is still returned");
+        } finally {
+            _resetGraphDBCache();
+            await closeGraphRepo(repo);
+            fs.rmSync(repo, { recursive: true, force: true });
+        }
+    });
 });
 
 // ==================== grep_search ====================
@@ -874,8 +993,10 @@ describe("grep_search output modes", () => {
             assert.ok(csMatch, "read should produce a checksum");
             const verifyResult = verifyChecksums(tmp, [csMatch[1]]);
             assert.ok(verifyResult.includes("status: OK"), `verify should report OK: ${verifyResult}`);
+            assert.ok(verifyResult.includes("reason: checksums_current"), "Verify should report canonical reason");
             assert.ok(verifyResult.includes("summary: valid=1 stale=0 invalid=0"), "Summary should classify the checksum set");
-            assert.ok(verifyResult.includes("VALID 1-2"), "Valid checksum entry should be listed");
+            assert.ok(verifyResult.includes("next_action: keep_using"), "Verify should report canonical next action");
+            assert.ok(verifyResult.includes("entry: 1/1 | status: VALID | span: 1-2"), "Valid checksum entry should be listed canonically");
         } finally {
             fs.unlinkSync(tmp);
         }
@@ -893,9 +1014,12 @@ describe("grep_search output modes", () => {
             fs.writeFileSync(tmp, "one\ntwo changed\nthree\n");
             const verifyResult = verifyChecksums(tmp, [checksum], { baseRevision });
             assert.ok(verifyResult.includes("status: STALE"), `verify should report stale: ${verifyResult}`);
+            assert.ok(verifyResult.includes("reason: checksums_stale"), "Verify should report canonical stale reason");
             assert.ok(verifyResult.includes(`base_revision: ${baseRevision}`), "Base revision should be echoed");
             assert.ok(verifyResult.includes("changed_ranges:"), "Changed ranges should be reported");
-            assert.ok(verifyResult.includes("STALE 1-2"), "Stale checksum entry should be listed");
+            assert.ok(verifyResult.includes("next_action: reread_ranges"), "Verify should report reread next action");
+            assert.ok(verifyResult.includes('suggested_read_call: {"tool":"mcp__hex-line__read_file"'), "Verify should suggest reread call");
+            assert.ok(verifyResult.includes("entry: 1/1 | status: STALE | span: 1-2"), "Stale checksum entry should be listed canonically");
         } finally {
             fs.unlinkSync(tmp);
         }
@@ -911,10 +1035,12 @@ describe("grep_search output modes", () => {
             const validChecksum = readResult.match(/checksum: (\d+-\d+:[0-9a-f]{8})/)[1];
             const verifyResult = verifyChecksums(tmp, [validChecksum, "99-120:deadbeef", "bad-checksum"]);
             assert.ok(verifyResult.includes("status: INVALID"), `mixed set should report INVALID: ${verifyResult}`);
+            assert.ok(verifyResult.includes("reason: checksums_invalid"), "Mixed invalid set should report canonical reason");
             assert.ok(verifyResult.includes("summary: valid=1 stale=0 invalid=2"), "Summary should classify mixed set");
-            assert.ok(verifyResult.includes("VALID 1-2"), "Valid entry should remain visible");
-            assert.ok(verifyResult.includes("INVALID 99-120"), "Out-of-range checksum should be classified");
-            assert.ok(verifyResult.includes("INVALID checksum: bad-checksum"), "Malformed checksum should be classified");
+            assert.ok(verifyResult.includes("next_action: fix_inputs"), "Mixed invalid set should report fix_inputs");
+            assert.ok(verifyResult.includes("entry: 1/3 | status: VALID | span: 1-2"), "Valid entry should remain visible");
+            assert.ok(verifyResult.includes("entry: 2/3 | status: INVALID | span: 99-120"), "Out-of-range checksum should be classified");
+            assert.ok(verifyResult.includes("entry: 3/3 | status: INVALID | checksum: bad-checksum"), "Malformed checksum should be classified");
         } finally {
             fs.unlinkSync(tmp);
         }
@@ -1113,8 +1239,11 @@ describe("changes", () => {
         // Use a known tracked file — should return no changes or a diff
         const result = await fileChanges(CWD + "/lib/read.mjs", "HEAD");
         assert.ok(typeof result === "string", "should return string");
-        // If file is unchanged vs HEAD, result says "No changes" or shows symbols
         assert.ok(result.length > 0, "should have content");
+        assert.ok(result.includes("status:"), "changes returns canonical status");
+        assert.ok(result.includes("reason:"), "changes returns canonical reason");
+        assert.ok(result.includes("summary:"), "changes returns canonical summary");
+        assert.ok(result.includes("next_action:"), "changes returns canonical next action");
     });
 });
 // ==================== isHexLineDisabled ====================
@@ -1221,12 +1350,13 @@ describe("hook — Read config exception", () => {
         const r = await runHook("PreToolUse", "Read", { file_path: "src/index.ts" });
         assert.notEqual(r.code, 0);
     });
-    it("allows partial built-in Read on a small file", async () => {
+    it("redirects partial built-in Read on a small file", async () => {
         const tmp = TMP(`hex-hook-small-read-${Date.now()}.ts`);
         fs.writeFileSync(tmp, "line 1\nline 2\nline 3\n");
         try {
             const r = await runHook("PreToolUse", "Read", { file_path: tmp, offset: 1, limit: 2 });
-            assert.equal(r.code, 0);
+            assert.notEqual(r.code, 0);
+            assert.ok(r.stdout.includes("read_file"), "Partial read is redirected to hex-line read_file");
         } finally {
             fs.rmSync(tmp, { force: true });
         }
@@ -1275,7 +1405,7 @@ describe("hook — regressions", () => {
         const r = await runHook("PreToolUse", "Bash", { command: "rm -rf / # hex-confirmed" });
         assert.equal(r.code, 0);
     });
-    it("advises small built-in Edit on a small file", async () => {
+    it("redirects small built-in Edit on a small file", async () => {
         const tmp = TMP(`hex-hook-small-edit-${Date.now()}.ts`);
         fs.writeFileSync(tmp, "const value = 1;\n");
         try {
@@ -1284,8 +1414,8 @@ describe("hook — regressions", () => {
                 old_string: "value = 1",
                 new_string: "value = 2",
             });
-            assert.equal(r.code, 0, "Small edit is not blocked");
-            assert.ok(r.stdout.includes("mcp__hex-line__edit_file"), "Small edit advises hex-line edit_file");
+            assert.notEqual(r.code, 0, "Small edit is redirected");
+            assert.ok(r.stdout.includes("mcp__hex-line__edit_file"), "Small edit redirects to hex-line edit_file");
         } finally {
             fs.rmSync(tmp, { force: true });
         }
@@ -1571,7 +1701,7 @@ describe("protocol: edit_file output", () => {
                 assert.fail("Should have thrown");
             } catch (e) {
                 assert.ok(e.message.includes("CHECKSUM_MISMATCH"), "Error is CHECKSUM_MISMATCH");
-                assert.ok(e.message.includes("Recovery:"), "Contains recovery guidance");
+                assert.ok(e.message.includes("next_action:"), "Contains canonical recovery guidance");
                 assert.ok(e.message.includes("read_file"), "Mentions read_file");
             }
         } finally {

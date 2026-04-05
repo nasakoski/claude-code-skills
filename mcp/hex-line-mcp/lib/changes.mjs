@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { validatePath, normalizePath } from "./security.mjs";
 import { semanticGitDiff } from "@levnikolaevich/hex-common/git/semantic-diff";
 import { getGraphDB, getRelativePath, semanticImpact } from "./graph-enrich.mjs";
+import { ACTION, REASON } from "./output-contract.mjs";
 
 function exportedLooking(symbol) {
     return /^\s*(export|public)\b/.test(symbol.text || "");
@@ -39,6 +40,14 @@ function summarizeGraphRisk(db, relFile, file) {
     return lines;
 }
 
+function symbolCountSummary(file) {
+    return `added=${file.added_symbols.length} removed=${file.removed_symbols.length} modified=${file.modified_symbols.length}`;
+}
+
+function summarizeRiskLine(line) {
+    return String(line).replace(/^- /, "").trim();
+}
+
 /**
  * Compare file against git ref, returning semantic symbol diff.
  *
@@ -55,24 +64,38 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
         const db = getGraphDB(join(real, "__hex-line_probe__"));
         const diff = await semanticGitDiff(real, { baseRef: compareAgainst });
         if (diff.summary.changed_file_count === 0) {
-            return `No changes in ${filePath} vs ${compareAgainst}`;
+            return [
+                "status: NO_CHANGES",
+                `reason: ${REASON.DIRECTORY_UNCHANGED}`,
+                `path: ${filePath}`,
+                `compare_against: ${compareAgainst}`,
+                "scope: directory",
+                "summary: changed_files=0",
+                `next_action: ${ACTION.NO_ACTION}`,
+            ].join("\n");
         }
-        const sections = [`Changed files in ${filePath} vs ${compareAgainst}:`, ""];
+        const sections = [
+            "status: CHANGED",
+            `reason: ${REASON.DIRECTORY_CHANGED}`,
+            `path: ${filePath}`,
+            `compare_against: ${compareAgainst}`,
+            "scope: directory",
+            `summary: changed_files=${diff.summary.changed_file_count}`,
+            `next_action: ${ACTION.INSPECT_FILE}`,
+            "",
+        ];
         for (const file of diff.changed_files) {
-            const counts = [];
-            if (file.added_symbols.length) counts.push(`${file.added_symbols.length} added`);
-            if (file.removed_symbols.length) counts.push(`${file.removed_symbols.length} removed`);
-            if (file.modified_symbols.length) counts.push(`${file.modified_symbols.length} modified`);
-            if (!file.semantic_supported) counts.push("unsupported semantic diff");
-            sections.push(`- ${file.path}${file.old_path ? ` (from ${file.old_path})` : ""}: ${counts.join(", ") || "no symbol changes"}`);
+            const parts = [
+                `file: ${file.path}${file.old_path ? ` (from ${file.old_path})` : ""}`,
+                `summary: ${file.semantic_supported ? symbolCountSummary(file) : "semantic_diff=unsupported"}`,
+            ];
+            sections.push(parts.join(" | "));
             const riskLines = summarizeGraphRisk(db, file.path.replace(/\\/g, "/"), file);
-            for (const line of riskLines.slice(0, 2)) sections.push(`  ${line}`);
+            for (const line of riskLines.slice(0, 2)) sections.push(`risk_summary: ${summarizeRiskLine(line)}`);
             for (const symbol of file.removed_symbols.slice(0, 2)) {
-                if (exportedLooking(symbol)) sections.push(`  - removed_api_warning: ${symbol.text}`);
+                if (exportedLooking(symbol)) sections.push(`removed_api_warning: ${symbol.text}`);
             }
         }
-        sections.push("");
-        sections.push("Use changes on a specific file for symbol-level diff.");
         return sections.join("\n");
     }
 
@@ -80,25 +103,53 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
     const diff = await semanticGitDiff(real, { baseRef: compareAgainst });
     const file = diff.changed_files[0];
     if (!file) {
-        return `No changes in ${filePath} vs ${compareAgainst}`;
+        return [
+            "status: NO_CHANGES",
+            `reason: ${REASON.FILE_UNCHANGED}`,
+            `path: ${filePath}`,
+            `compare_against: ${compareAgainst}`,
+            "scope: file",
+            "summary: added=0 removed=0 modified=0",
+            `next_action: ${ACTION.NO_ACTION}`,
+        ].join("\n");
     }
     if (!file.semantic_supported) {
-        return `Cannot outline ${file.extension} files. Supported: .js .mjs .cjs .jsx .ts .tsx .py .cs .php`;
+        return [
+            "status: UNSUPPORTED",
+            `reason: ${REASON.SEMANTIC_DIFF_UNSUPPORTED}`,
+            `path: ${filePath}`,
+            `compare_against: ${compareAgainst}`,
+            "scope: file",
+            `summary: semantic diff unavailable for ${file.extension} files`,
+            `next_action: ${ACTION.INSPECT_RAW_DIFF}`,
+        ].join("\n");
     }
 
-    // Format
-    const parts = [`Changes in ${filePath} vs ${compareAgainst}:`];
+    const parts = [
+        "status: CHANGED",
+        `reason: ${REASON.FILE_CHANGED}`,
+        `path: ${filePath}`,
+        `compare_against: ${compareAgainst}`,
+        "scope: file",
+        `summary: ${symbolCountSummary(file)}`,
+    ];
 
     if (file.added_symbols.length) {
-        parts.push("\nAdded:");
+        parts.push(`next_action: ${ACTION.REVIEW_RISKS}`);
+        parts.push("");
+        parts.push("added:");
         for (const symbol of file.added_symbols) parts.push(`  + ${symbol.start}-${symbol.end}: ${symbol.text}`);
     }
     if (file.removed_symbols.length) {
-        parts.push("\nRemoved:");
+        if (!parts.includes(`next_action: ${ACTION.REVIEW_RISKS}`)) parts.push(`next_action: ${ACTION.REVIEW_RISKS}`);
+        parts.push("");
+        parts.push("removed:");
         for (const symbol of file.removed_symbols) parts.push(`  - ${symbol.start}-${symbol.end}: ${symbol.text}`);
     }
     if (file.modified_symbols.length) {
-        parts.push("\nModified:");
+        if (!parts.includes(`next_action: ${ACTION.REVIEW_RISKS}`)) parts.push(`next_action: ${ACTION.REVIEW_RISKS}`);
+        parts.push("");
+        parts.push("modified:");
         for (const symbol of file.modified_symbols) {
             const delta = symbol.lines - symbol.previous.lines;
             const sign = delta > 0 ? "+" : "";
@@ -107,17 +158,17 @@ export async function fileChanges(filePath, compareAgainst = "HEAD") {
     }
 
     if (!file.added_symbols.length && !file.removed_symbols.length && !file.modified_symbols.length) {
-        parts.push("\nNo symbol changes detected.");
+        parts.push(`next_action: ${ACTION.INSPECT_RAW_DIFF}`);
+        parts.push("");
+        parts.push("summary_detail: no symbol changes detected");
     }
-
-    const summary = `${file.added_symbols.length} added, ${file.removed_symbols.length} removed, ${file.modified_symbols.length} modified`;
-    parts.push(`\nSummary: ${summary}`);
     const relFile = getRelativePath(real) || file.path?.replace(/\\/g, "/");
     const riskLines = summarizeGraphRisk(db, relFile, file);
     const removedApiWarnings = file.removed_symbols.filter(exportedLooking).slice(0, 4);
     if (riskLines.length || removedApiWarnings.length) {
-        parts.push("\nSemantic review:");
-        for (const line of riskLines) parts.push(`  ${line}`);
+        parts.push("");
+        parts.push("risk_summary:");
+        for (const line of riskLines) parts.push(`  - ${summarizeRiskLine(line)}`);
         for (const symbol of removedApiWarnings) parts.push(`  - removed_api_warning: ${symbol.text}`);
     }
 

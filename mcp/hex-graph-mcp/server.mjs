@@ -27,6 +27,7 @@ import {
     runInspectSymbolUseCase,
     runTraceDataflowUseCase,
 } from "./lib/use-cases.mjs";
+import { ACTION, pruneEmpty, STATUS } from "./lib/output-contract.mjs";
 
 const REFERENCE_KINDS = [
     "ref_read",
@@ -47,6 +48,23 @@ const { server, StdioServerTransport } = await createServerRuntime({
     version,
 });
 
+function graphNextAction(code) {
+    switch (code) {
+    case "GRAPH_DB_BUSY":
+        return ACTION.FIX_DB_LOCK;
+    case "PATH_NOT_FOUND":
+    case "FILE_OUTSIDE_PROJECT":
+        return ACTION.FIX_PATH;
+    case "GRAPH_PROVIDER_SETUP_FAILED":
+        return ACTION.CHECK_PROVIDER_SETUP;
+    case "SCIP_EXPORT_FAILED":
+    case "SCIP_IMPORT_FAILED":
+        return ACTION.CHECK_SCIP_INPUTS;
+    default:
+        return ACTION.ADJUST_QUERY;
+    }
+}
+
 function graphError(codeOrError, message, recovery) {
     const error = typeof codeOrError === "object" && codeOrError
         ? {
@@ -58,8 +76,15 @@ function graphError(codeOrError, message, recovery) {
             message,
             recovery: recovery || "Adjust selector or run find_symbols first",
         };
+    const payload = pruneEmpty({
+        status: STATUS.ERROR,
+        code: error.code,
+        summary: error.message,
+        next_action: graphNextAction(error.code),
+        recovery: error.recovery,
+    });
     return {
-        content: [{ type: "text", text: JSON.stringify({ error }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
         isError: true,
     };
 }
@@ -127,7 +152,11 @@ function wrapResult(result, format = "json") {
     if (result?.error) {
         return graphError(result.error);
     }
-    const text = format === "json" ? JSON.stringify(result, null, 2) : JSON.stringify(result, null, 2);
+    const payload = pruneEmpty({
+        status: STATUS.OK,
+        ...result,
+    }) || {};
+    const text = format === "json" ? JSON.stringify(payload, null, 2) : JSON.stringify(payload);
     return { content: [{ type: "text", text }] };
 }
 
@@ -234,6 +263,10 @@ server.registerTool("index_project", {
             limits_applied: {},
         });
     } catch (e) {
+        const message = e?.message || String(e);
+        if (e?.code === "EBUSY" || e?.code === "EPERM" || /busy or locked/i.test(message)) {
+            return graphError("GRAPH_DB_BUSY", message, "Close other processes using the graph DB or remove stale SQLite lock files, then rerun index_project");
+        }
         return graphError("PATH_NOT_FOUND", e.message, "Check path exists and is accessible");
     }
 });
@@ -375,7 +408,7 @@ server.registerTool("find_symbols", {
         query: z.string().describe("Symbol name or partial name"),
         kind: z.string().optional().describe("Optional kind filter"),
         limit: flexNum().describe("Max candidate symbols to return (default: 20)"),
-        path: z.string().optional().describe("Indexed project root"),
+        path: z.string().describe("Indexed project root or a file/directory inside the indexed project"),
         format: z.enum(["json", "text"]).default("json"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -391,7 +424,7 @@ server.registerTool("inspect_symbol", {
     inputSchema: z.object({
         ...selectorSchema(),
         min_confidence: confidenceSchema(),
-        path: z.string().optional().describe("Indexed project root"),
+        path: z.string().describe("Indexed project root or a file/directory inside the indexed project"),
         format: z.enum(["json", "text"]).default("json"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -415,7 +448,7 @@ server.registerTool("trace_paths", {
         depth: flexNum().describe("Max traversal depth (default: 3)"),
         limit: flexNum().describe("Max paths (default: 50)"),
         min_confidence: confidenceSchema(),
-        path: z.string().optional().describe("Indexed project root"),
+        path: z.string().describe("Indexed project root or a file/directory inside the indexed project"),
         format: z.enum(["json", "text"]).default("json"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -442,7 +475,7 @@ server.registerTool("trace_paths", {
             ? `Found ${pathCount} path(s) through ${path_kind ?? "calls"} edges.`
             : "No path matched the requested traversal.";
         result.warnings = pathCount ? [] : ["No path matched the current selectors, direction, and depth."];
-        result.next_actions = ["Use inspect_symbol for richer symbol context before expanding traversal depth."];
+        result.next_actions = ["inspect_symbol"];
     }
     return wrapResult(withQuality(result, traceQuality(result)), format);
 });
@@ -455,7 +488,7 @@ server.registerTool("find_references", {
         kind: z.enum(REFERENCE_KINDS).default("all").describe("Optional edge-kind filter. Includes semantic and framework kinds such as `route_to_handler`, `injects`, `registers`, `renders`, and `middleware_for`."),
         limit: flexNum().describe("Max references (default: 50)"),
         min_confidence: confidenceSchema(),
-        path: z.string().optional().describe("Indexed project root"),
+        path: z.string().describe("Indexed project root or a file/directory inside the indexed project"),
         format: z.enum(["json", "text"]).default("json"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -472,7 +505,7 @@ server.registerTool("find_references", {
             ? `Found ${result.result.total} semantic reference(s).`
             : "No semantic reference matched the requested symbol.";
         result.warnings = result.result.total ? [] : ["No reference matched the current symbol and filters."];
-        result.next_actions = ["Use inspect_symbol for local context or trace_paths for broader dependency impact."];
+        result.next_actions = ["inspect_symbol", "trace_paths"];
     }
     return wrapResult(withQuality(result, referencesQuality(result)), format);
 });
@@ -483,7 +516,7 @@ server.registerTool("find_implementations", {
     inputSchema: z.object({
         ...selectorSchema(),
         limit: flexNum().describe("Max implementation rows to return (default: 50)"),
-        path: z.string().optional().describe("Indexed project root"),
+        path: z.string().describe("Indexed project root or a file/directory inside the indexed project"),
         format: z.enum(["json", "text"]).default("json"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -495,7 +528,7 @@ server.registerTool("find_implementations", {
             ? `Found ${result.result.implementations.length} implementation or override relation(s).`
             : "No implementation or override relation matched the requested symbol.";
         result.warnings = result.result.implementations.length ? [] : ["No implementation relation matched the current symbol."];
-        result.next_actions = ["Use inspect_symbol for a richer context summary."];
+        result.next_actions = ["inspect_symbol"];
     }
     return wrapResult(result, format);
 });
@@ -510,7 +543,7 @@ server.registerTool("trace_dataflow", {
         max_hops: flexNum().describe(`Max flow propagation hops (default: ${DEFAULT_FLOW_MAX_HOPS})`),
         limit: flexNum().describe(`Max flow paths (default: ${DEFAULT_FLOW_LIMIT})`),
         min_confidence: confidenceSchema(),
-        path: z.string().optional().describe("Indexed project root"),
+        path: z.string().describe("Indexed project root or a file/directory inside the indexed project"),
         format: z.enum(["json", "text"]).default("json"),
     }),
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },

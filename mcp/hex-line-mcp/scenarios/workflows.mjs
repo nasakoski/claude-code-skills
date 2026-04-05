@@ -162,7 +162,7 @@ export async function runWorkflows(config) {
 
     // W4: fileOutline + readFile targeted + editFile dryRun (large smoke test review)
     {
-        const preferredLarge = allFiles.find((filePath) => filePath.endsWith("test\\smoke.mjs"))
+        const preferredLarge = allFiles.find((filePath) => filePath.replace(/\\/g, "/").endsWith("test/smoke.mjs"))
             || largeFiles[0]
             || allFiles[0];
         const largeLines = getFileLines(preferredLarge);
