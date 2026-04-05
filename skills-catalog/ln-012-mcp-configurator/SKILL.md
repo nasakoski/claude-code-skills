@@ -175,6 +175,17 @@ Ripgrep install by platform:
 
 If `rg --version` fails: ask user whether to auto-install (suggest platform-appropriate command). If user declines, WARN but continue — hex-line will degrade on grep.
 
+**Step 2a: EOL-risk advisory for hex-line**
+
+Inspect repo and user EOL policy, but do not rewrite it here:
+- `.gitattributes` for `eol=` / `text=auto`
+- `.editorconfig` for `end_of_line`
+- `git config --get core.autocrlf`
+- `git config --get core.eol`
+- `git config --get core.safecrlf`
+
+Report `WARN` when repo policy and user working-tree policy are likely to churn line endings during normal edits. This is advisory only — do not auto-edit repo policy files in `ln-012`.
+
 **Step 3: Detect current project language(s) for hex-graph**
 
 Detect from the current project root only:
@@ -272,6 +283,12 @@ After all Phase 2 registrations complete:
 - `~/.claude/output-styles/hex-line.md` exists and matches package content
 - `outputStyle: "hex-line"` is set only when no other style was already active
 
+**Hex-line workflow reminder:** the synced output style must teach all of the following:
+- carry `revision` into same-file follow-up edits as `base_revision`
+- run `verify` before delayed or mixed-tool follow-up edits on the same file
+- reuse `retry_edit`, `retry_edits`, `retry_checksum`, and `retry_plan` directly
+- treat line-ending policy as preserved file state, not something `edit_file` should silently normalize
+
 **Note:** autosync is idempotent. Any later `hex-line` startup re-checks installed hook and style content and updates only when they drift.
 
 ### Phase 4: Graph Indexing
@@ -328,6 +345,7 @@ Ensure instruction files have MCP Tool Preferences section.
 3. If MISSING -> insert before `## Navigation` (or at end of conventions/rules block)
 4. If PRESENT but OUTDATED -> update table rows to match template
 5. For GEMINI.md: adapt tool names (`Read` -> `read_file`, `Edit` -> `edit_file`, `Grep` -> `search_files`)
+6. Preserve the template's guidance about `base_revision`, `verify`, retry helpers, and preserving existing file line endings
 
 **Skip conditions:**
 
@@ -385,6 +403,7 @@ MCP Configuration:
 8. **Always check npm drift.** Connected != up to date. Compare npm latest against the newest locally cached npx package version before skipping
 9. **MSYS2 path safety.** On Windows with Git Bash/MSYS2, always prefix `claude mcp add` with `MSYS_NO_PATHCONV=1`. After registration, verify `args[0]` in `.claude.json` is `"/c"` not `"C:/"`. Fix inline if corrupted.
 10. **Verify graph-specific deps after install.** After Phase 2 registration, check system binaries for hex-line, graph-specific optional providers, and optional SCIP exporters for detected project languages. Auto-install only with user consent. Never install project runtimes or framework packages here.
+11. **Report EOL churn risk, do not hide it.** If `.gitattributes`, `.editorconfig`, or Git config suggest working-tree line-ending rewrites, warn explicitly instead of silently changing repo policy here.
 
 ## Anti-Patterns
 

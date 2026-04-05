@@ -96,6 +96,10 @@ function buildReadBlock(snapshot, range, plain, remainingChars) {
             entries,
             requestedStartLine: range.requestedStartLine,
             requestedEndLine: range.requestedEndLine,
+            meta: {
+                eol: snapshot.eol,
+                trailing_newline: snapshot.trailingNewline,
+            },
         }),
         remainingChars: nextBudget,
         cappedAtLine,
@@ -206,5 +210,5 @@ export function readFile(filePath, opts = {}) {
             requestedEndLine: cappedAtLine,
         })));
     }
-    return `File: ${filePath}${graphLine}\nmeta: ${meta}\nrevision: ${snapshot.revision}\nfile: ${snapshot.fileChecksum}\n\n${serializedBlocks.join("\n\n")}`.trim();
+    return `File: ${filePath}${graphLine}\nmeta: ${meta}\nrevision: ${snapshot.revision}\nfile: ${snapshot.fileChecksum}\neol: ${snapshot.eol}\ntrailing_newline: ${snapshot.trailingNewline}\n\n${serializedBlocks.join("\n\n")}`.trim();
 }

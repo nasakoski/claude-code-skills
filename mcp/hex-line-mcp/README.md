@@ -7,7 +7,7 @@ Hash-verified file editing MCP + token efficiency hook for AI coding agents.
 [![license](https://img.shields.io/npm/l/@levnikolaevich/hex-line-mcp)](./LICENSE)
 ![node](https://img.shields.io/node/v/@levnikolaevich/hex-line-mcp)
 
-Every line carries an FNV-1a content hash. Every edit must present those hashes back -- proving the agent is editing what it thinks it's editing. No stale context, no silent corruption.
+Every line carries an FNV-1a content hash. Every edit must present those hashes back -- proving the agent is editing what it thinks it's editing. No stale context, no silent corruption. Hashing works on normalized logical text; writes preserve the file's existing line endings and trailing-newline shape.
 
 ## Features
 
@@ -126,7 +126,8 @@ If a project already has `.hex-skills/codegraph/index.db`, `hex-line` automatica
 
 1. Carry `revision` from the earlier `read_file` or `edit_file`
 2. Pass it back as `base_revision`
-3. Use `verify` before rereading the file
+3. Use `verify` before delayed or mixed-tool follow-up edits
+4. If the server returns `retry_edit`, `retry_edits`, `retry_checksum`, or `retry_plan`, reuse those directly
 
 ### Rewrite a long block
 
@@ -156,9 +157,13 @@ File: lib/search.mjs
 meta: 282 lines, 10.2KB, 2 hours ago
 revision: rev-12-a1b2c3d4
 file: 1-282:beefcafe
+eol: lf
+trailing_newline: true
 
 block: read_range
 span: 1-3
+eol: lf
+trailing_newline: true
 ab.1    import { resolve } from "node:path";
 cd.2    import { readFileSync } from "node:fs";
 ef.3    ...
@@ -193,7 +198,8 @@ Discipline:
 
 - Never invent `range_checksum`. Copy it from `read_file` or `grep_search(output:"content")`.
 - First mutation in a file: prefer `grep_search` for narrow targets, or `outline -> read_file(ranges)` for structural edits.
-- Prefer 1-2 hunks on the first pass. Once `edit_file` returns a fresh `revision`, continue from that state.
+- Prefer 1-2 hunks on the first pass. Once `edit_file` returns a fresh `revision`, continue from that state as `base_revision`.
+- `hex-line` preserves existing file line endings on write; repo-level line-ending cleanup should be a separate deliberate operation, not a side effect of `edit_file`.
 
 Result footer includes:
 

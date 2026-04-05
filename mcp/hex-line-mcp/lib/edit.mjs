@@ -85,6 +85,46 @@ function sanitizeEditText(text) {
     return cleaned;
 }
 
+function replaceLogicalRange(lines, lineEndings, startIdx, endIdx, newLines, defaultEol) {
+    const removeCount = endIdx - startIdx + 1;
+    const tailEnding = lineEndings[endIdx] ?? "";
+    const lastIdx = lines.length - 1;
+
+    if (newLines.length === 0) {
+        lines.splice(startIdx, removeCount);
+        lineEndings.splice(startIdx, removeCount);
+        if (lines.length === 0) {
+            lines.push("");
+            lineEndings.push("");
+            return;
+        }
+        if (endIdx === lastIdx && startIdx > 0) {
+            lineEndings[startIdx - 1] = tailEnding;
+        }
+        return;
+    }
+
+    const newEndings = newLines.map((_, idx) => idx === newLines.length - 1 ? tailEnding : defaultEol);
+    lines.splice(startIdx, removeCount, ...newLines);
+    lineEndings.splice(startIdx, removeCount, ...newEndings);
+}
+
+function insertLogicalLinesAfter(lines, lineEndings, idx, newLines, defaultEol) {
+    if (newLines.length === 0) return;
+    let lastInsertedEnding = defaultEol;
+    if ((lineEndings[idx] ?? "") === "") {
+        lineEndings[idx] = defaultEol;
+        lastInsertedEnding = "";
+    }
+    const insertedEndings = newLines.map((_, index) => index === newLines.length - 1 ? lastInsertedEnding : defaultEol);
+    lines.splice(idx + 1, 0, ...newLines);
+    lineEndings.splice(idx + 1, 0, ...insertedEndings);
+}
+
+function composeRawText(lines, lineEndings) {
+    return lines.map((line, idx) => `${line}${lineEndings[idx] ?? ""}`).join("");
+}
+
 /**
  * Find line by tag.lineNum reference with fuzzy matching (+-5 lines).
  * Falls back to global hash relocation via hashIndex before throwing.
@@ -756,7 +796,7 @@ function collectBatchConflicts({
 }
 
 function applySetLineEdit(edit, ctx) {
-    const { lines, opts, locateOrConflict, ensureRevisionContext } = ctx;
+    const { lines, lineEndings, defaultEol, opts, locateOrConflict, ensureRevisionContext } = ctx;
     const { tag, line } = parseRef(edit.set_line.anchor);
     const idx = locateOrConflict({ tag, line }, "stale_anchor", () => buildRetryEdit(edit, lines));
     if (typeof idx === "string") return idx;
@@ -767,18 +807,18 @@ function applySetLineEdit(edit, ctx) {
 
     const txt = edit.set_line.new_text;
     if (!txt && txt !== 0) {
-        lines.splice(idx, 1);
+        replaceLogicalRange(lines, lineEndings, idx, idx, [], defaultEol);
         return null;
     }
     const origLine = [lines[idx]];
     const raw = sanitizeEditText(txt).split("\n");
     const newLines = opts.restoreIndent ? restoreIndent(origLine, raw) : raw;
-    lines.splice(idx, 1, ...newLines);
+    replaceLogicalRange(lines, lineEndings, idx, idx, newLines, defaultEol);
     return null;
 }
 
 function applyInsertAfterEdit(edit, ctx) {
-    const { lines, opts, locateOrConflict, ensureRevisionContext } = ctx;
+    const { lines, lineEndings, defaultEol, opts, locateOrConflict, ensureRevisionContext } = ctx;
     const { tag, line } = parseRef(edit.insert_after.anchor);
     const idx = locateOrConflict({ tag, line }, "stale_anchor", () => buildRetryEdit(edit, lines));
     if (typeof idx === "string") return idx;
@@ -789,7 +829,7 @@ function applyInsertAfterEdit(edit, ctx) {
 
     let insertLines = sanitizeEditText(edit.insert_after.text).split("\n");
     if (opts.restoreIndent) insertLines = restoreIndent([lines[idx]], insertLines);
-    lines.splice(idx + 1, 0, ...insertLines);
+    insertLogicalLinesAfter(lines, lineEndings, idx, insertLines, defaultEol);
     return null;
 }
 
@@ -801,6 +841,8 @@ function applyReplaceLinesEdit(edit, ctx) {
         currentSnapshot,
         ensureRevisionContext,
         hasBaseSnapshot,
+        lineEndings,
+        defaultEol,
         lines,
         locateOrConflict,
         opts,
@@ -890,18 +932,18 @@ function applyReplaceLinesEdit(edit, ctx) {
 
     const txt = edit.replace_lines.new_text;
     if (!txt && txt !== 0) {
-        lines.splice(startIdx, endIdx - startIdx + 1);
+        replaceLogicalRange(lines, lineEndings, startIdx, endIdx, [], defaultEol);
         return null;
     }
     const origRange = lines.slice(startIdx, endIdx + 1);
     let newLines = sanitizeEditText(txt).split("\n");
     if (opts.restoreIndent) newLines = restoreIndent(origRange, newLines);
-    lines.splice(startIdx, endIdx - startIdx + 1, ...newLines);
+    replaceLogicalRange(lines, lineEndings, startIdx, endIdx, newLines, defaultEol);
     return null;
 }
 
 function applyReplaceBetweenEdit(edit, ctx) {
-    const { lines, opts, locateOrConflict, ensureRevisionContext } = ctx;
+    const { lines, lineEndings, defaultEol, opts, locateOrConflict, ensureRevisionContext } = ctx;
     const boundaryMode = edit.replace_between.boundary_mode || "inclusive";
     if (boundaryMode !== "inclusive" && boundaryMode !== "exclusive") {
         throw new Error(`BAD_INPUT: replace_between boundary_mode must be inclusive or exclusive, got ${boundaryMode}`);
@@ -932,7 +974,11 @@ function applyReplaceBetweenEdit(edit, ctx) {
     const origRange = lines.slice(sliceStart, sliceStart + removeCount);
     if (opts.restoreIndent && origRange.length > 0) newLines = restoreIndent(origRange, newLines);
     if (txt === "" || txt === null) newLines = [];
-    lines.splice(sliceStart, removeCount, ...newLines);
+    if (removeCount === 0) {
+        insertLogicalLinesAfter(lines, lineEndings, sliceStart - 1, newLines, defaultEol);
+        return null;
+    }
+    replaceLogicalRange(lines, lineEndings, sliceStart, sliceStart + removeCount - 1, newLines, defaultEol);
     return null;
 }
 
@@ -956,11 +1002,12 @@ export function editFile(filePath, edits, opts = {}) {
         : [];
     const conflictPolicy = opts.conflictPolicy || "conservative";
 
-    const original = currentSnapshot.content;
+    const originalRaw = currentSnapshot.rawText;
     const lines = [...currentSnapshot.lines];
+    const lineEndings = [...currentSnapshot.lineEndings];
     const origLines = [...currentSnapshot.lines];
-    const hadTrailingNewline = original.endsWith("\n");
     const hashIndex = currentSnapshot.uniqueTagIndex;
+    const defaultEol = currentSnapshot.defaultEol || "\n";
     let autoRebased = false;
     const remaps = [];
     const remapKeys = new Set();
@@ -1079,6 +1126,8 @@ export function editFile(filePath, edits, opts = {}) {
         ensureRevisionContext,
         hasBaseSnapshot,
         lines,
+        lineEndings,
+        defaultEol,
         locateOrConflict,
         opts,
         origLines,
@@ -1122,23 +1171,21 @@ export function editFile(filePath, edits, opts = {}) {
         }
     }
 
-    let content = lines.join("\n");
-    if (hadTrailingNewline && !content.endsWith("\n")) content += "\n";
-    if (!hadTrailingNewline && content.endsWith("\n")) content = content.slice(0, -1);
+    const content = composeRawText(lines, lineEndings);
 
-    if (original === content) {
+    if (originalRaw === content) {
         throw new Error("NOOP_EDIT: File already contains the desired content. No changes needed.");
     }
 
 
-    const fullDiff = simpleDiff(origLines, content.split("\n"));
+    const fullDiff = simpleDiff(origLines, lines);
     let displayDiff = fullDiff;
     if (displayDiff && displayDiff.length > MAX_DIFF_CHARS) {
         displayDiff = displayDiff.slice(0, MAX_DIFF_CHARS) + `\n... (diff truncated, ${displayDiff.length} chars total)`;
     }
 
     // Compute changed line range from fullDiff (used by post-edit + semantic impact)
-    const newLinesAll = content.split("\n");
+    const newLinesAll = lines;
     let minLine = Infinity, maxLine = 0;
     if (fullDiff) {
         for (const dl of fullDiff.split("\n")) {
@@ -1152,7 +1199,7 @@ export function editFile(filePath, edits, opts = {}) {
     }
 
     if (opts.dryRun) {
-        let msg = `status: ${autoRebased ? STATUS.AUTO_REBASED : STATUS.OK}\nreason: ${REASON.DRY_RUN_PREVIEW}\nrevision: ${currentSnapshot.revision}\nfile: ${currentSnapshot.fileChecksum}\nDry run: ${filePath} would change (${content.split("\n").length} lines)`;
+        let msg = `status: ${autoRebased ? STATUS.AUTO_REBASED : STATUS.OK}\nreason: ${REASON.DRY_RUN_PREVIEW}\nrevision: ${currentSnapshot.revision}\nfile: ${currentSnapshot.fileChecksum}\nDry run: ${filePath} would change (${lines.length} lines)`;
         if (staleRevision && hasBaseSnapshot) msg += `\nchanged_ranges: ${describeChangedRanges(changedRanges)}`;
         if (displayDiff) msg += `\n\nDiff:\n\`\`\`diff\n${displayDiff}\n\`\`\``;
         return msg;
@@ -1172,7 +1219,7 @@ export function editFile(filePath, edits, opts = {}) {
     if (remaps.length > 0) {
         msg += `\nremapped_refs:\n${remaps.map(({ from, to }) => `${from} -> ${to}`).join("\n")}`;
     }
-    msg += `\nUpdated ${filePath} (${content.split("\n").length} lines)`;
+    msg += `\nUpdated ${filePath} (${lines.length} lines)`;
 
     // Post-edit context (before diff — always visible even if output truncated)
     if (fullDiff && minLine <= maxLine) {
@@ -1180,7 +1227,15 @@ export function editFile(filePath, edits, opts = {}) {
         const ctxEnd = Math.min(newLinesAll.length, maxLine + 5);
         const entries = createSnapshotEntries(nextSnapshot, ctxStart, ctxEnd);
         if (entries.length > 0) {
-            const block = buildEditReadyBlock({ path: real, kind: "post_edit", entries });
+            const block = buildEditReadyBlock({
+                path: real,
+                kind: "post_edit",
+                entries,
+                meta: {
+                    eol: nextSnapshot.eol,
+                    trailing_newline: nextSnapshot.trailingNewline,
+                },
+            });
             msg += `\n\n${serializeReadBlock(block)}`;
         }
     }

@@ -22,7 +22,7 @@ export const REVERSE_TOOL_HINTS = {
     "mcp__hex-line__grep_search": "Grep (pattern, path)",
     "mcp__hex-line__inspect_path": "Path info / tree / Bash(ls,stat)",
     "mcp__hex-line__outline": "Read with offset/limit",
-    "mcp__hex-line__verify": "Read (re-read file to check freshness)",
+    "mcp__hex-line__verify": "Read (check checksum/revision freshness before follow-up edits)",
     "mcp__hex-line__changes": "Bash(git diff)",
     "mcp__hex-line__bulk_replace": "Edit (text rename/refactor across files inside an explicit root path)",
 };
@@ -41,7 +41,7 @@ export const TOOL_HINTS = {
     sed: "mcp__hex-line__edit_file for hash edits, or mcp__hex-line__bulk_replace with path=<project root> for text rename (not sed -i)",
     diff: "mcp__hex-line__changes (not diff). Git diff with change symbols",
     outline: "mcp__hex-line__outline (before reading large code files)",
-    verify: "mcp__hex-line__verify (staleness / revision check without re-read)",
+    verify: "mcp__hex-line__verify (staleness / revision check without re-read; use before delayed same-file follow-ups)",
     changes: "mcp__hex-line__changes (git diff with change symbols)",
     bulk: "mcp__hex-line__bulk_replace with path=<project root> (multi-file search-replace)",
 };

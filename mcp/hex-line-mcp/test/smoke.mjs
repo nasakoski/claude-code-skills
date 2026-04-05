@@ -1588,6 +1588,23 @@ describe("kernel: snapshot", () => {
             fs.unlinkSync(tmp);
         }
     });
+
+    it("keeps the same revision when only line endings change", async () => {
+        const { readSnapshot, _resetSnapshotCache } = await import("../lib/snapshot.mjs");
+        _resetSnapshotCache();
+        const tmp = TMP("hex-test-kernel-eol-stable.txt");
+        fs.writeFileSync(tmp, "alpha\r\nbeta\r\ngamma\r\n");
+        try {
+            const first = readSnapshot(tmp);
+            fs.writeFileSync(tmp, "alpha\nbeta\ngamma\n");
+            const second = readSnapshot(tmp);
+            assert.equal(second.revision, first.revision, "Logical revision stays stable across EOL-only rewrite");
+            assert.equal(second.fileChecksum, first.fileChecksum, "Checksum stays stable across EOL-only rewrite");
+            assert.equal(second.eol, "lf", "Latest snapshot still reflects current file EOL");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
 });
 
 describe("protocol: read_file blocks", () => {
@@ -1600,6 +1617,20 @@ describe("protocol: read_file blocks", () => {
             assert.ok(result.includes("block: read_range"), "Contains read_range block");
             assert.ok(result.includes("span: 1-3"), "Contains correct span");
             assert.ok(result.includes("checksum: 1-3:"), "Contains checksum for range");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("emits EOL and trailing newline metadata", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const tmp = TMP("hex-test-proto-read-eol.txt");
+        fs.writeFileSync(tmp, "alpha\r\nbeta\r\n");
+        try {
+            const result = readFile(tmp, { ranges: ["1-2"] });
+            assert.ok(result.includes("eol: crlf"), "Top-level read output reports EOL");
+            assert.ok(result.includes("trailing_newline: true"), "Top-level read output reports trailing newline");
+            assert.ok(result.includes("block: read_range"), "Read block is still emitted");
         } finally {
             fs.unlinkSync(tmp);
         }
@@ -1629,6 +1660,23 @@ describe("protocol: grep_search blocks", () => {
 });
 
 describe("protocol: edit_file output", () => {
+    it("preserves CRLF bytes on edit", async () => {
+        const { editFile } = await import("../lib/edit.mjs");
+        const { readFile } = await import("../lib/read.mjs");
+        const tmp = TMP("hex-test-proto-edit-crlf.txt");
+        fs.writeFileSync(tmp, "first\r\nsecond\r\nthird\r\n");
+        try {
+            const read = readFile(tmp, { ranges: ["1-3"] });
+            const anchor = read.match(/([a-z2-7]{2}\.2)\tsecond/)?.[1];
+            assert.ok(anchor, "Got anchor from CRLF read");
+            editFile(tmp, [{ set_line: { anchor, new_text: "SECOND" } }]);
+            const written = fs.readFileSync(tmp, "utf8");
+            assert.equal(written, "first\r\nSECOND\r\nthird\r\n", "Edit preserves CRLF bytes");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
     it("read_file -> edit_file succeeds through the MCP tool boundary", async () => {
         const tmp = join(tmpdir(), `hex-test-mcp-edit-${Date.now()}-${Math.random().toString(16).slice(2)}.js`);
         fs.writeFileSync(tmp, "alpha\nbeta\ngamma\ndelta\n");
@@ -1797,6 +1845,25 @@ describe("E2E: workflow round-trips", () => {
             const postChecksum = editResult.match(/checksum: (\S+)/)?.[1];
             const verifyResult = verifyChecksums(tmp, [postChecksum]);
             assert.ok(verifyResult.includes("valid=1"), "Post-edit checksum valid");
+        } finally {
+            fs.unlinkSync(tmp);
+        }
+    });
+
+    it("verify stays current across an EOL-only rewrite", async () => {
+        const { readFile } = await import("../lib/read.mjs");
+        const { verifyChecksums } = await import("../lib/verify.mjs");
+        const tmp = TMP("hex-test-e2e-verify-eol.txt");
+        fs.writeFileSync(tmp, "one\r\ntwo\r\nthree\r\n");
+        try {
+            const read = readFile(tmp, { ranges: ["1-3"] });
+            const checksum = read.match(/checksum: (\S+)/)?.[1];
+            const baseRevision = read.match(/revision: (\S+)/)?.[1];
+            assert.ok(checksum && baseRevision, "Read exposes checksum and revision");
+            fs.writeFileSync(tmp, "one\ntwo\nthree\n");
+            const verify = verifyChecksums(tmp, [checksum], { baseRevision });
+            assert.ok(verify.includes("status: OK"), "EOL-only rewrite stays valid");
+            assert.ok(verify.includes("valid=1"), "Checksum remains current");
         } finally {
             fs.unlinkSync(tmp);
         }

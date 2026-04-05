@@ -28,8 +28,9 @@ Apply them only when the skill actually edits code or makes semantic decisions f
 ```text
 1. read_file(path) -> capture revision and checksums
 2. edit_file(path, edits=[...], base_revision=rev)
-3. verify(path, checksums) -> confirm no stale state before follow-up edits
-4. changes(path=..., compare_against=...) -> review what will be handed off
+3. verify(path, checksums, base_revision=rev) -> confirm no stale state before delayed or mixed-tool follow-up edits
+4. If edit_file returns retry_edit / retry_edits / retry_checksum / retry_plan, reuse them directly
+5. changes(path=..., compare_against=...) -> review what will be handed off
 ```
 
 ### Semantic Edit Impact

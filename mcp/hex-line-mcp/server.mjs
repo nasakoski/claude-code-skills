@@ -67,7 +67,7 @@ function parseReadRanges(rawRanges) {
 
 server.registerTool("read_file", {
     title: "Read File",
-    description: "Read file with hash-annotated lines, checksums, revision metadata, and automatic graph hints when available. Default: edit-ready output. Use plain:true for non-edit workflows.",
+    description: "Read file with hash-annotated lines, checksums, logical revision metadata, EOL/trailing-newline state, and graph hints when available. Default: edit-ready output.",
     inputSchema: z.object({
         path: z.string().optional().describe("File path"),
         paths: z.array(z.string()).optional().describe("Array of file paths to read (batch mode)"),
@@ -104,7 +104,7 @@ server.registerTool("read_file", {
 
 server.registerTool("edit_file", {
     title: "Edit File",
-    description: "Apply hash-verified partial edits to one file. Batch multiple edits in one call. Carry base_revision from prior read/edit for auto-rebase on concurrent changes. Conservative conflicts return retry_edit/retry_edits, suggested_read_call, and retry_plan when available.",
+    description: "Apply hash-verified partial edits to one file. Carry base_revision on same-file follow-ups. Preserves existing line endings and trailing-newline shape; conservative conflicts return retry helpers.",
     inputSchema: z.object({
         path: z.string().describe("File to edit"),
         edits: z.union([z.string(), z.array(z.any())]).describe(
@@ -234,7 +234,7 @@ server.registerTool("outline", {
 
 server.registerTool("verify", {
     title: "Verify Checksums",
-    description: "Check if held checksums are still valid without rereading. Returns canonical status, next_action, and suggested_read_call when rereading specific ranges is the right recovery.",
+    description: "Check if held checksums are still valid without rereading. Use before delayed or mixed-tool follow-up edits; returns canonical status, next_action, and reread guidance.",
     inputSchema: z.object({
         path: z.string().describe("File path"),
         checksums: z.array(z.string()).describe('Checksum strings, e.g. ["1-50:f7e2a1b0", "51-100:abcd1234"]'),

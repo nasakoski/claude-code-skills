@@ -27,9 +27,9 @@ Prefer `hex-line` for text files you may inspect or modify. Hash-annotated reads
 | Path | Flow |
 |------|------|
 | Surgical | `grep_search -> edit_file` |
-| Exploratory | `outline -> read_file (ranges) -> edit_file` |
+| Exploratory | `outline -> read_file (ranges) -> edit_file(base_revision)` |
 | Multi-file | `bulk_replace(path=<project root>)` |
-| Follow-up after delay | `verify -> reread only if STALE` |
+| Follow-up after delay | `verify(base_revision) -> reread only if STALE -> retry with returned helpers` |
 
 ## Scope Discipline
 
@@ -42,10 +42,14 @@ Prefer `hex-line` for text files you may inspect or modify. Hash-annotated reads
 
 - Never invent `range_checksum`. Copy it from a fresh `read_file` or `grep_search(output:"content")` block.
 - First mutation in a file: use `grep_search` for narrow targets, or `outline -> read_file(ranges)` for structural edits.
+- Preserve file conventions mentally: `hex-line` hashes normalized logical text, but `edit_file` preserves the file's existing line endings and trailing-newline shape on write.
 - Prefer `set_line` or `insert_after` for small local changes. Prefer `replace_between` for larger bounded block rewrites.
 - Use `replace_lines` only when you already hold the exact inclusive range checksum for that block.
-- Avoid large first-pass edit batches. Start with 1-2 hunks, then continue from the returned `revision`.
+- Avoid large first-pass edit batches. Start with 1-2 hunks, then continue from the returned `revision` as `base_revision`.
+- Before a delayed follow-up edit, a formatter pass, or any mixed-tool workflow on the same file, run `verify` with the last checksums and `base_revision`.
 - If `edit_file` returns `retry_edit`, `retry_edits`, or `retry_plan`, reuse those directly instead of rebuilding anchors/checksums by hand.
+- Reuse `retry_checksum` when it is returned for the exact same target range.
+- Once `hex-line` owns a file edit session, avoid mixing built-in `Edit`/`Write` on that file unless you intentionally want a new baseline.
 - Follow `next_action` first. Treat `summary` and `snippet` as the compact local context, not as prose to reinterpret.
 
 ## Exceptions

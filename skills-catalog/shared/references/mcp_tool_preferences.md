@@ -23,10 +23,14 @@ Repo-level MCP policy for code files and semantic codebase analysis.
 
 ## Operational Rules
 
-- Preferred `hex-line` flow: `outline -> read_file -> edit_file -> verify`
+- Preferred `hex-line` flow: `outline -> read_file -> edit_file(base_revision) -> verify`
 - Preferred `hex-graph` flow: `index_project -> find_symbols/inspect_symbol -> analyze_edit_region or analyze_changes`
 - Use `hex-line` for config, scripts, and tests when those files are part of the deliverable
 - Use `hex-line outline` first for large markdown files, then targeted reads by section
+- Carry the latest `revision` into same-file follow-up edits as `base_revision`
+- Before delayed retries, formatter runs, or cross-tool follow-ups on the same file, run `verify` instead of blindly rereading
+- Treat `retry_edit`, `retry_edits`, `retry_checksum`, and `retry_plan` as canonical recovery helpers
+- `hex-line` hashes normalized logical text but preserves existing file line endings and trailing-newline shape on write
 - Use `hex-graph` for planning when Story or Task affects existing code and real affected modules or task boundaries are unclear
 - Use `hex-graph` for implementation or review before editing existing functions, classes, routes, or public APIs
 - Do not use `hex-graph` as a runtime profiler; benchmark and profiler data remain the source of truth
