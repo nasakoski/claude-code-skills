@@ -86,19 +86,23 @@ try {
     run(["checkpoint", P, projectRoot, "--phase", PHASES.TASK_EXECUTION]);
     run(["advance", P, projectRoot, "--to", PHASES.VERIFY_STATUSES]);
 
-    // TEST 5: STORY_TO_REVIEW blocked with processable tasks
+    // TEST 5: SCENARIO_VALIDATION blocked with processable tasks (can't skip to STORY_TO_REVIEW)
     run(["checkpoint", P, projectRoot, "--phase", PHASES.VERIFY_STATUSES, "--payload", JSON.stringify({ processable_counts: { todo: 1, to_review: 0, to_rework: 0 }, inflight_workers: {} })]);
     const t5 = run(["advance", P, projectRoot, "--to", PHASES.STORY_TO_REVIEW], { allowFailure: true });
-    expect("STORY_TO_REVIEW blocked with processable tasks", t5, false);
+    expect("STORY_TO_REVIEW blocked from VERIFY_STATUSES (must go through SCENARIO_VALIDATION)", t5, false);
 
-    // Fix: clear processable
+    // Fix: clear processable and go through SCENARIO_VALIDATION
     run(["checkpoint", P, projectRoot, "--phase", PHASES.VERIFY_STATUSES, "--payload", JSON.stringify({ processable_counts: { todo: 0, to_review: 0, to_rework: 0 }, inflight_workers: {} })]);
 
-    // TEST 6: STORY_TO_REVIEW allowed with zero processable
-    const t6 = run(["advance", P, projectRoot, "--to", PHASES.STORY_TO_REVIEW]);
-    expect("STORY_TO_REVIEW allowed with zero processable", t6, true);
+    // TEST 6: SCENARIO_VALIDATION allowed from VERIFY_STATUSES with zero processable
+    const t6 = run(["advance", P, projectRoot, "--to", PHASES.SCENARIO_VALIDATION]);
+    expect("SCENARIO_VALIDATION allowed from VERIFY_STATUSES", t6, true);
 
-    // TEST 7: DONE blocked without story_transition_done
+    // Checkpoint scenario validation and advance to STORY_TO_REVIEW
+    run(["checkpoint", P, projectRoot, "--phase", PHASES.SCENARIO_VALIDATION, "--payload", JSON.stringify({ scenario_pass: true, segments_traced: 5, segments_passed: 5, rework_tasks: [], validation_mode: "self_check_only", processable_counts: { todo: 0, to_review: 0, to_rework: 0 } })]);
+    const t6b = run(["advance", P, projectRoot, "--to", PHASES.STORY_TO_REVIEW]);
+    expect("STORY_TO_REVIEW allowed from SCENARIO_VALIDATION", t6b, true);
+
     run(["checkpoint", P, projectRoot, "--phase", PHASES.STORY_TO_REVIEW]);
     run(["advance", P, projectRoot, "--to", PHASES.SELF_CHECK]);
     run(["checkpoint", P, projectRoot, "--phase", PHASES.SELF_CHECK, "--payload", JSON.stringify({ pass: true, final_result: "READY_FOR_GATE" })]);
