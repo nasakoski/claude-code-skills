@@ -147,7 +147,7 @@ ROLLBACK if any operation fails.
 |-------|-------|----------------|-------------------|
 | **Epic** | 3-7 Epics | Business domain, Goal | ln-210-epic-coordinator |
 | **Story** | 5-10 Stories | Persona, Capability, AC | ln-222-story-replanner |
-| **Task** | 1-6 Tasks | Goal, Implementation approach | ln-302-task-replanner |
+| **Task** | 1-8 Tasks | Goal, Implementation approach | ln-302-task-replanner |
 
 For level-specific examples and scenarios, see:
 - `ln-210-epic-coordinator/references/replan_workflow.md`

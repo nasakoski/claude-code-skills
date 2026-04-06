@@ -86,6 +86,21 @@ try {
             inflight_workers: {},
         }),
     ]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.SCENARIO_VALIDATION]);
+    run([
+        "checkpoint",
+        "--project-root", projectRoot,
+        "--phase", PHASES.SCENARIO_VALIDATION,
+        "--payload",
+        JSON.stringify({
+            scenario_pass: true,
+            segments_traced: 5,
+            segments_passed: 5,
+            rework_tasks: [],
+            validation_mode: "self_check_only",
+            processable_counts: { todo: 0, to_review: 0, to_rework: 0 },
+        }),
+    ]);
     run(["advance", "--project-root", projectRoot, "--to", PHASES.STORY_TO_REVIEW]);
     run([
         "checkpoint",

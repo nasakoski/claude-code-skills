@@ -59,7 +59,7 @@ try {
     run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.TASK_EXECUTION]);
     run(["advance", "--project-root", projectRoot, "--to", PHASES.VERIFY_STATUSES]);
 
-    // TEST 1: STORY_TO_REVIEW blocked with processable_counts > 0
+    // TEST 1: STORY_TO_REVIEW blocked — must go through SCENARIO_VALIDATION
     run([
         "checkpoint", "--project-root", projectRoot,
         "--phase", PHASES.VERIFY_STATUSES,
@@ -72,18 +72,72 @@ try {
         "advance", "--project-root", projectRoot,
         "--to", PHASES.STORY_TO_REVIEW,
     ], { allowFailure: true });
-    if (blocked1.ok !== false || !String(blocked1.error || "").includes("Processable")) {
-        throw new Error("Expected STORY_TO_REVIEW blocked with pending tasks");
+    if (blocked1.ok !== false || !String(blocked1.error || "").includes("Invalid transition")) {
+        throw new Error("Expected STORY_TO_REVIEW blocked from VERIFY_STATUSES (must go through SCENARIO_VALIDATION)");
     }
 
-    // TEST 2: DONE blocked without story_transition_done
-    // Fix counts and fast-forward
+    // TEST 2: SCENARIO_VALIDATION → STORY_TO_REVIEW blocked with processable tasks
     run([
         "checkpoint", "--project-root", projectRoot,
         "--phase", PHASES.VERIFY_STATUSES,
         "--payload", JSON.stringify({
             processable_counts: { todo: 0, to_review: 0, to_rework: 0 },
             inflight_workers: {},
+        }),
+    ]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.SCENARIO_VALIDATION]);
+    run([
+        "checkpoint", "--project-root", projectRoot,
+        "--phase", PHASES.SCENARIO_VALIDATION,
+        "--payload", JSON.stringify({
+            scenario_pass: false,
+            segments_traced: 5,
+            segments_passed: 3,
+            rework_tasks: ["T-NEG"],
+            validation_mode: "self_check_only",
+            processable_counts: { todo: 1, to_review: 0, to_rework: 0 },
+        }),
+    ]);
+    const blocked1b = run([
+        "advance", "--project-root", projectRoot,
+        "--to", PHASES.STORY_TO_REVIEW,
+    ], { allowFailure: true });
+    if (blocked1b.ok !== false || !String(blocked1b.error || "").includes("Processable")) {
+        throw new Error("Expected STORY_TO_REVIEW blocked with processable tasks from SCENARIO_VALIDATION");
+    }
+
+    // Fix: loop back through SELECT_WORK, fast-forward to STORY_TO_REVIEW
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.SELECT_WORK]);
+    run([
+        "checkpoint", "--project-root", projectRoot,
+        "--phase", PHASES.SELECT_WORK,
+        "--payload", JSON.stringify({
+            current_task_id: "T-NEG",
+            processable_counts: { todo: 1, to_review: 0, to_rework: 0 },
+        }),
+    ]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.TASK_EXECUTION]);
+    run(["checkpoint", "--project-root", projectRoot, "--phase", PHASES.TASK_EXECUTION]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.VERIFY_STATUSES]);
+    run([
+        "checkpoint", "--project-root", projectRoot,
+        "--phase", PHASES.VERIFY_STATUSES,
+        "--payload", JSON.stringify({
+            processable_counts: { todo: 0, to_review: 0, to_rework: 0 },
+            inflight_workers: {},
+        }),
+    ]);
+    run(["advance", "--project-root", projectRoot, "--to", PHASES.SCENARIO_VALIDATION]);
+    run([
+        "checkpoint", "--project-root", projectRoot,
+        "--phase", PHASES.SCENARIO_VALIDATION,
+        "--payload", JSON.stringify({
+            scenario_pass: true,
+            segments_traced: 5,
+            segments_passed: 5,
+            rework_tasks: [],
+            validation_mode: "self_check_only",
+            processable_counts: { todo: 0, to_review: 0, to_rework: 0 },
         }),
     ]);
     run(["advance", "--project-root", projectRoot, "--to", PHASES.STORY_TO_REVIEW]);

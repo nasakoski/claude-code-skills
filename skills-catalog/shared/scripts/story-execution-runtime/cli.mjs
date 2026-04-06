@@ -97,6 +97,17 @@ function applyCheckpointToState(state, phase, payload) {
         }
     }
 
+    if (phase === PHASES.SCENARIO_VALIDATION) {
+        nextState.scenario_pass = payload.scenario_pass === true;
+        nextState.segments_traced = payload.segments_traced || 0;
+        nextState.segments_passed = payload.segments_passed || 0;
+        nextState.rework_tasks = payload.rework_tasks || [];
+        nextState.validation_mode = payload.validation_mode || null;
+        if (payload.processable_counts) {
+            nextState.processable_counts = payload.processable_counts;
+        }
+    }
+
     if (phase === PHASES.STORY_TO_REVIEW) {
         nextState.story_transition_done = payload.story_transition_done === true;
         nextState.final_result = payload.final_result || nextState.final_result;

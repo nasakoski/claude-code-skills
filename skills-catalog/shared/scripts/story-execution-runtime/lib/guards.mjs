@@ -105,6 +105,12 @@ export function computeResumeAction(manifest, state, checkpoints) {
         if (hasProcessableWork(state.processable_counts)) {
             return "Re-read task statuses, checkpoint PHASE_6_VERIFY_STATUSES, then advance to PHASE_3_SELECT_WORK";
         }
+        return `Advance to ${PHASES.SCENARIO_VALIDATION}`;
+    }
+    if (state.phase === PHASES.SCENARIO_VALIDATION) {
+        if (hasProcessableWork(state.processable_counts)) {
+            return "Scenario validation found gaps; rework tasks then advance to PHASE_3_SELECT_WORK";
+        }
         return `Advance to ${PHASES.STORY_TO_REVIEW}`;
     }
     if (state.phase === PHASES.STORY_TO_REVIEW && !state.story_transition_done) {
