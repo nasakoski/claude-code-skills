@@ -21,7 +21,8 @@ Universal comparison logic for REPLAN operations across Epic, Story, and Task le
 1. Extract goal from title and description
 2. Search existing items for similar goal (fuzzy match)
 3. Check overlap (AC coverage, persona, capability)
-4. **Result:** Match found → KEEP/UPDATE candidate | No match → CREATE
+4. If match is Done: compare ideal task requirements against Done task scope. If current ACs require capabilities the Done task did not deliver → Done conflict (KEEP + CREATE follow-up for delta)
+5. **Result:** Match found → KEEP/UPDATE candidate | No match → CREATE
 
 ### For EACH existing item:
 1. Extract goal from title and AC
@@ -38,7 +39,7 @@ Universal comparison logic for REPLAN operations across Epic, Story, and Task le
 | **To Review** | ⚠️ Warning | Ask user, default KEEP |
 | **Done** | ❌ No | KEEP always, CREATE follow-up if needed |
 
-**Rule:** Never auto-modify `In Progress`, `To Review`, or `Done` items. Show warning, require explicit user confirmation.
+**Rule:** Never auto-modify In Progress/Review/Done items. Show warning, require explicit user confirmation.
 
 ## Edge Cases
 
@@ -47,7 +48,7 @@ Universal comparison logic for REPLAN operations across Epic, Story, and Task le
 | **Split** | 1 existing → 2+ IDEAL (same persona, split capabilities) | UPDATE first + CREATE new |
 | **Merge** | 2+ existing → 1 IDEAL (combined capabilities) | UPDATE survivor + OBSOLETE rest |
 | **Ambiguous match** | >1 existing matches IDEAL (>70% similarity) | Show all options, pick highest |
-| **Done conflicts** | IDEAL differs from Done items | Preserve Done, CREATE follow-up |
+| **Done conflicts** | IDEAL requires capabilities the Done task did not deliver (revised ACs, new segments, expanded scope) | Preserve Done, CREATE follow-up task scoped to the delta only |
 | **In Progress OBSOLETE** | Existing not in IDEAL + status In Progress | ⚠️ NO auto-cancel, show warning |
 
 ## Output Format
@@ -72,7 +73,7 @@ OPERATIONS:
 
 1. **Show diffs** — Display what changes for UPDATE operations
 2. **Group by operation** — Present KEEP/UPDATE/OBSOLETE/CREATE separately
-3. **Warnings first** — Show `In Progress | To Review | Done` conflicts before proceeding
+3. **Warnings first** — Show In Progress/Review/Done conflicts before proceeding
 4. **Preserve history** — Add comments explaining why items were OBSOLETEd
 5. **Atomic execution** — All operations succeed or none (rollback on failure)
 
@@ -146,7 +147,7 @@ ROLLBACK if any operation fails.
 |-------|-------|----------------|-------------------|
 | **Epic** | 3-7 Epics | Business domain, Goal | ln-210-epic-coordinator |
 | **Story** | 5-10 Stories | Persona, Capability, AC | ln-222-story-replanner |
-| **Task** | 1-8 Tasks | Goal, Implementation approach | ln-302-task-replanner |
+| **Task** | 1-6 Tasks | Goal, Implementation approach | ln-302-task-replanner |
 
 For level-specific examples and scenarios, see:
 - `ln-210-epic-coordinator/references/replan_workflow.md`
