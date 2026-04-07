@@ -1,6 +1,6 @@
 ---
 name: ln-401-task-executor
-description: "Executes implementation tasks through Todo, In Progress, To Review. Use when task needs coding with KISS/YAGNI. Not for test tasks."
+description: "Executes implementation tasks by delegating coding to Codex CLI, with Opus orchestration and verification. Use when task needs coding with KISS/YAGNI. Not for test tasks."
 allowed-tools: Read, Grep, Glob, Bash, mcp__hex-line__outline, mcp__hex-line__read_file, mcp__hex-line__edit_file, mcp__hex-line__write_file, mcp__hex-line__verify, mcp__hex-line__changes, mcp__hex-line__inspect_path, mcp__hex-graph__index_project, mcp__hex-graph__find_symbols, mcp__hex-graph__inspect_symbol, mcp__hex-graph__analyze_edit_region
 license: MIT
 ---
@@ -11,7 +11,7 @@ license: MIT
 
 **Type:** L3 Worker
 
-Executes a single implementation (or refactor) task from Todo to To Review using the task description and linked guides.
+Executes a single implementation (or refactor) task by delegating coding to Codex CLI. Opus handles context loading, prompt composition, verification, and rework feedback. Codex writes the code. Falls back to Opus inline if Codex is unavailable or fails verification.
 
 ## Purpose & Scope
 - Handle one selected task only; never touch other tasks.
@@ -19,6 +19,8 @@ Executes a single implementation (or refactor) task from Todo to To Review using
 - Update Linear/kanban for this task: Todo -> In Progress -> To Review.
 - Run typecheck/lint; update docs/tests/config per task instructions.
 - Not for test tasks (label "tests" goes to ln-404-test-executor).
+- **Delegate coding to Codex CLI** via `agent_runner.mjs`. Opus verifies results.
+- **Fallback:** If Codex is unavailable or fails 3 cycles, implement inline (Opus).
 
 **Hex MCP acceleration (if available):** Use `inspect_path()` and `outline(path)` before reading large code files. Use `read_file()` and `edit_file()` as the primary path for code/config/script/test files. For edits to existing code, run `index_project(path=project_root)` once and use `analyze_edit_region(...)` before non-trivial edits. After edits: `edit_file(base_revision=rev)` -> `verify(checksums)`. Before handoff: `changes()` to review diff.
 ## Inputs
@@ -98,16 +100,45 @@ Step 2c: Implementation Blueprint
     **Risks:** {shared files with parallel tasks, if any}
   - Scope: ONLY files of this task. Do not analyze other tasks.
 
+Step 2d: Build Implementation Prompt
+  - Load template: `shared/agents/prompt_templates/implementation.md`
+  - Fill placeholders: {task_id}, {task_title}, {task_description}, {goal_articulation},
+    {implementation_blueprint}, {acceptance_criteria}, {verification_methods},
+    {existing_patterns}, {affected_files_content}
+  - For {affected_files_content}: include full content of files to modify (read via hex-line)
+  - Save prompt to: `.agent-review/codex/{taskId}_implementation_prompt.md`
+  - Ensure `.agent-review/` exists with `.gitignore` (content: `*` + `!.gitignore`)
+
 Step 3: Start Work
   - Set task to In Progress, update kanban
 
-Step 4: Implement
-  - 4a Pattern Reuse: IF creating new file/utility, Grep src/ for existing similar patterns
-    (error handlers, validators, HTTP wrappers, config loaders). Reuse if found.
-  - 4b Follow task plan/AC, apply KISS/YAGNI
-  - 4c Architecture Guard: IF creating service function: (1) 3+ side-effect categories in **leaf** function → split (EXCEPT orchestrator functions that delegate sequentially — these are expected to have 3+ categories);
-    (2) get_*/find_*/check_* naming → verify no hidden writes; (3) 3+ service imports in **leaf** function → flatten (orchestrator imports are expected)
-    (4) **Frontend Guard (conditional):** IF affected files include `.tsx/.vue/.svelte/.html/.css` → **MANDATORY READ:** `shared/references/frontend_design_guide.md`. Load project's design_guidelines.md if exists (design tokens source of truth). Verify: one composition per viewport; max 2 typefaces + 1 accent color; cards only when interaction requires; motion max 2-3 purposeful; WCAG 2.1 AA contrast (4.5:1 text, 3:1 UI elements)
+Step 4: Delegate to Codex (with verification loop)
+  - 4a Health check: `node shared/agents/agent_runner.mjs --health-check`
+    If codex-impl unavailable → skip to Step 4-fallback (Opus inline)
+  - 4b Launch Codex:
+    ```bash
+    node shared/agents/agent_runner.mjs \
+      --agent codex-impl \
+      --prompt-file .agent-review/codex/{taskId}_implementation_prompt.md \
+      --cwd {project_dir} \
+      --timeout 600
+    ```
+  - 4c Verify Codex output:
+    - Read changed files (use `mcp__hex-line__changes()` or `git diff`)
+    - Check each AC verify method (test/command/inspect)
+    - Run lint and typecheck
+  - 4d If verification fails (max 3 cycles):
+    - Build rework prompt: original prompt + failure details (which AC failed, error output)
+    - Save to `.agent-review/codex/{taskId}_implementation_rework_{N}_prompt.md`
+    - Re-run Codex with rework prompt
+  - 4e If all 3 cycles fail → Step 4-fallback
+  - 4f Update docs and existing tests if impacted by Codex changes
+
+Step 4-fallback: Opus Inline Implementation
+  - Only reached if Codex unavailable or 3 rework cycles exhausted
+  - Pattern reuse: Grep src/ for existing patterns before writing new utilities
+  - Follow task plan/AC, apply KISS/YAGNI
+  - Architecture Guard and Frontend Guard per above
   - Update docs and existing tests if impacted
   - Execute verify: methods from task AC (test/command/inspect)
 
@@ -163,6 +194,8 @@ Before setting To Review, verify all items:
 - No new test creation; only update existing tests if required.
 - Preserve Foundation-First ordering from orchestrator; do not reorder tasks.
 - **Do NOT commit.** Leave all changes uncommitted — the reviewer reviews and commits.
+- **Codex is the default coding agent.** Only fall back to Opus inline when Codex is unavailable or fails 3 verification cycles.
+- **Ensure `.agent-review/` exists** with `.gitignore` (content: `*` + `!.gitignore`) before writing prompts.
 - Before non-trivial edits to existing code, use graph impact evidence when available instead of guessing blast radius from file names alone.
 
 ## Runtime Summary Artifact
@@ -187,5 +220,5 @@ Write `.hex-skills/runtime-artifacts/runs/{run_id}/task-status/{task_id}.json` b
 - Kanban format: `docs/tasks/kanban_board.md`
 
 ---
-**Version:** 3.0.0
-**Last Updated:** 2025-12-23
+**Version:** 4.0.0
+**Last Updated:** 2026-04-05

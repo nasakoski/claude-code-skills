@@ -16,7 +16,7 @@ For deterministic orchestration, pair this file with `shared/references/review_r
 |-------------|--------------|-------|----------|----------|
 | Decomposition | Gemini | Auto (Gemini 3) | Opus | Scope analysis, epic planning |
 | Task management | Codex | gpt-5.4 | Opus | Task decomposition, plan review |
-| Execution | Opus (native) | claude-opus-4-6 | -- | Direct code writing |
+| Execution | codex-impl | ChatGPT subscription | Opus (inline fallback) | Code writing via Codex CLI, verified by Opus |
 | Validation | codex + gemini | parallel | Self-review (if both fail) | Story/Tasks + context validation |
 | Quality review | codex + gemini | parallel | Self-review (if both fail) | Code review |
 
@@ -327,7 +327,7 @@ Standard steps before launching agents (performed inside agent review workers):
 | Delete review artifacts after agents complete | Persist per-agent prompts and results in `.hex-skills/agent-review/{agent}/` |
 | Write/rewrite result files from skill | Result files are runner's responsibility; skill only reads them and writes `_session.json` |
 | Trust agent output blindly | Claude critically verifies each suggestion independently |
-| Use agents for project file writes | Agents write only to `-o` output file; analysis-only |
+| Use agents for project file writes (review mode) | Review agents write only to `-o` output file; analysis-only. **Exception:** codex-impl (execution mode) writes directly to project files — Opus verifies before accepting. |
 | Chain multiple agent calls | One call per task; use `--resume-session` only for context continuity |
 | Hard-depend on agent availability | Always have Opus fallback |
 | Run health check separately from agent launch | Health check is first step of inline agent review |
@@ -340,4 +340,4 @@ Standard steps before launching agents (performed inside agent review workers):
 
 ---
 **Version:** 4.0.0
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-04-05

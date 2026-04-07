@@ -17,6 +17,17 @@
       "health_check": "codex --version",
       "focus_hint": "Primary focus: correctness bugs, schema feasibility, data integrity, error handling, code-level edge cases"
     },
+    "codex-impl": {
+      "name": "Codex CLI (Implementation Mode)",
+      "command": "codex",
+      "args": ["exec", "--full-auto", "--color", "never", "-C", "{cwd}"],
+      "env_override": {},
+      "hard_timeout_seconds": 600,
+      "heartbeat_interval_seconds": 30,
+      "skill_groups": ["401"],
+      "health_check": "codex --version",
+      "focus_hint": "Execution mode: writes directly to project files. Opus verifies before accepting."
+    },
     "gemini": {
       "name": "Gemini CLI",
       "command": "gemini",
