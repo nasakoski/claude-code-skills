@@ -34,6 +34,7 @@ license: MIT
 ## Phase 0: Tools Config
 
 **MANDATORY READ:** Load `shared/references/environment_state_contract.md`, `shared/references/storage_mode_detection.md`, and `shared/references/input_resolution_pattern.md`
+**MANDATORY READ:** Load `shared/references/concern_tracking_contract.md`
 
 Extract: `task_provider` = Task Management → Provider (`linear` | `file`).
 
@@ -146,11 +147,15 @@ Step 6: Side-Effect Bug Detection
 Step 7: Decision
   - Apply minor fixes or set To Rework with guidance
 
+Step 7b: Concern Tracking
+  - Write/update concern files for BLOCKER/CONCERN findings
+  - On re-review: resolve prior concerns if fixed
+
 Step 8: Mechanical Verification
   - Run lint/typecheck per ci_tool_detection.md (only if verdict=Done)
 
 Step 9: Update & Commit
-  - Set task status, update kanban, post review comment
+  - Set task status, update kanban, post review comment (include concern resolution notes)
   - If Done: leave branch changes uncommitted for downstream branch ownership rules
 ```
 
@@ -215,6 +220,13 @@ Step 9: Update & Commit
    - If issues remain: set To Rework with comment explaining why (best-practice ref) and how to fix.
    - Side-effect bugs do NOT block current task's Done status (they are separate tasks).
    - **If Done:** leave branch changes uncommitted and hand off the accepted task state with review comment + summary artifact.
+7b) **Concern Tracking (per `concern_tracking_contract.md`):**
+   - **On initial review:** For each BLOCKER or CONCERN finding from Steps 4-5, write a concern file to `.hex-skills/runtime-artifacts/runs/{run_id}/concerns/{task_id}/{concern_code}.json` with `status: "open"`.
+   - **On re-review (after rework):** Check for existing concern files for this task. For each prior concern:
+     - If the issue is fixed → update the file: set `status: "resolved"`, `resolved_at`, `resolved_by: "ln-402"`.
+     - If the issue persists → leave as `open` (it will count against the current review score as usual).
+   - **Linear documentation:** When resolving a concern, append to the review comment: `✓ {concern_code} resolved — {brief description of fix}`.
+   - NITs are NOT tracked as concerns (too noisy, low impact).
 8) **Mechanical Verification (if Done):**
    **MANDATORY READ:** `shared/references/ci_tool_detection.md`
    IF verdict == Done:
@@ -264,8 +276,10 @@ Write `.hex-skills/runtime-artifacts/runs/{run_id}/task-status/{task_id}.json` w
 
 ## Definition of Done
 - [ ] Steps 1-9 completed: task resolved, context loaded, review checks passed, AC validated, side-effect bugs created, mechanical verification passed, decision applied.
+- [ ] Concern files written for all BLOCKER/CONCERN findings (Step 7b).
+- [ ] On re-review: prior concern files updated (`resolved` if fixed, `open` if persisting).
 - [ ] If Done: task removed from kanban after review acceptance. If To Rework: task moved with fix guidance.
-- [ ] Review comment posted (findings + [BUG] list if any).
+- [ ] Review comment posted (findings + [BUG] list + concern resolution notes if any).
 - [ ] Runtime summary artifact written to the shared task-status location.
 
 ## Reference Files
@@ -277,8 +291,9 @@ Write `.hex-skills/runtime-artifacts/runs/{run_id}/task-status/{task_id}.json` w
 - **Clean code checklist:** `shared/references/clean_code_checklist.md`
 - **CI tool detection:** `shared/references/ci_tool_detection.md`
 - **Output normalization:** `shared/references/output_normalization.md`
+- **Concern tracking:** `shared/references/concern_tracking_contract.md`
 - Kanban format: `docs/tasks/kanban_board.md`
 
 ---
-**Version:** 5.2.0
-**Last Updated:** 2026-03-24
+**Version:** 5.3.0
+**Last Updated:** 2026-04-06

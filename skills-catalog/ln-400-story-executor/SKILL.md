@@ -35,6 +35,7 @@ Runtime-backed coordinator for Story execution. Owns task ordering, worktree lif
 
 **MANDATORY READ:** Load `shared/references/environment_state_contract.md`, `shared/references/storage_mode_detection.md`, `shared/references/input_resolution_pattern.md`
 **MANDATORY READ:** Load `shared/references/coordinator_runtime_contract.md`, `shared/references/story_execution_runtime_contract.md`, `shared/references/coordinator_summary_contract.md`
+**MANDATORY READ:** Load `shared/references/concern_tracking_contract.md`
 **MANDATORY READ:** Load `shared/references/git_worktree_fallback.md` — use the Story execution row
 
 Runtime CLI:
@@ -140,9 +141,15 @@ Used only for `Todo` groups with more than one task.
 3. Validate that every task touched in this run has a machine-readable latest summary.
 4. If any worker leaves an unexpected transition, pause runtime.
 5. If any task hits `To Rework` for the third consecutive time, pause runtime with escalation reason.
-6. Checkpoint `PHASE_6_VERIFY_STATUSES`.
-7. If processable work remains -> advance back to `PHASE_3_SELECT_WORK`.
-8. If no processable work remains -> advance to `PHASE_6B_SCENARIO_VALIDATION`.
+6. **Concern orchestration (per `concern_tracking_contract.md`):**
+   - Read all concern files in `.hex-skills/runtime-artifacts/runs/{run_id}/concerns/` for tasks touched in this iteration.
+   - For each `open` concern, evaluate with full orchestrator context:
+     - If concern lacks context that only the orchestrator has (e.g., delegation boundary, missing Story context) → set `status: "waived"`, `waived_by: "ln-400"`, `waive_reason`. Post Linear comment: `⊘ {concern_code} waived — {reason}`.
+     - If concern cannot be fixed within this Story's scope → set `status: "escalated"`, create a new Linear issue linked to the source Story, set `escalated_to: {new_issue_id}`. Post Linear comment: `↗ {concern_code} escalated to {issue_id} — {reason}`.
+     - If concern is legit and within scope → leave as `open` (the rework loop will handle it).
+7. Checkpoint `PHASE_6_VERIFY_STATUSES`.
+8. If processable work remains -> advance back to `PHASE_3_SELECT_WORK`.
+9. If no processable work remains -> advance to `PHASE_6B_SCENARIO_VALIDATION`.
 
 ### Phase 6b: Scenario Validation
 
@@ -198,6 +205,7 @@ Build final checklist from runtime state, not memory:
 - [ ] Every processed group has a recorded runtime result
 - [ ] Scenario validation passed (or PAUSED with user review)
 - [ ] Rework loop guard did not trip
+- [ ] All concern files reviewed by orchestrator (no `open` concerns left unprocessed)
 - [ ] Story moved to `To Review`
 
 Checkpoint `PHASE_8_SELF_CHECK` with `pass=true|false`.
@@ -279,7 +287,8 @@ Skill type: `execution-orchestrator`. Run after phases complete. Output to chat 
 - `../ln-402-task-reviewer/SKILL.md`
 - `../ln-403-task-rework/SKILL.md`
 - `../ln-404-test-executor/SKILL.md`
+- `shared/references/concern_tracking_contract.md`
 
 ---
-**Version:** 4.0.0
-**Last Updated:** 2026-01-29
+**Version:** 4.1.0
+**Last Updated:** 2026-04-06

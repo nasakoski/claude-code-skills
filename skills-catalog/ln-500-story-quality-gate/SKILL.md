@@ -35,6 +35,7 @@ Runtime-backed gate coordinator. Owns fast-track routing, quality/test summaries
 
 **MANDATORY READ:** Load `shared/references/environment_state_contract.md`, `shared/references/storage_mode_detection.md`, `shared/references/input_resolution_pattern.md`
 **MANDATORY READ:** Load `shared/references/coordinator_runtime_contract.md`, `shared/references/story_gate_runtime_contract.md`, `shared/references/coordinator_summary_contract.md`
+**MANDATORY READ:** Load `shared/references/concern_tracking_contract.md`
 **MANDATORY READ:** Load `shared/references/git_worktree_fallback.md`
 **MANDATORY READ:** Load `references/minimum_quality_checks.md`
 
@@ -123,8 +124,14 @@ node shared/scripts/story-gate-runtime/cli.mjs advance --to PHASE_7_FINALIZATION
 
 ### Phase 6: Verdict
 
-1. Calculate `quality_score`.
-2. Evaluate NFR validation:
+1. **Concern scan (per `concern_tracking_contract.md`):**
+   - Read all concern files in `.hex-skills/runtime-artifacts/runs/{run_id}/concerns/` for all tasks in this story.
+   - Tally by status: `open`, `resolved`, `waived`, `escalated`.
+   - Any `open` BLOCKER concerns → force verdict to `FAIL`.
+   - Any `open` CONCERN concerns → force verdict to at most `CONCERNS` (cannot be `PASS`).
+   - If all concerns are `resolved`, `waived`, or `escalated` → no impact on verdict.
+2. Calculate `quality_score`.
+3. Evaluate NFR validation:
    - full gate: security, performance, reliability, maintainability
    - fast-track: security mandatory, others may downgrade to concerns-only scope
 3. **End-to-End Scenario Completeness Walkthrough:** For each AC where an actor (user, bot, scheduler, handler, pipeline) must invoke or consume a mechanism, trace all 5 segments of the interaction path:
@@ -134,14 +141,16 @@ node shared/scripts/story-gate-runtime/cli.mjs advance --to PHASE_7_FINALIZATION
    - **(4) Usage context** — what the actor's system needs to correctly invoke the mechanism (instructions, prompts, schemas, type hints, documentation, parameter guidance)
    - **(5) Observable outcome** — the verifiable result (response message, state change, log entry, notification)
    If any segment is missing, create an `AC-` prefixed issue. Common failures: infrastructure exists but nothing exposes it (missing segment 2), mechanism exists but the actor's system can't find it (missing segment 3), mechanism is discoverable but the actor's system doesn't know when or how to use it (missing segment 4). If any `AC-` issue is found: verdict MUST be `FAIL`; create fix tasks for the missing segments.
-4. Determine final verdict.
+4. Determine final verdict (combining quality score, NFR validation, concern scan, and scenario completeness walkthrough).
 5. For `FAIL`:
    - create follow-up tasks
    - keep Story out of `Done`
-6. Checkpoint `PHASE_6_VERDICT` with:
+6. **Post concern tracking summary** as Linear comment on the Story (table format per contract).
+7. Checkpoint `PHASE_6_VERDICT` with:
    - `final_result`
    - `quality_score`
    - `nfr_validation`
+   - `concern_summary` (`{ open, resolved, waived, escalated }`)
    - `fix_tasks_created`
 
 ### Phase 7: Finalization
@@ -166,7 +175,8 @@ Build final checklist from runtime state:
 - [ ] Config, discovery, and fast-track checkpoints exist
 - [ ] Quality summary recorded from `ln-510`
 - [ ] Test-planning and test-verification state are deterministic
-- [ ] Final verdict checkpoint exists
+- [ ] Concern scan completed and summary posted to Linear
+- [ ] Final verdict checkpoint exists (includes `concern_summary`)
 - [ ] Story final status recorded
 - [ ] Branch finalization recorded or skipped by verdict
 
@@ -232,7 +242,8 @@ Skill type: `execution-orchestrator`. Run after phases complete. Output to chat 
 - `references/minimum_quality_checks.md`
 - `../ln-510-quality-coordinator/SKILL.md`
 - `../ln-520-test-planner/SKILL.md`
+- `shared/references/concern_tracking_contract.md`
 
 ---
-**Version:** 7.0.0
-**Last Updated:** 2026-02-09
+**Version:** 7.1.0
+**Last Updated:** 2026-04-06
