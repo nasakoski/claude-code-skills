@@ -111,3 +111,9 @@ NUL
 
 # Benchmark results (machine-specific)
 **/benchmark/results/
+
+# Local dev setup notes (project-scoped CLAUDE.md, never pushed)
+.claude/CLAUDE.md
+
+# Branch tracking (local-only)
+BRANCHES.md
